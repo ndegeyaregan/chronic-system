@@ -1,0 +1,21 @@
+import api from './axios';
+
+export const getMemberStats           = ()        => api.get('/analytics/members');
+export const getAppointmentStats      = ()        => api.get('/analytics/appointments');
+export const getMedicationAdherence   = ()        => api.get('/analytics/adherence');
+export const getAdherenceTrend        = (days=30) => api.get(`/analytics/adherence-trend?days=${days}`);
+export const getNotificationStats     = ()        => api.get('/analytics/notifications');
+export const getLabTestStats          = ()        => api.get('/analytics/lab-tests');
+export const getAuthorizationStats    = ()        => api.get('/analytics/authorizations');
+export const getVitalsPopulationStats = ()        => api.get('/analytics/vitals-population');
+export const getVitalsAlerts          = ()        => api.get('/analytics/vitals-alerts');
+export const getTreatmentPlanStats    = ()        => api.get('/analytics/treatment-plans');
+export const getTopMedications        = ()        => api.get('/analytics/top-medications');
+export const getAlertSeverityStats    = ()        => api.get('/analytics/alert-severity');
+export const getMemberGrowthTrend     = ()        => api.get('/analytics/member-growth');
+export const getMemberDemographics    = ()        => api.get('/analytics/demographics');
+export const getAgeDistribution       = ()        => api.get('/analytics/age-distribution');
+export const getPlanTypeDistribution  = ()        => api.get('/analytics/plan-types');
+export const getEmergencyStats        = ()        => api.get('/analytics/emergency-stats');
+export const getAppointmentQuality    = ()        => api.get('/analytics/appointment-quality');
+export const getCostSummary           = ()        => api.get('/analytics/cost-summary');

@@ -1,0 +1,27 @@
+# Workspace / editor files
+.idea/
+.vscode/
+
+# Dependencies and build output
+**/node_modules/
+**/dist/
+**/dist-ssr/
+
+# Environment and secrets
+**/.env
+**/.env.*
+!**/.env.example
+backend/src/config/firebase-service-account.json
+
+# Logs
+logs/
+**/*.log
+
+# Runtime uploads and app-local metadata
+backend/uploads/
+app/.metadata
+
+# Local backups and OS files
+*.backup
+.DS_Store
+Thumbs.db
