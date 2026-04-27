@@ -1,0 +1,9 @@
+.idea/
+backend/uploads/
+portal/public/uploads/
+*.apk
+*.apk.bak*
+*.MP4
+*.mp4
+.DS_Store
+node_modules/

@@ -1,0 +1,2 @@
+/home/saz/sanlam-chronic-care/sanlam-chronic-care/app/android/app/.cxx/RelWithDebInfo/12222y94/arm64-v8a/CMakeFiles/edit_cache.dir
+/home/saz/sanlam-chronic-care/sanlam-chronic-care/app/android/app/.cxx/RelWithDebInfo/12222y94/arm64-v8a/CMakeFiles/rebuild_cache.dir
