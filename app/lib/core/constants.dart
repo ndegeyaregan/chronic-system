@@ -119,6 +119,7 @@ const String routeTreatment       = '/home/treatment';
 const String routeLabResults       = '/home/lab-results';
 const String routeFacilityFinder  = '/home/facilities';
 const String routeEducation       = '/home/education';
+const String routeLeaderboard     = '/home/leaderboard';
 
 // ── Wellness tips ─────────────────────────────────────────────────────────
 const List<String> kWellnessTips = [

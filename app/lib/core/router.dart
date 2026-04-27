@@ -36,6 +36,7 @@ import '../screens/authorizations/authorizations_screen.dart';
 import '../screens/health_facilities/facility_finder_screen.dart';
 import '../screens/education/condition_education_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
+import '../screens/leaderboard/leaderboard_screen.dart';
 import 'constants.dart';
 
 class GoRouterNotifier extends ChangeNotifier {
@@ -265,6 +266,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state) => ResetPasswordScreen(
           resetToken: state.extra as String,
         ),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: routeLeaderboard,
+        builder: (_, __) => const LeaderboardScreen(),
       ),
     ],
   );

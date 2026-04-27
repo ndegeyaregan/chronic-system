@@ -11,6 +11,7 @@ import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
 import '../../providers/member_provider.dart';
 import '../../providers/appointments_provider.dart';
+import '../../providers/notifications_provider.dart';
 import '../../models/appointment.dart';
 import '../../widgets/common/loading_shimmer.dart';
 
@@ -241,16 +242,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               ),
                               GestureDetector(
                                 onTap: () => context.go(routeNotifications),
-                                child: Container(
-                                  width: 38, height: 38,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                                child: Badge(
+                                  isLabelVisible: ref.watch(unreadNotificationsCountProvider) > 0,
+                                  label: Text(
+                                    ref.watch(unreadNotificationsCountProvider) > 9
+                                        ? '9+'
+                                        : '${ref.watch(unreadNotificationsCountProvider)}',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
                                   ),
+                                  backgroundColor: const Color(0xFFFF3B30),
+                                  child: Container(
+                                    width: 38, height: 38,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white.withValues(alpha: 0.1),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                                    ),
                                   child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 19),
                                 ),
                               ),
+                            ),
                             ],
                           ),
                           const SizedBox(height: 18),
@@ -297,6 +308,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   ],
                                 ),
                               ),
+                            ),
                             ],
                           ),
                         ],
@@ -365,7 +377,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       _Action('Treatment',     Icons.medical_services_rounded,  const Color(0xFF0284C7),  routeTreatment,      null),
       _Action('Lab Results',   Icons.science_rounded,           _red,                     routeLabResults,     null),
       _Action('Find Facility', Icons.local_hospital_rounded,    const Color(0xFF059669),  routeFacilityFinder, null),
-      _Action('Learn',         Icons.menu_book_rounded,         const Color(0xFFD97706),  routeEducation,      null),
+      _Action('Leaderboard',   Icons.leaderboard_rounded,       const Color(0xFFAD1457),  routeLeaderboard,    null),
     ];
 
     return Column(

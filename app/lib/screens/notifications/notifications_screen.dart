@@ -3,45 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import '../../models/notification_model.dart';
-import '../../services/api_service.dart';
-
-final _notificationsProvider = StateNotifierProvider<_NotifNotifier,
-    List<AppNotification>>((ref) => _NotifNotifier());
-
-class _NotifNotifier extends StateNotifier<List<AppNotification>> {
-  _NotifNotifier() : super([]) {
-    _fetch();
-  }
-
-  Future<void> _fetch() async {
-    try {
-      final response = await dio.get('/notifications');
-      final list = (response.data as List)
-          .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
-          .toList();
-      state = list;
-    } catch (_) {}
-  }
-
-  Future<void> markRead(String id) async {
-    state = state.map((n) {
-      if (n.id == id) return n.copyWith(isRead: true);
-      return n;
-    }).toList();
-    try {
-      await dio.put('/notifications/$id/read');
-    } catch (_) {}
-  }
-
-  Future<void> markAllRead() async {
-    state = state.map((n) => n.copyWith(isRead: true)).toList();
-    try {
-      await dio.put('/notifications/read-all');
-    } catch (_) {}
-  }
-
-  Future<void> refresh() => _fetch();
-}
+import '../../providers/notifications_provider.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -87,17 +49,29 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notifications = ref.watch(_notificationsProvider);
-    final unreadCount = notifications.where((n) => !n.isRead).length;
+    final allNotifications = ref.watch(notificationsProvider);
+    final unreadCount = allNotifications.where((n) => !n.isRead).length;
+
+    // Sort: unread first, then by date descending
+    final notifications = [
+      ...allNotifications.where((n) => !n.isRead)
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+      ...allNotifications.where((n) => n.isRead)
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt)),
+    ];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         actions: [
           if (unreadCount > 0)
             TextButton(
               onPressed: () =>
-                  ref.read(_notificationsProvider.notifier).markAllRead(),
+                  ref.read(notificationsProvider.notifier).markAllRead(),
               child: const Text(
                 'Mark all read',
                 style: TextStyle(color: Colors.white, fontSize: 13),
@@ -123,11 +97,41 @@ class NotificationsScreen extends ConsumerWidget {
           : RefreshIndicator(
               color: kPrimary,
               onRefresh: () =>
-                  ref.read(_notificationsProvider.notifier).refresh(),
+                  ref.read(notificationsProvider.notifier).fetch(),
               child: ListView.builder(
-                itemCount: notifications.length,
+                itemCount: notifications.length + (unreadCount > 0 ? 1 : 0),
                 itemBuilder: (context, i) {
-                  final n = notifications[i];
+                  // Unread count badge header
+                  if (unreadCount > 0 && i == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: kPrimary,
+                              borderRadius:
+                                  BorderRadius.circular(kRadiusFull),
+                            ),
+                            child: Text(
+                              '$unreadCount unread',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final n = notifications[unreadCount > 0 ? i - 1 : i];
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     color: n.isRead
@@ -135,7 +139,7 @@ class NotificationsScreen extends ConsumerWidget {
                         : kPrimary.withValues(alpha: 0.04),
                     child: InkWell(
                       onTap: () => ref
-                          .read(_notificationsProvider.notifier)
+                          .read(notificationsProvider.notifier)
                           .markRead(n.id),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
