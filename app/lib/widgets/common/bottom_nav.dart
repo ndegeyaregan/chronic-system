@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
 
@@ -6,21 +6,22 @@ class BottomNav extends StatelessWidget {
   const BottomNav({super.key});
 
   int _locationToIndex(String location) {
-    if (location.startsWith('/home/vitals')) return 1;
-    if (location.startsWith('/home/appointments')) return 2;
-    if (location.startsWith('/home/lifestyle')) return 3;
-    if (location.startsWith('/home/profile')) return 4;
+    if (location.startsWith('/home/chronic')) return 0;
+    if (location.startsWith(routeBenefits)) return 1;
+    if (location.startsWith(routeClaims)) return 2;
+    if (location.startsWith(routeMembershipCard)) return 3;
+    if (location.startsWith(routeProfile)) return 4;
     return 0;
   }
 
   String _indexToRoute(int index) {
     switch (index) {
       case 1:
-        return routeVitals;
+        return routeBenefits;
       case 2:
-        return routeAppointments;
+        return routeClaims;
       case 3:
-        return routeLifestyle;
+        return routeMembershipCard;
       case 4:
         return routeProfile;
       default:
@@ -32,13 +33,18 @@ class BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     final currentIndex = _locationToIndex(location);
+    final isChronicDash = location.startsWith('/home/chronic');
 
     final items = [
-      _NavItem(icon: Icons.home_rounded,            label: 'Home',         color: const Color(0xFF007AFF)),
-      _NavItem(icon: Icons.favorite_rounded,         label: 'Health',       color: const Color(0xFFFF3B30)),
-      _NavItem(icon: Icons.calendar_month_rounded,   label: 'Appointments', color: const Color(0xFF32ADE6)),
-      _NavItem(icon: Icons.self_improvement_rounded, label: 'Lifestyle',    color: const Color(0xFF34C759)),
-      _NavItem(icon: Icons.person_rounded,           label: 'Profile',      color: const Color(0xFFFF9500)),
+      _NavItem(
+        icon: isChronicDash ? Icons.favorite_rounded : Icons.home_rounded,
+        label: isChronicDash ? 'Care' : 'Home',
+        color: const Color(0xFF007AFF),
+      ),
+      _NavItem(icon: Icons.account_balance_wallet_rounded, label: 'Benefits', color: const Color(0xFF32ADE6)),
+      _NavItem(icon: Icons.receipt_long_rounded,           label: 'Claims',   color: const Color(0xFF34C759)),
+      _NavItem(icon: Icons.badge_rounded,                  label: 'Card',     color: const Color(0xFFFF9500)),
+      _NavItem(icon: Icons.person_rounded,                 label: 'Profile',  color: const Color(0xFFFF3B30)),
     ];
 
     return Container(

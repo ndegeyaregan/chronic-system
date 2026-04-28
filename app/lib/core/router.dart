@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../providers/onboarding_provider.dart';
+import '../providers/member_type_provider.dart';
 import '../screens/auth/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/create_password_screen.dart';
@@ -10,7 +11,9 @@ import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/verify_otp_screen.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../screens/home/home_screen.dart';
-import '../screens/home/dashboard_screen.dart';
+import '../screens/home/chronic_dashboard_screen.dart';
+import '../screens/home/member_dashboard_screen.dart';
+import '../widgets/common/chronic_only.dart';
 import '../screens/medications/medications_screen.dart';
 import '../screens/medications/add_medication_screen.dart';
 import '../screens/medications/medication_detail_screen.dart';
@@ -37,6 +40,18 @@ import '../screens/health_facilities/facility_finder_screen.dart';
 import '../screens/education/condition_education_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/emergency/emergency_sos_screen.dart';
+import '../screens/benefits/benefits_screen.dart';
+import '../screens/claims/claims_screen.dart';
+import '../screens/claims/claim_detail_screen.dart';
+import '../screens/dependants/dependants_list_screen.dart';
+import '../screens/dependants/dependant_detail_screen.dart';
+import '../screens/membership_card/membership_card_screen.dart';
+import '../screens/preauth/preauth_list_screen.dart';
+import '../screens/preauth/preauth_detail_screen.dart';
+import '../screens/network/network_providers_screen.dart';
+import '../models/visit.dart';
+import '../models/dependant.dart';
+import '../models/preauth.dart';
 import 'constants.dart';
 
 class GoRouterNotifier extends ChangeNotifier {
@@ -49,10 +64,14 @@ class GoRouterNotifier extends ChangeNotifier {
     _ref.listen<bool>(onboardingCompleteProvider, (_, __) {
       notifyListeners();
     });
+    _ref.listen<bool>(isChronicMemberProvider, (_, __) {
+      notifyListeners();
+    });
   }
 
   AuthState get authState => _ref.read(authProvider);
   bool get onboardingComplete => _ref.read(onboardingCompleteProvider);
+  bool get isChronicMember => _ref.read(isChronicMemberProvider);
 }
 
 final goRouterNotifierProvider =
@@ -94,6 +113,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (!notifier.onboardingComplete) return routeOnboarding;
           return routeDashboard;
         }
+        // Block non-chronic members from chronic-only routes.
+        // Vitals, medications, lifestyle, and education are now universal.
+        if (!notifier.isChronicMember) {
+          const chronicRoutes = [
+            routeAppointments,
+            routeTreatment,
+            routeLabResults,
+            '/authorizations',
+            '/home/chronic',
+          ];
+          for (final route in chronicRoutes) {
+            if (location.startsWith(route)) {
+              return routeDashboard;
+            }
+          }
+        }
         // Only redirect to onboarding if still on the onboarding entry points;
         // never force already-navigated authenticated pages back to onboarding.
       }
@@ -123,7 +158,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: routeDashboard,
-            builder: (_, __) => const DashboardScreen(),
+            builder: (_, __) => const MemberDashboardScreen(),
+          ),
+          GoRoute(
+            path: '/home/chronic',
+            builder: (_, __) => const ChronicOnly(
+              child: ChronicDashboardScreen(),
+            ),
           ),
           GoRoute(
             path: routeVitals,
@@ -164,6 +205,30 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: routeEducation,
             builder: (_, __) => const ConditionEducationScreen(),
+          ),
+          GoRoute(
+            path: routeBenefits,
+            builder: (_, __) => const BenefitsScreen(),
+          ),
+          GoRoute(
+            path: routeClaims,
+            builder: (_, __) => const ClaimsScreen(),
+          ),
+          GoRoute(
+            path: routeDependants,
+            builder: (_, __) => const DependantsListScreen(),
+          ),
+          GoRoute(
+            path: routeMembershipCard,
+            builder: (_, __) => const MembershipCardScreen(),
+          ),
+          GoRoute(
+            path: routePreauths,
+            builder: (_, __) => const PreauthListScreen(),
+          ),
+          GoRoute(
+            path: routeNetwork,
+            builder: (_, __) => const NetworkProvidersScreen(),
           ),
         ],
       ),
@@ -271,6 +336,47 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         path: routeEmergencySos,
         builder: (_, __) => const EmergencySosScreen(),
+      ),
+      // ── Claims detail ──────────────────────────────────────────────────
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '$routeClaims/:visitId',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final visit = extra?['visit'] as Visit?;
+          final memberNo = (extra?['memberNo'] as String?) ?? '';
+          return ClaimDetailScreen(
+            visitId: state.pathParameters['visitId']!,
+            visit: visit,
+            memberNo: memberNo,
+          );
+        },
+      ),
+      // ── Dependant detail ───────────────────────────────────────────────
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '$routeDependants/:memberNo',
+        builder: (_, state) {
+          final dep = state.extra as Dependant?;
+          final memberNo = Uri.decodeComponent(
+              state.pathParameters['memberNo']!);
+          return DependantDetailScreen(
+            memberNo: memberNo,
+            dependant: dep,
+          );
+        },
+      ),
+      // ── Preauth detail ─────────────────────────────────────────────────
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '$routePreauths/:id',
+        builder: (_, state) {
+          final preauth = state.extra as Preauth?;
+          return PreauthDetailScreen(
+            id: state.pathParameters['id']!,
+            preauth: preauth,
+          );
+        },
       ),
     ],
   );
