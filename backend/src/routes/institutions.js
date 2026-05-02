@@ -11,7 +11,7 @@ const {
 } = require('../controllers/institutionsController');
 
 router.get('/', authenticate, listInstitutions);
-router.post('/sanlam-sync', authenticate, sanlamSync);
+router.post('/sanlam-sync', sanlamSync); // Public endpoint for syncing
 router.post('/', authenticate, createInstitution);
 router.post('/:id/suspend', authenticate, suspendInstitution);
 router.post('/:id/unsuspend', authenticate, unsuspendInstitution);

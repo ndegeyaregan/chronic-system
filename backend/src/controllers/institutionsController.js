@@ -168,64 +168,78 @@ const sanlamSync = async (req, res) => {
       };
 
       if (category === 'pharmacy') {
-        await client.query(
-          `INSERT INTO pharmacies
-             (sanlam_id, name, first_name, last_name, title, email, phone,
-              street, address, city, postal_code, short_id, m_field, category, is_active)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,TRUE)
-           ON CONFLICT (sanlam_id) DO UPDATE SET
-             name        = EXCLUDED.name,
-             first_name  = EXCLUDED.first_name,
-             last_name   = EXCLUDED.last_name,
-             title       = EXCLUDED.title,
-             email       = EXCLUDED.email,
-             phone       = EXCLUDED.phone,
-             street      = EXCLUDED.street,
-             address     = EXCLUDED.address,
-             city        = EXCLUDED.city,
-             postal_code = EXCLUDED.postal_code,
-             short_id    = EXCLUDED.short_id,
-             m_field     = EXCLUDED.m_field,
-             category    = EXCLUDED.category,
-             is_active   = TRUE,
-             updated_at  = NOW()`,
-          [
-            common.sanlam_id, common.name, common.first_name, common.last_name,
-            common.title, common.email, common.phone, common.street,
-            common.address, common.city, common.postal_code, common.short_id,
-            common.m_field, common.category,
-          ]
+        // Check if already exists
+        const existsRes = await client.query(
+          'SELECT id FROM pharmacies WHERE sanlam_id = $1',
+          [common.sanlam_id]
         );
+
+        if (existsRes.rows.length > 0) {
+          // Update
+          await client.query(
+            `UPDATE pharmacies SET
+               name = $1, first_name = $2, last_name = $3, title = $4, email = $5,
+               phone = $6, street = $7, address = $8, city = $9, postal_code = $10,
+               short_id = $11, m_field = $12, category = $13, updated_at = NOW()
+             WHERE sanlam_id = $14`,
+            [
+              common.name, common.first_name, common.last_name, common.title, common.email,
+              common.phone, common.street, common.address, common.city, common.postal_code,
+              common.short_id, common.m_field, common.category, common.sanlam_id,
+            ]
+          );
+        } else {
+          // Insert
+          await client.query(
+            `INSERT INTO pharmacies
+               (sanlam_id, name, first_name, last_name, title, email, phone,
+                street, address, city, postal_code, short_id, m_field, category, is_active)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,TRUE)`,
+            [
+              common.sanlam_id, common.name, common.first_name, common.last_name,
+              common.title, common.email, common.phone, common.street,
+              common.address, common.city, common.postal_code, common.short_id,
+              common.m_field, common.category,
+            ]
+          );
+        }
         pharmaciesUpserted++;
       } else {
-        await client.query(
-          `INSERT INTO hospitals
-             (sanlam_id, name, first_name, last_name, title, email, phone,
-              street, address, city, postal_code, short_id, m_field, category, is_active)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,TRUE)
-           ON CONFLICT (sanlam_id) DO UPDATE SET
-             name        = EXCLUDED.name,
-             first_name  = EXCLUDED.first_name,
-             last_name   = EXCLUDED.last_name,
-             title       = EXCLUDED.title,
-             email       = EXCLUDED.email,
-             phone       = EXCLUDED.phone,
-             street      = EXCLUDED.street,
-             address     = EXCLUDED.address,
-             city        = EXCLUDED.city,
-             postal_code = EXCLUDED.postal_code,
-             short_id    = EXCLUDED.short_id,
-             m_field     = EXCLUDED.m_field,
-             category    = EXCLUDED.category,
-             is_active   = TRUE,
-             updated_at  = NOW()`,
-          [
-            common.sanlam_id, common.name, common.first_name, common.last_name,
-            common.title, common.email, common.phone, common.street,
-            common.address, common.city, common.postal_code, common.short_id,
-            common.m_field, common.category,
-          ]
+        // Check if already exists
+        const existsRes = await client.query(
+          'SELECT id FROM hospitals WHERE sanlam_id = $1',
+          [common.sanlam_id]
         );
+
+        if (existsRes.rows.length > 0) {
+          // Update
+          await client.query(
+            `UPDATE hospitals SET
+               name = $1, first_name = $2, last_name = $3, title = $4, email = $5,
+               phone = $6, street = $7, address = $8, city = $9, postal_code = $10,
+               short_id = $11, m_field = $12, category = $13, updated_at = NOW()
+             WHERE sanlam_id = $14`,
+            [
+              common.name, common.first_name, common.last_name, common.title, common.email,
+              common.phone, common.street, common.address, common.city, common.postal_code,
+              common.short_id, common.m_field, common.category, common.sanlam_id,
+            ]
+          );
+        } else {
+          // Insert
+          await client.query(
+            `INSERT INTO hospitals
+               (sanlam_id, name, first_name, last_name, title, email, phone,
+                street, address, city, postal_code, short_id, m_field, category, is_active)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,TRUE)`,
+            [
+              common.sanlam_id, common.name, common.first_name, common.last_name,
+              common.title, common.email, common.phone, common.street,
+              common.address, common.city, common.postal_code, common.short_id,
+              common.m_field, common.category,
+            ]
+          );
+        }
         hospitalsUpserted++;
       }
     }
