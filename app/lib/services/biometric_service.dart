@@ -8,7 +8,8 @@ import 'biometric/biometric_stub.dart'
     if (dart.library.io) 'biometric/biometric_mobile.dart';
 
 export 'biometric/biometric_stub.dart'
-    if (dart.library.io) 'biometric/biometric_mobile.dart' show BiometricType;
+    if (dart.library.io) 'biometric/biometric_mobile.dart'
+    show BiometricType, BiometricAuthResult;
 
 const _kBiometricEnabled = 'biometric_enabled';
 const _kBiometricMemberNumber = 'biometric_member_number';
@@ -30,6 +31,9 @@ class BiometricService {
     final val = await _storage!.read(key: _kBiometricEnabled);
     return val == 'true';
   }
+
+  Future<BiometricAuthResult> authenticateDetailed() =>
+      _impl.authenticateDetailed();
 
   Future<bool> authenticate() => _impl.authenticate();
 

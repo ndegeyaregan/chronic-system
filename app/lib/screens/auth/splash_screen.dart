@@ -163,7 +163,7 @@ class _SplashScreenState extends State<SplashScreen>
                             color: Colors.white.withValues(alpha: 0.3), width: 1),
                       ),
                       child: const Text(
-                        'CHRONIC CARE',
+                        'SANCARE',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,

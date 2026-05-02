@@ -16,7 +16,7 @@ class NotificationService {
   static const AndroidNotificationChannel _channel =
       AndroidNotificationChannel(
     'sanlam_chronic_high',
-    'Sanlam Chronic Care',
+    'SanCare+',
     description: 'Notifications for medication reminders and appointments.',
     importance: Importance.high,
   );
@@ -137,6 +137,44 @@ class NotificationService {
     );
   }
 
+  /// Schedule a one-shot local notification at a specific [when] time.
+  /// Used by the cycle tracker for period/ovulation/fertile-window reminders.
+  static Future<void> scheduleAt({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime when,
+    String? payload,
+  }) async {
+    if (kIsWeb) return;
+    final scheduled = tz.TZDateTime.from(when, tz.local);
+    if (scheduled.isBefore(tz.TZDateTime.now(tz.local))) return;
+    await _local.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduled,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channel.id,
+          _channel.name,
+          channelDescription: _channel.description,
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
+    );
+  }
+
   /// Cancel a single notification by id.
   static Future<void> cancel(int id) async {
     if (kIsWeb) return;
@@ -171,7 +209,7 @@ class NotificationService {
 
     await _local.show(
       message.hashCode,
-      notification.title ?? 'Sanlam Chronic Care',
+      notification.title ?? 'SanCare+',
       notification.body ?? '',
       details,
     );

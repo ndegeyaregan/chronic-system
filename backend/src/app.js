@@ -35,7 +35,13 @@ const auditLogsRoutes = require('./routes/auditLogs');
 const drugInteractionsRoutes = require('./routes/drugInteractions');
 const allergiesRoutes = require('./routes/allergies');
 const adherenceRoutes = require('./routes/adherence');
+const meRoutes = require('./routes/me');
 const uploadRoutes = require('./routes/upload');
+const preauthsRoutes = require('./routes/preauths');
+const cycleRoutes = require('./routes/cycle');
+const cardReprintsRoutes = require('./routes/cardReprints');
+const reimbursementsRoutes = require('./routes/reimbursements');
+const institutionsRoutes = require('./routes/institutions');
 
 const app = express();
 
@@ -127,7 +133,13 @@ app.use('/api/audit-logs', auditLogsRoutes);
 app.use('/api/drug-interactions', drugInteractionsRoutes);
 app.use('/api/allergies', allergiesRoutes);
 app.use('/api/adherence', adherenceRoutes);
+app.use('/api/me', meRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/preauths', preauthsRoutes);
+app.use('/api/cycle', cycleRoutes);
+app.use('/api/card-reprints', cardReprintsRoutes);
+app.use('/api/reimbursements', reimbursementsRoutes);
+app.use('/api/institutions', institutionsRoutes);
 app.use('/api/dev', devRoutes);
 
 // 404 handler

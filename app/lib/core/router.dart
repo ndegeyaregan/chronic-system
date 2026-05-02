@@ -10,6 +10,8 @@ import '../screens/auth/create_password_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/verify_otp_screen.dart';
 import '../screens/auth/reset_password_screen.dart';
+import '../screens/auth/register_search_screen.dart';
+import '../screens/auth/register_member_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/home/chronic_dashboard_screen.dart';
 import '../screens/home/member_dashboard_screen.dart';
@@ -49,6 +51,11 @@ import '../screens/membership_card/membership_card_screen.dart';
 import '../screens/preauth/preauth_list_screen.dart';
 import '../screens/preauth/preauth_detail_screen.dart';
 import '../screens/network/network_providers_screen.dart';
+import '../screens/vitals/cycle_tracker_screen.dart';
+import '../screens/reimbursement/reimbursement_screen.dart';
+import '../screens/reimbursement/reimbursement_history_screen.dart';
+import '../screens/membership_card/card_reprint_history_screen.dart';
+import '../screens/prescriptions/prescriptions_screen.dart';
 import '../models/visit.dart';
 import '../models/dependant.dart';
 import '../models/preauth.dart';
@@ -101,7 +108,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (location == routeLogin ||
             location == routeForgotPassword ||
             location == routeVerifyOtp ||
-            location == routeResetPassword) return null;
+            location == routeResetPassword ||
+            location == routeRegisterSearch ||
+            location == routeRegisterMember) return null;
         return routeLogin;
       }
 
@@ -114,12 +123,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           return routeDashboard;
         }
         // Block non-chronic members from chronic-only routes.
-        // Vitals, medications, lifestyle, and education are now universal.
+        // Vitals, lifestyle, and education are universal; medications stays chronic-only.
         if (!notifier.isChronicMember) {
           const chronicRoutes = [
             routeAppointments,
             routeTreatment,
             routeLabResults,
+            routeMedications,
             '/authorizations',
             '/home/chronic',
           ];
@@ -230,6 +240,26 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: routeNetwork,
             builder: (_, __) => const NetworkProvidersScreen(),
           ),
+          GoRoute(
+            path: routeCycleTracker,
+            builder: (_, __) => const CycleTrackerScreen(),
+          ),
+          GoRoute(
+            path: routeReimbursement,
+            builder: (_, __) => const ReimbursementScreen(),
+          ),
+          GoRoute(
+            path: routeReimbursementHistory,
+            builder: (_, __) => const ReimbursementHistoryScreen(),
+          ),
+          GoRoute(
+            path: routeCardReprintHistory,
+            builder: (_, __) => const CardReprintHistoryScreen(),
+          ),
+          GoRoute(
+            path: routePrescriptions,
+            builder: (_, __) => const PrescriptionsScreen(),
+          ),
         ],
       ),
       // ── Detail / form screens — full-screen, outside the shell ──────────
@@ -328,9 +358,29 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: routeResetPassword,
-        builder: (_, state) => ResetPasswordScreen(
-          resetToken: state.extra as String,
-        ),
+        builder: (_, state) {
+          final extra = state.extra as Map<String, String>;
+          return ResetPasswordScreen(
+            memberNumber: extra['memberNumber']!,
+            resetToken: extra['resetToken']!,
+          );
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: routeRegisterSearch,
+        builder: (_, __) => const RegisterSearchScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: routeRegisterMember,
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return RegisterMemberScreen(
+            memberNumber: extra['memberNumber'] as String,
+            memberName: (extra['memberName'] ?? '') as String,
+          );
+        },
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

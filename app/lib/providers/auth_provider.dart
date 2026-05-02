@@ -6,8 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/member.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../services/sanlam_api_service.dart';
 import '../services/biometric_service.dart';
 import '../services/notification_service.dart';
+import '../services/prescription_reminder_service.dart';
 import '../core/constants.dart';
 import 'onboarding_provider.dart';
 
@@ -63,19 +65,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (loggedIn) {
         final token = await _service.getToken();
         if (token != null && token.isNotEmpty) {
-          final member = _service.decodeTokenMember(token);
-          // Restore onboarding state before setting authenticated so the
-          // router redirect sees the correct value immediately.
+          Member? member = await _service.loadMember();
+          member ??= _service.decodeTokenMember(token);
           await _restoreOnboardingState(member?.id);
           state = AuthState(
             status: AuthStatus.authenticated,
             member: member,
           );
-          // Fetch full profile in background to get conditions
+          currentSanlamToken = await readSanlamToken();
+          if (currentSanlamToken == null && member?.accessToken != null) {
+            currentSanlamToken = member!.accessToken;
+          }
           _fetchAndUpdateProfile();
-          // Register FCM token with backend
           _registerFcmToken();
-          // Schedule local medication reminders
           _scheduleMedicationReminders();
           return;
         }
@@ -99,11 +101,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> loginWithBiometrics()async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final authed = await biometricService.authenticate();
-      if (!authed) {
+      final result = await biometricService.authenticateDetailed();
+      if (!result.success) {
         state = state.copyWith(
           isLoading: false,
-          error: 'Biometric authentication failed. Please try again.',
+          error: result.errorMessage ??
+              'Biometric authentication failed. Please try again.',
         );
         return;
       }
@@ -142,18 +145,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return;
       }
 
-      // Network login with retry (up to 2 attempts)
-      Map<String, dynamic>? data;
+      // Network login with retry (up to 2 attempts) — must use the same
+      // backend path as the regular login flow.
+      const useLegacy =
+          bool.fromEnvironment('USE_LEGACY_AUTH', defaultValue: false);
+      Object? lastError;
       for (int attempt = 0; attempt < 2; attempt++) {
         try {
-          data = await _service.loginWithMemberNumber(creds.memberNumber, creds.password);
+          if (useLegacy) {
+            final data = await _service.loginWithMemberNumber(
+                creds.memberNumber, creds.password);
+            await _handleLoginResponse(data);
+          } else {
+            final member = await _service.loginSanlam(
+                creds.memberNumber, creds.password);
+            await _handleSanlamMemberResponse(member);
+          }
+          lastError = null;
           break;
         } catch (e) {
-          if (attempt == 1) rethrow;
+          lastError = e;
+          if (attempt == 1) break;
           await Future.delayed(const Duration(seconds: 1));
         }
       }
-      await _handleLoginResponse(data!);
+      if (lastError != null) throw lastError;
     } catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
@@ -167,9 +183,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       String memberNumber, String password) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final data =
-          await _service.loginWithMemberNumber(memberNumber, password);
-      await _handleLoginResponse(data);
+      const useLegacy = bool.fromEnvironment('USE_LEGACY_AUTH', defaultValue: false);
+      if (useLegacy) {
+        final data =
+            await _service.loginWithMemberNumber(memberNumber, password);
+        await _handleLoginResponse(data);
+      } else {
+        final member = await _service.loginSanlam(memberNumber, password);
+        await _handleSanlamMemberResponse(member);
+      }
     } catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
@@ -239,6 +261,38 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Schedule local medication reminders
       _scheduleMedicationReminders();
     }
+  }
+
+  Future<void> _handleSanlamMemberResponse(Member member) async {
+    // Stash the Sanlam JWT for the Sanlam API client
+    currentSanlamToken = member.accessToken;
+
+    await _restoreOnboardingState(member.id);
+
+    state = AuthState(
+      status: AuthStatus.authenticated,
+      member: member,
+      isLoading: false,
+    );
+
+    // Background: fetch chronic status from our own backend
+    _fetchChronicStatus(member.memberNumber);
+
+    _registerFcmToken();
+    _scheduleMedicationReminders();
+  }
+
+  Future<void> _fetchChronicStatus(String memberNumber) async {
+    try {
+      final response = await dio.get('/me/chronic-status');
+      final isChronic =
+          (response.data as Map?)?['isChronic'] as bool? ?? false;
+      if (state.member != null) {
+        state = state.copyWith(
+          member: state.member!.copyWith(isChronic: isChronic),
+        );
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchAndUpdateProfile() async {
@@ -354,6 +408,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await _service.logout();
     } catch (_) {}
+    try {
+      await PrescriptionReminderService.clear();
+    } catch (_) {}
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
@@ -367,6 +424,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   String _friendlyError(Object e) {
     final msg = e.toString().toLowerCase();
+    if (msg.contains('invalid username') ||
+        msg.contains('invalid/password') ||
+        msg.contains('sanlamapiexception')) {
+      return 'Invalid member number or password.';
+    }
     if (msg.contains('401') ||
         msg.contains('invalid') ||
         msg.contains('credentials') ||

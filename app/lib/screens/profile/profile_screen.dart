@@ -2,10 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/constants.dart';
 import '../../models/member.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/member_provider.dart';
+import '../../providers/member_type_provider.dart';
+import '../../providers/cycle_tracker_provider.dart';
 import '../../providers/vitals_provider.dart';
 import '../../providers/medications_provider.dart';
 import '../../providers/lab_tests_provider.dart';
@@ -183,7 +186,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _checkBiometrics();
     // Fetch fresh profile data from DB (JWT doesn't include phone/email)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(memberProvider.notifier).fetchProfile();
+      if (!mounted) return;
+      ref.read(memberProvider.notifier).fetchProfile();
+      // Pull fresh contact + photo from Sanlam
+      ref.read(memberProvider.notifier).refreshFromSanlam();
     });
   }
 
@@ -191,6 +197,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final memberState = ref.watch(memberProvider);
+    ref.watch(sanlamPhotoProvider); // trigger rebuild when Sanlam photo arrives
     // Prefer fresh DB data; fall back to JWT-decoded member
     final member = memberState.member ?? authState.member;
 
@@ -221,28 +228,60 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               child: Column(
                 children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 12,
+                  GestureDetector(
+                    onTap: () => _onAvatarTap(member),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 12,
+                              ),
+                            ],
+                            image: _avatarImage(member) != null
+                                ? DecorationImage(
+                                    image: _avatarImage(member)!,
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: _avatarImage(member) != null
+                              ? null
+                              : Center(
+                                  child: Text(
+                                    member?.initials ?? '?',
+                                    style: const TextStyle(
+                                      color: kPrimary,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: kAccent,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
                         ),
                       ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        member?.initials ?? '?',
-                        style: const TextStyle(
-                          color: kPrimary,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -264,22 +303,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: kAccent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      member?.planType ?? 'Standard',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                  if (() {
+                    final s = member?.schemeName?.trim();
+                    final p = member?.planCode?.trim();
+                    return (s != null && s.isNotEmpty) ||
+                        (p != null && p.isNotEmpty);
+                  }())
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: kAccent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        (member?.schemeName?.trim().isNotEmpty ?? false)
+                            ? member!.schemeName!.trim()
+                            : member!.planCode!.trim(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -300,6 +347,90 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  // ── Profile picture helpers ───────────────────────────────────────────────
+
+  ImageProvider? _avatarImage(Member? member) {
+    // Prefer Sanlam-side photo (base64) when available
+    final b64 = ref.read(sanlamPhotoProvider);
+    if (b64 != null && b64.isNotEmpty) {
+      try {
+        return MemoryImage(base64Decode(b64));
+      } catch (_) {/* fall through to URL */}
+    }
+    final raw = member?.profileIcon;
+    if (raw == null || raw.trim().isEmpty) return null;
+    final url = raw.startsWith('http') ? raw : '$kServerBase$raw';
+    return NetworkImage(url);
+  }
+
+  Future<void> _onAvatarTap(Member? member) async {
+    if (!mounted) return;
+    final hasPic = (member?.profileIcon?.trim().isNotEmpty ?? false);
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_rounded, color: kPrimary),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded, color: kPrimary),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            if (hasPic)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Remove photo',
+                    style: TextStyle(color: Colors.red)),
+                onTap: () => Navigator.pop(ctx, 'remove'),
+              ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+
+    if (choice == 'remove') {
+      final ok = await ref.read(memberProvider.notifier).removeProfilePicture();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(ok ? 'Profile photo removed' : 'Failed to remove photo'),
+      ));
+      return;
+    }
+
+    final picker = ImagePicker();
+    final XFile? file = await picker.pickImage(
+      source:
+          choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+    if (file == null || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Uploading photo…')),
+    );
+    final ok = await ref
+        .read(memberProvider.notifier)
+        .uploadProfilePicture(file.path);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? 'Profile photo updated' : 'Failed to upload photo'),
+      backgroundColor: ok ? kAccent : Colors.red,
+    ));
+  }
+
   Widget _infoCard(Member? member) {
     return Container(
       decoration: BoxDecoration(
@@ -316,9 +447,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           _infoRow(Icons.badge_outlined, 'Member Number',
               member?.memberNumber ?? '—'),
-          const Divider(height: 1),
-          _infoRow(Icons.cake_outlined, 'Date of Birth',
-              member?.dateOfBirth ?? '—'),
           const Divider(height: 1),
           _infoRow(Icons.email_outlined, 'Email',
               member?.email ?? 'Not set'),
@@ -399,52 +527,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _menuCard(BuildContext context, Member? member) {
+    final isChronic = ref.watch(isChronicMemberProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Care Management ────────────────────────────────────────
-        _sectionLabel('Care Management'),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8),
-            ],
+        // ── Care Management (chronic members only) ────────────────
+        if (isChronic) ...[
+          _sectionLabel('Care Management'),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8),
+              ],
+            ),
+            child: Column(
+              children: [
+                _menuItem(context, Icons.medical_information_outlined,
+                    'Treatment Plans',
+                    onTap: () => context.push(routeTreatment)),
+                const Divider(height: 1),
+                _menuItem(context, Icons.science_outlined, 'Lab Results',
+                    onTap: () => context.push(routeLabResults)),
+                const Divider(height: 1),
+                _menuItem(context, Icons.local_hospital_outlined,
+                    'My Care Provider',
+                    onTap: () => context.push(routeMyProvider)),
+                const Divider(height: 1),
+                _menuItem(context, Icons.assignment_outlined,
+                    'Pre-Authorization Requests',
+                    onTap: () => context.push('/authorizations')),
+                const Divider(height: 1),
+                _menuItem(
+                  context,
+                  Icons.picture_as_pdf_outlined,
+                  'Export Health Report',
+                  subtitle: 'Download or share a PDF summary',
+                  loading: _exportingPdf,
+                  onTap: member == null || _exportingPdf
+                      ? null
+                      : () => _exportHealthReport(member),
+                ),
+              ],
+            ),
           ),
-          child: Column(
-            children: [
-              _menuItem(context, Icons.medical_information_outlined,
-                  'Treatment Plans',
-                  onTap: () => context.push(routeTreatment)),
-              const Divider(height: 1),
-              _menuItem(context, Icons.science_outlined, 'Lab Results',
-                  onTap: () => context.push(routeLabResults)),
-              const Divider(height: 1),
-              _menuItem(context, Icons.local_hospital_outlined,
-                  'My Care Provider',
-                  onTap: () => context.push(routeMyProvider)),
-              const Divider(height: 1),
-              _menuItem(context, Icons.assignment_outlined,
-                  'Pre-Authorization Requests',
-                  onTap: () => context.push('/authorizations')),
-              const Divider(height: 1),
-              _menuItem(
-                context,
-                Icons.picture_as_pdf_outlined,
-                'Export Health Report',
-                subtitle: 'Download or share a PDF summary',
-                loading: _exportingPdf,
-                onTap: member == null || _exportingPdf
-                    ? null
-                    : () => _exportHealthReport(member),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
+          const SizedBox(height: 20),
+        ],
         // ── Account ────────────────────────────────────────────────
         _sectionLabel('Account'),
         Container(
@@ -466,6 +597,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onTap: () => context.push(routeChangePassword)),
               const Divider(height: 1),
               _biometricToggleItem(),
+              const Divider(height: 1),
+              _cycleTrackerToggleItem(),
               const Divider(height: 1),
               _menuItem(context, Icons.notifications_outlined,
                   'Notification Preferences',
@@ -496,10 +629,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 context,
                 Icons.info_outline,
                 'About',
-                subtitle: 'Sanlam Chronic Care v1.0.0',
+                subtitle: 'SanCare+ v1.0.0',
                 onTap: () => showAboutDialog(
                   context: context,
-                  applicationName: 'Sanlam Chronic Care',
+                  applicationName: 'SanCare+',
                   applicationVersion: '1.0.0',
                   applicationLegalese: '© 2026 Sanlam Allianz Life Insurance',
                 ),
@@ -590,6 +723,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             value: _biometricEnabled,
             activeColor: kPrimary,
             onChanged: _toggleBiometric,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cycleTrackerToggleItem() {
+    final visible = ref.watch(cycleTrackerProvider).visible;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          const Icon(Icons.favorite_border_rounded,
+              color: Color(0xFFE91E63), size: 20),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Show Cycle Tracker',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: kText)),
+                Text(
+                  visible
+                      ? 'Period tracker visible in Vitals'
+                      : 'Track periods, fertile window & ovulation',
+                  style: const TextStyle(fontSize: 11, color: kSubtext),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: visible,
+            activeColor: const Color(0xFFE91E63),
+            onChanged: (v) =>
+                ref.read(cycleTrackerProvider.notifier).setVisible(v),
           ),
         ],
       ),

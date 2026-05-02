@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sanlam_chronic/models/medication.dart';
-import 'package:sanlam_chronic/providers/medications_provider.dart';
+import 'package:sanlam_member/models/medication.dart';
+import 'package:sanlam_member/providers/medications_provider.dart';
 
 Medication _med({
   String id = '1',

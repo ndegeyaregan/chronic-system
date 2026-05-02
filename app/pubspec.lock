@@ -977,7 +977,7 @@ packages:
     source: hosted
     version: "2.3.0"
   local_auth_android:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: local_auth_android
       sha256: "316503f6772dea9c0c038bb7aac4f68ab00112d707d258c770f7fc3c250a2d88"
@@ -985,7 +985,7 @@ packages:
     source: hosted
     version: "1.0.51"
   local_auth_darwin:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: local_auth_darwin
       sha256: "0e9706a8543a4a2eee60346294d6a633dd7c3ee60fae6b752570457c4ff32055"
@@ -1288,6 +1288,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.2"
+  qr_flutter:
+    dependency: "direct main"
+    description:
+      name: qr_flutter
+      sha256: "5095f0fc6e3f71d08adef8feccc8cea4f12eec18a2e31c2e8d82cb6019f4b097"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.0"
   record:
     dependency: "direct main"
     description:
@@ -1392,6 +1400,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  share_plus:
+    dependency: "direct main"
+    description:
+      name: share_plus
+      sha256: fce43200aa03ea87b91ce4c3ac79f0cecd52e2a7a56c7a4185023c271fbfa6da
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.1.4"
+  share_plus_platform_interface:
+    dependency: transitive
+    description:
+      name: share_plus_platform_interface
+      sha256: cc012a23fc2d479854e6c80150696c4a5f5bb62cb89af4de1c505cf78d0a5d0b
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.0.2"
   shared_preferences:
     dependency: "direct main"
     description:

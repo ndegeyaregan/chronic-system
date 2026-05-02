@@ -53,15 +53,22 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     try {
       final resetToken = await authService.verifyOtp(widget.memberNumber, _otp);
       if (!mounted) return;
-      context.push(routeResetPassword, extra: resetToken);
+      context.push(routeResetPassword, extra: {
+        'memberNumber': widget.memberNumber,
+        'resetToken': resetToken,
+      });
     } on DioException catch (e) {
       setState(() {
         _error = e.response?.data?['message'] ?? 'Verification failed. Try again.';
         for (final c in _ctrls) c.clear();
       });
       _nodes[0].requestFocus();
-    } catch (_) {
-      setState(() => _error = 'An unexpected error occurred.');
+    } catch (e) {
+      setState(() {
+        _error = e.toString().contains('SanlamApiException')
+            ? e.toString().split(':').last.trim()
+            : 'An unexpected error occurred.';
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }

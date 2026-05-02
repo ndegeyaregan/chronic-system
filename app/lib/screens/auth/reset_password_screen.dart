@@ -7,8 +7,13 @@ import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
+  final String memberNumber;
   final String resetToken;
-  const ResetPasswordScreen({super.key, required this.resetToken});
+  const ResetPasswordScreen({
+    super.key,
+    required this.memberNumber,
+    required this.resetToken,
+  });
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -58,16 +63,21 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     try {
       await authService.resetPassword(
+        widget.memberNumber,
         widget.resetToken,
         _passwordCtrl.text,
-        _confirmCtrl.text,
       );
       if (!mounted) return;
       _showSuccess();
     } on DioException catch (e) {
       setState(() => _error = e.response?.data?['message'] ?? 'Reset failed. Try again.');
-    } catch (_) {
-      setState(() => _error = 'An unexpected error occurred.');
+    } catch (e) {
+      setState(() {
+        final s = e.toString();
+        _error = s.contains('SanlamApiException')
+            ? s.split(':').last.trim()
+            : 'An unexpected error occurred.';
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }

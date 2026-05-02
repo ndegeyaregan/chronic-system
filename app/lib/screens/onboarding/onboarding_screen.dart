@@ -263,7 +263,7 @@ class _WelcomePage extends StatelessWidget {
               ),
               const SizedBox(height: 40),
               const Text(
-                'Welcome to\nSanlam Chronic Care',
+                'Welcome to\nSanCare',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,

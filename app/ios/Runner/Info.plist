@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Sanlam Chronic Care uses Face ID / Touch ID for quick, secure sign-in.</string>
+	<string>SanCare+ uses Face ID / Touch ID for quick, secure sign-in.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Sanlam Chronic</string>
 	<key>CFBundleExecutable</key>
@@ -49,11 +49,11 @@
 	<true/>
 	<!-- Location permission for GPS distance tracking -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Sanlam Chronic Care uses your location to track distance covered during fitness activities.</string>
+	<string>SanCare+ uses your location to track distance covered during fitness activities.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Sanlam Chronic Care uses your location to track distance covered during fitness activities.</string>
+	<string>SanCare+ uses your location to track distance covered during fitness activities.</string>
 	<!-- Pedometer / motion permission for step counting -->
 	<key>NSMotionUsageDescription</key>
-	<string>Sanlam Chronic Care counts your steps using the phone motion sensor to track your daily activity.</string>
+	<string>SanCare+ counts your steps using the phone motion sensor to track your daily activity.</string>
 </dict>
 </plist>

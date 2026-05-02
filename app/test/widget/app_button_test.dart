@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sanlam_chronic/widgets/common/app_button.dart';
+import 'package:sanlam_member/widgets/common/app_button.dart';
 
 void main() {
   Widget buildTestApp(Widget child) {

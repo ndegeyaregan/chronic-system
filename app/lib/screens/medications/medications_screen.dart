@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import '../../models/medication.dart';
 import '../../providers/medications_provider.dart';
+import '../../providers/member_type_provider.dart';
 import '../../widgets/common/loading_shimmer.dart';
 
 class MedicationsScreen extends ConsumerWidget {
@@ -52,6 +53,7 @@ class _CurrentMedsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isChronic = ref.watch(isChronicMemberProvider);
     if (state.isLoading) {
       return ListView(
         padding: const EdgeInsets.all(16),
@@ -109,10 +111,11 @@ class _CurrentMedsTab extends StatelessWidget {
           ref.read(medicationsProvider.notifier).fetchMedications(),
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        itemCount: state.currentMeds.length + 1,
+        itemCount: state.currentMeds.length + 2,
         itemBuilder: (context, i) {
           if (i == 0) return _AdherenceCard(state: state);
-          final med = state.currentMeds[i - 1];
+          if (i == 1) return _MedicationTipCard(isChronic: isChronic);
+          final med = state.currentMeds[i - 2];
           return _MedicationCard(med: med, ref: ref);
         },
       ),
@@ -267,6 +270,55 @@ class _AdherenceCard extends StatelessWidget {
       child: Text(label,
           style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+}
+
+class _MedicationTipCard extends StatelessWidget {
+  final bool isChronic;
+
+  const _MedicationTipCard({required this.isChronic});
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = isChronic
+        ? Icons.medical_information_outlined
+        : Icons.tips_and_updates_outlined;
+    final bg = isChronic
+        ? const Color(0xFFEFF6FF)
+        : const Color(0xFFF0FDF4);
+    final border = isChronic
+        ? const Color(0xFFBFDBFE)
+        : const Color(0xFF86EFAC);
+    final iconColor = isChronic
+        ? const Color(0xFF3B82F6)
+        : const Color(0xFF16A34A);
+    final textColor = isChronic
+        ? const Color(0xFF1E3A5F)
+        : const Color(0xFF14532D);
+    final text = isChronic
+        ? 'Taking your medications consistently at the same time each day helps maintain stable therapeutic levels and supports your care plan adherence.'
+        : 'Medications taken as prescribed — even for short-term use — work best when completed fully. Track your doses here to build a healthy habit.';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: iconColor, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(fontSize: 12, color: textColor, height: 1.5)),
+          ),
+        ],
+      ),
     );
   }
 }

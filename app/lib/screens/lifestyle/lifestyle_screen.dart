@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../providers/lifestyle_provider.dart';
 import '../../providers/member_provider.dart';
+import '../../providers/member_type_provider.dart';
 import '../../providers/step_tracking_provider.dart';
 import '../../services/notification_service.dart';
 import 'fitness_tracker_screen.dart';
@@ -1122,6 +1123,7 @@ class _NutritionTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(lifestyleProvider);
+    final isChronic = ref.watch(isChronicMemberProvider);
     const calorieGoal = 2000;
     final consumed = state.todayCalories;
     final remaining = (calorieGoal - consumed).clamp(0, calorieGoal);
@@ -1361,10 +1363,10 @@ class _NutritionTab extends ConsumerWidget {
                     children: [
                       const Icon(Icons.restaurant_rounded, color: Color(0xFF16A34A), size: 16),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Diet Tips for Your Conditions 🥗',
-                          style: TextStyle(
+                          isChronic ? 'Diet Tips for Your Conditions 🥗' : 'Wellness Nutrition Tips 🥗',
+                          style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
                               color: Color(0xFF15803D)),
@@ -1609,6 +1611,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
     final activeMin = state.todayActiveMinutes;
     final calsBurned = stepState.available ? stepState.caloriesBurned : activeMin * 5;
     final fitnessTip = _fitnessConditionTip(conditions);
+    final isChronic = ref.watch(isChronicMemberProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
@@ -1859,8 +1862,8 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                   children: [
                     const Icon(Icons.tips_and_updates_rounded, color: Color(0xFFEA580C), size: 15),
                     const SizedBox(width: 6),
-                    const Text('Fitness Tip',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFEA580C))),
+                    Text(isChronic ? 'Fitness Tip' : 'Wellness Fitness Tip',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFEA580C))),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -1876,7 +1879,12 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(fitnessTip, style: const TextStyle(fontSize: 12, color: kText, height: 1.5)),
+                Text(
+                  isChronic
+                      ? fitnessTip
+                      : 'A daily 30-minute brisk walk improves cardiovascular health, boosts mood, and helps maintain a healthy weight. Try increasing your daily steps by 500 each week.',
+                  style: const TextStyle(fontSize: 12, color: kText, height: 1.5),
+                ),
               ],
             ),
           ),
@@ -2575,7 +2583,7 @@ List<String> _psychosocialRecs(List<String> conditions, int stressLevel) {
 
   recs.addAll([
     'Try the breathing exercise above — 3 rounds of box breathing reduces cortisol.',
-    'Talk to someone you trust — isolation worsens stress for chronic illness patients.',
+    'Talk to someone you trust — social connection is a cornerstone of mental wellbeing.',
     if (stressLevel >= 8)
       'Your stress level is very high. Please reach out to the helpline or a counsellor.',
   ]);

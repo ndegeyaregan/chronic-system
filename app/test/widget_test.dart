@@ -6,11 +6,11 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sanlam_chronic/main.dart';
+import 'package:sanlam_member/main.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const SanlamChronicApp());
-    expect(find.byType(SanlamChronicApp), findsOneWidget);
+    await tester.pumpWidget(const SanlamMemberApp());
+    expect(find.byType(SanlamMemberApp), findsOneWidget);
   });
 }

@@ -11,6 +11,7 @@ import '../../providers/medications_provider.dart';
 import '../../providers/vitals_provider.dart';
 import '../../providers/member_provider.dart';
 import '../../providers/appointments_provider.dart';
+import '../../providers/benefits_provider.dart';
 import '../../models/appointment.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../notifications/notifications_screen.dart';
@@ -341,8 +342,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     _headerRow(Icons.calendar_today_outlined,
                                       DateFormat('EEE, d MMM y').format(DateTime.now())),
                                     const SizedBox(height: 8),
-                                    _headerRow(Icons.shield_outlined,
-                                      member?.planType ?? 'Standard Scheme'),
+                                    Builder(builder: (_) {
+                                      final benefitsAsync =
+                                          ref.watch(benefitsListProvider);
+                                      final label = benefitsAsync.maybeWhen(
+                                        data: (list) {
+                                          if (list.isEmpty) return 'Co-pay: —';
+                                          final myNo =
+                                              member?.memberNumber ?? '';
+                                          final mine = list.firstWhere(
+                                            (b) => b.memberNo == myNo,
+                                            orElse: () => list.first,
+                                          );
+                                          return mine.coPayActive
+                                              ? 'Co-pay: Yes'
+                                              : 'Co-pay: No';
+                                        },
+                                        orElse: () => 'Co-pay: —',
+                                      );
+                                      return _headerRow(
+                                          Icons.shield_outlined, label);
+                                    }),
                                     const SizedBox(height: 8),
                                     _headerRow(Icons.medication_outlined,
                                       medsState.dueTodayMeds.isEmpty
@@ -443,7 +463,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _actionTile(_Action a) {
     return GestureDetector(
-      onTap: () => context.go(a.route),
+      onTap: () => context.push(a.route),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -510,7 +530,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _sectionLabel('Recent Vitals'),
-              _textBtn('Log now', _blue, () => context.go(routeLogVitals)),
+              _textBtn('Log now', _blue, () => context.push(routeLogVitals)),
             ],
           ),
         ),
@@ -522,7 +542,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             title: 'No vitals recorded',
             sub: 'Tap to log your first reading',
             btnLabel: 'Log vitals',
-            onTap: () => context.go(routeLogVitals))
+            onTap: () => context.push(routeLogVitals))
         else
           SizedBox(
             height: 106,
@@ -611,7 +631,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _sectionLabel("Today's Medications"),
-              _textBtn('View all', _orange, () => context.go(routeMedications)),
+              _textBtn('View all', _orange, () => context.push(routeMedications)),
             ],
           ),
           const SizedBox(height: 12),
@@ -709,7 +729,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _sectionLabel('Upcoming Appointments'),
-              _textBtn('Book', _teal, () => context.go(routeBookAppointment)),
+              _textBtn('Book', _teal, () => context.push(routeBookAppointment)),
             ],
           ),
           const SizedBox(height: 12),
@@ -730,7 +750,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     children: [
                       const Text('No upcoming appointments', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _text1)),
                       GestureDetector(
-                        onTap: () => context.go(routeBookAppointment),
+                        onTap: () => context.push(routeBookAppointment),
                         child: Text('Tap to book one →', style: TextStyle(fontSize: 12, color: _teal, fontWeight: FontWeight.w600)),
                       ),
                     ],

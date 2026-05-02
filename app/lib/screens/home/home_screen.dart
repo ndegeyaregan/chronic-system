@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/preauth_notifier.dart';
 import '../../widgets/common/bottom_nav.dart';
 import '../../widgets/common/floating_chat.dart';
 
@@ -12,13 +14,20 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthed = ref.watch(authProvider).member != null;
+
+    Widget body = Stack(
+      children: [
+        child,
+        const FloatingChat(),
+      ],
+    );
+    if (isAuthed) {
+      body = PreauthNotificationListener(child: body);
+    }
+
     return Scaffold(
-      body: Stack(
-        children: [
-          child,
-          const FloatingChat(),
-        ],
-      ),
+      body: body,
       bottomNavigationBar: const BottomNav(),
       floatingActionButton: FloatingActionButton(
         heroTag: 'sos_fab',

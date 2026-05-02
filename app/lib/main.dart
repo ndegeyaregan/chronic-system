@@ -55,24 +55,28 @@ void main() async {
     await NotificationService.initialize();
   }
 
+  // Load the cached Sanlam profile photo so the avatar shows immediately
+  // on the home screen (before profile screen is opened).
+  await authService.loadCachedSanlamPhoto();
+
   runApp(
     ProviderScope(
       overrides: [
         onboardingCompleteProvider.overrideWith((ref) => onboardingComplete),
       ],
-      child: const SanlamChronicApp(),
+      child: const SanlamMemberApp(),
     ),
   );
 }
 
-class SanlamChronicApp extends ConsumerStatefulWidget {
-  const SanlamChronicApp({super.key});
+class SanlamMemberApp extends ConsumerStatefulWidget {
+  const SanlamMemberApp({super.key});
 
   @override
-  ConsumerState<SanlamChronicApp> createState() => _SanlamChronicAppState();
+  ConsumerState<SanlamMemberApp> createState() => _SanlamMemberAppState();
 }
 
-class _SanlamChronicAppState extends ConsumerState<SanlamChronicApp>
+class _SanlamMemberAppState extends ConsumerState<SanlamMemberApp>
     with WidgetsBindingObserver {
   @override
   void initState() {
@@ -105,7 +109,7 @@ class _SanlamChronicAppState extends ConsumerState<SanlamChronicApp>
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
-      title: 'Sanlam Chronic Care',
+      title: 'SanCare+',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       darkTheme: buildDarkTheme(),

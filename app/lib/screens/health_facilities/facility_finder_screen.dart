@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
-import '../../providers/hospitals_provider.dart';
-import '../../providers/pharmacies_provider.dart';
-import '../../models/hospital.dart';
-import '../../models/pharmacy.dart';
+import '../../models/institution.dart';
+import '../../providers/co_pays_provider.dart';
+import '../../providers/institutions_provider.dart';
+import '../../services/api_service.dart';
 import '../../widgets/common/loading_shimmer.dart';
+import 'institution_detail_screen.dart';
 
 class FacilityFinderScreen extends ConsumerStatefulWidget {
   const FacilityFinderScreen({super.key});
@@ -16,46 +17,191 @@ class FacilityFinderScreen extends ConsumerStatefulWidget {
       _FacilityFinderScreenState();
 }
 
-class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabs;
+class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
   final _searchCtrl = TextEditingController();
-  String _searchText = '';
 
-  @override
-  void initState() {
-    super.initState();
-    _tabs = TabController(length: 2, vsync: this);
-  }
+  static const _categoryIcons = <String, IconData>{
+    InstitutionCategory.outpatient: Icons.medical_services_outlined,
+    InstitutionCategory.inpatient:  Icons.local_hospital_outlined,
+    InstitutionCategory.pharmacy:   Icons.local_pharmacy_outlined,
+    InstitutionCategory.dental:     Icons.medication_liquid_outlined,
+    InstitutionCategory.optical:    Icons.remove_red_eye_outlined,
+  };
 
   @override
   void dispose() {
-    _tabs.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _onSearch(String val) {
-    setState(() => _searchText = val);
-    if (_tabs.index == 0) {
-      ref.read(hospitalsProvider.notifier).fetchHospitals(search: val.trim());
-    } else {
-      ref.read(pharmaciesProvider.notifier).fetchPharmacies(search: val.trim());
-    }
-  }
-
   Future<void> _call(String? phone) async {
-    if (phone == null || phone.isEmpty) return;
-    final uri = Uri.parse('tel:$phone');
+    if (phone == null || phone.trim().isEmpty) return;
+    final uri = Uri.parse('tel:${phone.trim()}');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
   }
 
+  void _showAddInstitutionDialog(BuildContext context) {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final addressCtrl = TextEditingController();
+    final cityCtrl = TextEditingController();
+    String? selectedCategory;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Add Institution'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Institution Name *',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedCategory,
+                  decoration: const InputDecoration(
+                    labelText: 'Category *',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'outpatient', child: Text('Outpatient')),
+                    DropdownMenuItem(value: 'inpatient', child: Text('Inpatient')),
+                    DropdownMenuItem(value: 'pharmacy', child: Text('Pharmacy')),
+                    DropdownMenuItem(value: 'dental', child: Text('Dental')),
+                    DropdownMenuItem(value: 'optical', child: Text('Optical')),
+                  ],
+                  onChanged: (val) => setState(() => selectedCategory = val),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: addressCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Address',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: cityCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'City',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: Navigator.of(ctx).pop,
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => _createInstitution(
+                context,
+                nameCtrl.text,
+                selectedCategory,
+                phoneCtrl.text,
+                emailCtrl.text,
+                addressCtrl.text,
+                cityCtrl.text,
+              ),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _createInstitution(
+    BuildContext context,
+    String name,
+    String? category,
+    String phone,
+    String email,
+    String address,
+    String city,
+  ) async {
+    if (name.isEmpty || category == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill required fields')),
+      );
+      return;
+    }
+
+    try {
+      Navigator.of(context).pop();
+      await dio.post(
+        'institutions',
+        data: {
+          'name': name,
+          'category': category,
+          'phone': phone.isEmpty ? null : phone,
+          'email': email.isEmpty ? null : email,
+          'address': address.isEmpty ? null : address,
+          'city': city.isEmpty ? null : city,
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Institution added successfully')),
+        );
+        ref.read(institutionsProvider.notifier).fetch();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hospState = ref.watch(hospitalsProvider);
-    final pharmState = ref.watch(pharmaciesProvider);
+    final state = ref.watch(institutionsProvider);
+    final notifier = ref.read(institutionsProvider.notifier);
+
+    // Show one-shot snackbar after a manual sync.
+    ref.listen<InstitutionsState>(institutionsProvider, (prev, next) {
+      if (next.lastSyncMessage != null && next.lastSyncMessage != prev?.lastSyncMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.lastSyncMessage!)),
+        );
+      }
+      if (next.error != null && next.error != prev?.error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.error!), backgroundColor: Colors.red.shade700),
+        );
+      }
+    });
 
     return Scaffold(
       backgroundColor: kBg,
@@ -77,42 +223,42 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen>
         iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabs,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white54,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          dividerColor: Colors.transparent,
-          labelStyle:
-              const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          onTap: (_) {
-            if (_searchText.isNotEmpty) _onSearch(_searchText);
-          },
-          tabs: const [
-            Tab(text: 'Hospitals 🏥'),
-            Tab(text: 'Pharmacies 💊'),
-          ],
-        ),
+        actions: [
+          IconButton(
+            tooltip: 'Add Institution',
+            onPressed: () => _showAddInstitutionDialog(context),
+            icon: const Icon(Icons.add_rounded, color: Colors.white),
+          ),
+          IconButton(
+            tooltip: 'Sync from Sanlam',
+            onPressed: state.isSyncing ? null : () => notifier.syncFromSanlam(),
+            icon: state.isSyncing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.sync_rounded, color: Colors.white),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // ── Search bar ────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
             child: TextField(
               controller: _searchCtrl,
-              onChanged: _onSearch,
+              onChanged: notifier.setSearch,
               decoration: InputDecoration(
-                hintText: 'Search by name...',
+                hintText: 'Search by name, city or address...',
                 hintStyle: const TextStyle(color: kSubtext, fontSize: 14),
-                prefixIcon:
-                    const Icon(Icons.search_rounded, color: kSubtext, size: 20),
-                suffixIcon: _searchText.isNotEmpty
+                prefixIcon: const Icon(Icons.search_rounded,
+                    color: kSubtext, size: 20),
+                suffixIcon: state.search.isNotEmpty
                     ? GestureDetector(
                         onTap: () {
                           _searchCtrl.clear();
-                          _onSearch('');
+                          notifier.setSearch('');
                         },
                         child: const Icon(Icons.close_rounded,
                             color: kSubtext, size: 18),
@@ -132,115 +278,172 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen>
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(kRadiusMd),
-                  borderSide:
-                      const BorderSide(color: kPrimary, width: 1.5),
+                  borderSide: const BorderSide(color: kPrimary, width: 1.5),
                 ),
               ),
             ),
           ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabs,
+          // Category filter chips
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
-                _HospitalsTab(
-                  state: hospState,
-                  onCall: _call,
-                  onRefresh: () => ref
-                      .read(hospitalsProvider.notifier)
-                      .fetchHospitals(search: _searchText),
+                _CategoryChip(
+                  label: 'All',
+                  icon: Icons.apps_rounded,
+                  selected: state.category == null,
+                  onTap: () => notifier.setCategory(null),
                 ),
-                _PharmaciesTab(
-                  state: pharmState,
-                  onCall: _call,
-                  onRefresh: () => ref
-                      .read(pharmaciesProvider.notifier)
-                      .fetchPharmacies(search: _searchText),
-                ),
+                ...InstitutionCategory.all.map((c) => _CategoryChip(
+                      label: InstitutionCategory.label(c),
+                      icon: _categoryIcons[c] ?? Icons.business_rounded,
+                      selected: state.category == c,
+                      onTap: () => notifier.setCategory(c),
+                    )),
               ],
             ),
           ),
+          const SizedBox(height: 4),
+          Expanded(child: _List(state: state, onCall: _call, onRefresh: notifier.fetch)),
         ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  HOSPITALS TAB
-// ─────────────────────────────────────────────────────────────────────────────
-class _HospitalsTab extends StatelessWidget {
-  final HospitalsState state;
-  final Future<void> Function(String?) onCall;
-  final Future<void> Function() onRefresh;
+class _CategoryChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
 
-  const _HospitalsTab({
-    required this.state,
-    required this.onCall,
-    required this.onRefresh,
+  const _CategoryChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (state.isLoading && state.hospitals.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: LoadingListCard(count: 4),
-      );
-    }
-
-    if (state.hospitals.isEmpty) {
-      return _emptyState('No hospitals found', Icons.local_hospital_outlined);
-    }
-
-    return RefreshIndicator(
-      color: kPrimary,
-      onRefresh: onRefresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-        itemCount: state.hospitals.length,
-        itemBuilder: (ctx, i) =>
-            _HospitalCard(hospital: state.hospitals[i], onCall: onCall),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? kPrimary : Colors.white,
+            borderRadius: BorderRadius.circular(kRadiusFull),
+            border: Border.all(color: selected ? kPrimary : kBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 14, color: selected ? Colors.white : kSubtext),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.white : kText)),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-class _HospitalCard extends StatelessWidget {
-  final Hospital hospital;
+class _List extends StatelessWidget {
+  final InstitutionsState state;
+  final Future<void> Function(String?) onCall;
+  final Future<void> Function() onRefresh;
+
+  const _List({required this.state, required this.onCall, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    if (state.isLoading && state.items.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: LoadingListCard(count: 5),
+      );
+    }
+    if (state.items.isEmpty) {
+      return _emptyState(
+        state.category == null
+            ? 'No facilities found'
+            : 'No ${InstitutionCategory.label(state.category!).toLowerCase()} facilities found',
+        Icons.local_hospital_outlined,
+      );
+    }
+    return RefreshIndicator(
+      color: kPrimary,
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+        itemCount: state.items.length,
+        itemBuilder: (ctx, i) =>
+            _InstitutionCard(institution: state.items[i], onCall: onCall),
+      ),
+    );
+  }
+}
+
+class _InstitutionCard extends ConsumerWidget {
+  final Institution institution;
   final Future<void> Function(String?) onCall;
 
-  const _HospitalCard({required this.hospital, required this.onCall});
+  const _InstitutionCard({required this.institution, required this.onCall});
 
-  String _typeLabel(List<String> specialties) {
-    if (specialties.isEmpty) return 'General';
-    final lower = specialties.map((s) => s.toLowerCase()).toList();
-    if (lower.any((s) =>
-        s.contains('specialist') ||
-        s.contains('cardio') ||
-        s.contains('oncol') ||
-        s.contains('neuro'))) { return 'Specialist'; }
-    if (lower.any((s) => s.contains('clinic'))) { return 'Clinic'; }
-    return 'General';
+  Color _categoryColor() {
+    switch (institution.category) {
+      case InstitutionCategory.pharmacy:   return kSuccess;
+      case InstitutionCategory.inpatient:  return kPrimary;
+      case InstitutionCategory.outpatient: return kInfo;
+      case InstitutionCategory.dental:     return const Color(0xFF8B5CF6);
+      case InstitutionCategory.optical:    return const Color(0xFFF59E0B);
+      default: return kPrimary;
+    }
   }
 
-  Color _typeColor(String type) {
-    switch (type) {
-      case 'Specialist':
-        return kInfo;
-      case 'Clinic':
-        return kSuccess;
-      default:
-        return kPrimary;
+  IconData _categoryIcon() {
+    switch (institution.category) {
+      case InstitutionCategory.pharmacy:   return Icons.local_pharmacy_rounded;
+      case InstitutionCategory.inpatient:  return Icons.local_hospital_rounded;
+      case InstitutionCategory.outpatient: return Icons.medical_services_rounded;
+      case InstitutionCategory.dental:     return Icons.medication_liquid_rounded;
+      case InstitutionCategory.optical:    return Icons.remove_red_eye_rounded;
+      default: return Icons.business_rounded;
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final typeLabel = _typeLabel(hospital.specialties);
-    final typeColor = _typeColor(typeLabel);
-    final chips = hospital.specialties.take(3).toList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final color = _categoryColor();
+    final cityLine = [institution.city, institution.province]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(', ');
 
-    return Container(
+    final coPaysAsync = ref.watch(coPaysByInstIdProvider);
+    final coPay = coPaysAsync.maybeWhen(
+      data: (m) => institution.sanlamId != null ? m[institution.sanlamId!] : null,
+      orElse: () => null,
+    );
+    final hasCoPay = coPay != null && coPay.hasAnyCharge;
+
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => InstitutionDetailScreen(institution: institution),
+        ),
+      ),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -257,71 +460,49 @@ class _HospitalCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: kPrimary.withValues(alpha: 0.08),
+                  color: color.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(kRadiusMd),
                 ),
-                child: const Icon(Icons.local_hospital_rounded,
-                    color: kPrimary, size: 22),
+                child: Icon(_categoryIcon(), color: color, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(hospital.name,
+                    Text(institution.name,
                         style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: kText)),
-                    const SizedBox(height: 2),
-                    Text('${hospital.city}, ${hospital.province}',
-                        style: const TextStyle(
-                            fontSize: 12, color: kSubtext)),
+                    if (cityLine.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(cityLine,
+                          style: const TextStyle(fontSize: 12, color: kSubtext)),
+                    ],
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _badge(typeLabel, typeColor),
-                  if (hospital.hasDirectBooking) ...[
+                  _badge(InstitutionCategory.label(institution.category), color),
+                  if (hasCoPay) ...[
                     const SizedBox(height: 4),
-                    _badge('Direct Booking', kInfo),
+                    _badge('Co-pay', Colors.amber.shade800),
                   ],
                 ],
               ),
             ],
           ),
-          if (chips.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: chips
-                  .map((s) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: kBg,
-                          borderRadius: BorderRadius.circular(kRadiusFull),
-                          border: Border.all(color: kBorder),
-                        ),
-                        child: Text(s,
-                            style: const TextStyle(
-                                fontSize: 10, color: kSubtext)),
-                      ))
-                  .toList(),
-            ),
-          ],
-          if (hospital.address != null && hospital.address!.isNotEmpty) ...[
+          if (institution.contactName.isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.location_on_outlined,
-                    size: 13, color: kSubtext),
+                const Icon(Icons.person_outline, size: 13, color: kSubtext),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: Text(hospital.address!,
+                  child: Text(institution.contactName,
                       style: const TextStyle(fontSize: 12, color: kSubtext),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
@@ -329,34 +510,54 @@ class _HospitalCard extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              if (hospital.phone != null && hospital.phone!.isNotEmpty) ...[
+          if (institution.address != null && institution.address!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.location_on_outlined,
+                    size: 13, color: kSubtext),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(institution.address!,
+                      style: const TextStyle(fontSize: 12, color: kSubtext),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+          ],
+          if (institution.phone != null && institution.phone!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
                 Expanded(
                   child: _outlineBtn(
                     icon: Icons.phone_rounded,
                     label: 'Call',
                     color: kSuccess,
-                    onTap: () => onCall(hospital.phone),
+                    onTap: () => onCall(institution.phone),
                   ),
                 ),
-                const SizedBox(width: 8),
+                if (institution.email != null && institution.email!.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _outlineBtn(
+                      icon: Icons.email_outlined,
+                      label: 'Email',
+                      color: kInfo,
+                      onTap: () async {
+                        final uri = Uri(scheme: 'mailto', path: institution.email);
+                        if (await canLaunchUrl(uri)) await launchUrl(uri);
+                      },
+                    ),
+                  ),
+                ],
               ],
-              if (hospital.hasDirectBooking)
-                Expanded(
-                  child: _outlineBtn(
-                    icon: Icons.calendar_today_rounded,
-                    label: 'Book Appointment',
-                    color: kPrimary,
-                    onTap: () {},
-                    filled: true,
-                  ),
-                ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
+    ),
     );
   }
 
@@ -369,9 +570,7 @@ class _HospitalCard extends StatelessWidget {
       ),
       child: Text(label,
           style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: color)),
+              fontSize: 9, fontWeight: FontWeight.w700, color: color)),
     );
   }
 
@@ -380,28 +579,24 @@ class _HospitalCard extends StatelessWidget {
     required String label,
     required Color color,
     required VoidCallback onTap,
-    bool filled = false,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: filled ? color : color.withValues(alpha: 0.06),
+          color: color.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(kRadiusMd),
           border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon,
-                size: 14, color: filled ? Colors.white : color),
+            Icon(icon, size: 14, color: color),
             const SizedBox(width: 5),
             Text(label,
                 style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: filled ? Colors.white : color)),
+                    fontSize: 12, fontWeight: FontWeight.w600, color: color)),
           ],
         ),
       ),
@@ -409,184 +604,17 @@ class _HospitalCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  PHARMACIES TAB
-// ─────────────────────────────────────────────────────────────────────────────
-class _PharmaciesTab extends StatelessWidget {
-  final PharmaciesState state;
-  final Future<void> Function(String?) onCall;
-  final Future<void> Function() onRefresh;
-
-  const _PharmaciesTab({
-    required this.state,
-    required this.onCall,
-    required this.onRefresh,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (state.isLoading && state.pharmacies.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: LoadingListCard(count: 4),
-      );
-    }
-
-    if (state.pharmacies.isEmpty) {
-      return _emptyState('No pharmacies found', Icons.local_pharmacy_outlined);
-    }
-
-    return RefreshIndicator(
-      color: kPrimary,
-      onRefresh: onRefresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-        itemCount: state.pharmacies.length,
-        itemBuilder: (ctx, i) =>
-            _PharmacyCard(pharmacy: state.pharmacies[i], onCall: onCall),
-      ),
-    );
-  }
-}
-
-class _PharmacyCard extends StatelessWidget {
-  final Pharmacy pharmacy;
-  final Future<void> Function(String?) onCall;
-
-  const _PharmacyCard({required this.pharmacy, required this.onCall});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLg),
-        boxShadow: kCardShadow,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: kSuccess.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(kRadiusMd),
-            ),
-            child:
-                const Icon(Icons.local_pharmacy_rounded, color: kSuccess, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(pharmacy.name,
-                          style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: kText)),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: kSuccess.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(kRadiusFull),
-                      ),
-                      child: const Text('Open',
-                          style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: kSuccess)),
-                    ),
-                  ],
-                ),
-                if (pharmacy.address != null &&
-                    pharmacy.address!.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(pharmacy.address!,
-                      style: const TextStyle(fontSize: 12, color: kSubtext),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                ],
-                if (pharmacy.city != null && pharmacy.city!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(pharmacy.city!,
-                      style: const TextStyle(fontSize: 12, color: kSubtext)),
-                ],
-                if (pharmacy.phone != null &&
-                    pharmacy.phone!.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () => onCall(pharmacy.phone),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: kSuccess.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(kRadiusMd),
-                        border: Border.all(
-                            color: kSuccess.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.phone_rounded,
-                              size: 13, color: kSuccess),
-                          const SizedBox(width: 5),
-                          Text('Call ${pharmacy.phone}',
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: kSuccess)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 Widget _emptyState(String message, IconData icon) {
   return Center(
-    child: Padding(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: kSubtext.withValues(alpha: 0.08),
-            ),
-            child: Icon(icon, color: kSubtext, size: 36),
-          ),
-          const SizedBox(height: 16),
-          Text(message,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: kText),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 6),
-          const Text('Try a different search term.',
-              style: TextStyle(fontSize: 13, color: kSubtext),
-              textAlign: TextAlign.center),
-        ],
-      ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 48, color: kTextLight),
+        const SizedBox(height: 12),
+        Text(message,
+            style: const TextStyle(
+                fontSize: 14, color: kSubtext, fontWeight: FontWeight.w500)),
+      ],
     ),
   );
 }

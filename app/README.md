@@ -1,6 +1,6 @@
 # sanlam_chronic
 
-A new Flutter project.
+Sanlam Member app — benefits, claims, dependants and chronic care for all Sanlam medical scheme members.
 
 ## Getting Started
 

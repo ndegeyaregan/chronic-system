@@ -87,8 +87,10 @@ const double kRadiusXl  = 24;
 const double kRadiusFull = 100;
 
 // ── Auth & storage keys ───────────────────────────────────────────────────
-const String kTokenKey = 'sanlam_auth_token';
-const String kUserKey  = 'sanlam_user_data';
+const String kTokenKey        = 'sanlam_auth_token';
+const String kSanlamTokenKey  = 'sanlam_external_token';
+const String kUserKey         = 'sanlam_user_data';
+const String kSanlamPhotoKey  = 'sanlam_profile_photo_b64';
 
 // ── Route names ───────────────────────────────────────────────────────────
 const String routeOnboarding      = '/onboarding';
@@ -115,11 +117,26 @@ const String routeMyProvider      = '/home/profile/my-provider';
 const String routeForgotPassword  = '/forgot-password';
 const String routeVerifyOtp       = '/verify-otp';
 const String routeResetPassword   = '/reset-password';
+const String routeRegisterSearch  = '/register';
+const String routeRegisterMember  = '/register/account';
 const String routeTreatment       = '/home/treatment';
 const String routeLabResults       = '/home/lab-results';
 const String routeFacilityFinder  = '/home/facilities';
 const String routeEducation       = '/home/education';
 const String routeEmergencySos    = '/emergency-sos';
+
+// ── New feature routes ────────────────────────────────────────────────────
+const String routeBenefits        = '/home/benefits';
+const String routeClaims          = '/home/claims';
+const String routeDependants      = '/home/dependants';
+const String routeMembershipCard  = '/home/card';
+const String routePreauths        = '/home/preauths';
+const String routeNetwork         = '/home/network';
+const String routeCycleTracker    = '/home/vitals/cycle';
+const String routeReimbursement   = '/home/reimbursement';
+const String routeReimbursementHistory = '/home/reimbursement/history';
+const String routeCardReprintHistory   = '/home/card/reprints';
+const String routePrescriptions        = '/home/prescriptions';
 
 // ── Wellness tips ─────────────────────────────────────────────────────────
 const List<String> kWellnessTips = [

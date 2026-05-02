@@ -474,7 +474,14 @@ class _PartnerList extends StatelessWidget {
               ),
             ],
           ),
-          child: Padding(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => PartnerDetailScreen(partner: p),
+              )),
+              child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -577,6 +584,8 @@ class _PartnerList extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+          ),
             ),
           ),
         );

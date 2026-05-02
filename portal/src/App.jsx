@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import MembersPage from './pages/members/MembersPage';
 import MemberDetailPage from './pages/members/MemberDetailPage';
 import HospitalsPage from './pages/hospitals/HospitalsPage';
+import InstitutionsPage from './pages/hospitals/InstitutionsPage';
 import PharmaciesPage from './pages/pharmacies/PharmaciesPage';
 import AppointmentsPage from './pages/appointments/AppointmentsPage';
 import MedicationsPage from './pages/MedicationsPage';
@@ -72,7 +73,7 @@ export default function App() {
             <Route path="/" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
             <Route path="/members" element={<ProtectedPage><MembersPage /></ProtectedPage>} />
             <Route path="/members/:id" element={<ProtectedPage><MemberDetailPage /></ProtectedPage>} />
-            <Route path="/hospitals" element={<ProtectedPage><HospitalsPage /></ProtectedPage>} />
+            <Route path="/hospitals" element={<ProtectedPage><InstitutionsPage /></ProtectedPage>} />
             <Route path="/pharmacies" element={<ProtectedPage><PharmaciesPage /></ProtectedPage>} />
             <Route path="/appointments" element={<ProtectedPage><AppointmentsPage /></ProtectedPage>} />
             <Route path="/medications" element={<ProtectedPage><MedicationsPage /></ProtectedPage>} />

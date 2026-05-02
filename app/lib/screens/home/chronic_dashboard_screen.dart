@@ -338,6 +338,7 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
       _Action('Treatment',     Icons.medical_services_rounded,  const Color(0xFF0284C7),  routeTreatment,      null),
       _Action('Lab Results',   Icons.science_rounded,           _red,                     routeLabResults,     null),
       _Action('Find Facility', Icons.local_hospital_rounded,    const Color(0xFF059669),  routeFacilityFinder, null),
+      _Action('Request Preauth', Icons.verified_user_rounded,    const Color(0xFFB45309),  '/authorizations',   null),
       _Action('Learn',         Icons.menu_book_rounded,         const Color(0xFFD97706),  routeEducation,      null),
     ];
 
@@ -361,7 +362,7 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
 
   Widget _actionTile(_Action a) {
     return GestureDetector(
-      onTap: () => context.go(a.route),
+      onTap: () => context.push(a.route),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -428,7 +429,7 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _sectionLabel('Recent Vitals'),
-              _textBtn('Log now', _blue, () => context.go(routeLogVitals)),
+              _textBtn('Log now', _blue, () => context.push(routeLogVitals)),
             ],
           ),
         ),
@@ -440,7 +441,7 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
             title: 'No vitals recorded',
             sub: 'Tap to log your first reading',
             btnLabel: 'Log vitals',
-            onTap: () => context.go(routeLogVitals))
+            onTap: () => context.push(routeLogVitals))
         else
           SizedBox(
             height: 106,
@@ -529,7 +530,7 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _sectionLabel("Today's Medications"),
-              _textBtn('View all', _orange, () => context.go(routeMedications)),
+              _textBtn('View all', _orange, () => context.push(routeMedications)),
             ],
           ),
           const SizedBox(height: 12),
@@ -627,7 +628,7 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _sectionLabel('Upcoming Appointments'),
-              _textBtn('Book', _teal, () => context.go(routeBookAppointment)),
+              _textBtn('Book', _teal, () => context.push(routeBookAppointment)),
             ],
           ),
           const SizedBox(height: 12),
@@ -648,7 +649,7 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
                     children: [
                       const Text('No upcoming appointments', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _text1)),
                       GestureDetector(
-                        onTap: () => context.go(routeBookAppointment),
+                        onTap: () => context.push(routeBookAppointment),
                         child: Text('Tap to book one →', style: TextStyle(fontSize: 12, color: _teal, fontWeight: FontWeight.w600)),
                       ),
                     ],

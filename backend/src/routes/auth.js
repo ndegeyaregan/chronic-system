@@ -13,6 +13,9 @@ const {
   verifyOtp,
   resetPassword,
   refreshToken,
+  sanlamLogin,
+  sanlamForgotPassword,
+  sanlamForgotPasswordLookup,
 } = require('../controllers/authController');
 
 // Rate limiter: max 10 login attempts per IP per 15 minutes
@@ -59,6 +62,7 @@ const validate = (req, res, next) => {
 
 router.post('/login/member', loginLimiter, memberLoginValidation, validate, memberLogin);
 router.post('/login/admin', loginLimiter, adminLogin);
+router.post('/sanlam-login', loginLimiter, sanlamLogin);
 router.post('/create-password', authenticate, createPassword);
 router.post('/change-password', authenticate, changePassword);
 router.post('/admin/reset-member-password', authenticate, requireAdmin, resetMemberPassword);
@@ -69,5 +73,10 @@ router.post('/refresh', refreshToken);
 router.post('/forgot-password', forgotLimiter, forgotPasswordValidation, validate, requestPasswordReset);
 router.post('/verify-otp', forgotLimiter, verifyOtpValidation, validate, verifyOtp);
 router.post('/reset-password', resetPassword);
+
+// Sanlam-backed forgot-password: only member_number needed; backend looks
+// up contact and triggers Sanlam SendOTP.
+router.post('/sanlam/forgot-password', forgotLimiter, sanlamForgotPassword);
+router.post('/sanlam/forgot-password/lookup', forgotLimiter, sanlamForgotPasswordLookup);
 
 module.exports = router;

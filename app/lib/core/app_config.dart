@@ -31,6 +31,13 @@ class AppConfig {
     defaultValue: 'REPLACE_WITH_GOOGLE_MAPS_API_KEY',
   );
 
+  // ── Sanlam Member API ────────────────────────────────────────────────────────
+  /// Injected via --dart-define=SANLAM_API_URL=...
+  static const String sanlamApiBase = String.fromEnvironment(
+    'SANLAM_API_URL',
+    defaultValue: 'https://ehosccs.net/SanlamMemberApi/api/member/',
+  );
+
   // ── Environment helpers ──────────────────────────────────────────────────────
   static const String _env = String.fromEnvironment(
     'ENV',

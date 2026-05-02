@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import '../../providers/vitals_provider.dart';
 import '../../providers/member_provider.dart';
+import '../../providers/member_type_provider.dart';
+import '../../providers/cycle_tracker_provider.dart';
 import '../../widgets/common/stat_card.dart';
 import '../../widgets/common/loading_shimmer.dart';
 
@@ -149,6 +151,7 @@ class _VitalsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final conditions = ref.watch(memberProvider).member?.conditions ?? [];
+    final isChronic = ref.watch(isChronicMemberProvider);
     if (state.isLoading) {
       return const Padding(
         padding: EdgeInsets.all(16),
@@ -193,6 +196,9 @@ class _VitalsTab extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 20),
+
+            // ── Cycle tracker (opt-in) ───────────────────────────────────
+            const _CycleTrackerEntryCard(),
 
             if (latest == null)
               _emptyState()
@@ -325,6 +331,10 @@ class _VitalsTab extends ConsumerWidget {
               _buildChart(state, selectedMetric, metricColors[selectedMetric]!, conditions),
               const SizedBox(height: 16),
               _buildTrendInsight(state, selectedMetric, conditions),
+              const SizedBox(height: 12),
+              isChronic
+                  ? _ChronicVitalsRec()
+                  : _WellnessVitalsRec(),
             ],
           ],
         ),
@@ -750,6 +760,64 @@ class _VitalsTab extends ConsumerWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 //  DAILY CHECK-IN TAB
 // ─────────────────────────────────────────────────────────────────────────────
+class _ChronicVitalsRec extends StatelessWidget {
+  const _ChronicVitalsRec();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.health_and_safety_outlined, color: Color(0xFF3B82F6), size: 18),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Keep tracking your vitals daily — consistent monitoring helps your care team adjust your treatment plan and catch changes early.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF1E3A5F), height: 1.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WellnessVitalsRec extends StatelessWidget {
+  const _WellnessVitalsRec();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF86EFAC)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.tips_and_updates_outlined, color: Color(0xFF16A34A), size: 18),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Wellness tip: BP under 120/80 mmHg and fasting glucose under 5.6 mmol/L are healthy targets. A 30-min daily walk improves both cardiovascular and metabolic health.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF14532D), height: 1.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DailyCheckInTab extends StatelessWidget {
   final VitalsState state;
 
@@ -1094,6 +1162,91 @@ class _MoodHistoryTab extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _CycleTrackerEntryCard extends ConsumerWidget {
+  const _CycleTrackerEntryCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(cycleTrackerProvider);
+    if (!state.visible) return const SizedBox.shrink();
+    final stats = state.stats;
+
+    String headline;
+    String sub;
+    if (stats.lastPeriodStart == null) {
+      headline = 'Cycle Tracker';
+      sub = 'Tap to log your first period';
+    } else if (stats.isInPeriod) {
+      headline = 'Period • Day ${stats.currentCycleDay}';
+      sub = 'Tap to view your cycle calendar';
+    } else {
+      final days = stats.daysUntilNextPeriod ?? 0;
+      headline = days <= 0
+          ? 'Period overdue'
+          : (days == 1 ? 'Period in 1 day' : 'Period in $days days');
+      sub = 'Avg cycle ${stats.avgCycleLength}d • period ${stats.avgPeriodLength}d';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => context.push(routeCycleTracker),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFE91E63), Color(0xFFF06292)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFE91E63).withValues(alpha: 0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.favorite_rounded,
+                    color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(headline,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(sub,
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.92),
+                            fontSize: 12)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

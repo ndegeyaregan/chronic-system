@@ -162,3 +162,59 @@ String extractErrorMessage(DioException e) {
   }
   return e.message ?? 'An unexpected error occurred.';
 }
+
+// ── Institution management endpoints ────────────────────────────────────────
+
+/// Suspend an institution (mark as unavailable)
+Future<Map<String, dynamic>> suspendInstitution(String instId, {String? reason}) async {
+  final response = await dio.post(
+    'institutions/$instId/suspend',
+    data: {'reason': reason},
+  );
+  return response.data is Map ? response.data as Map<String, dynamic> : {};
+}
+
+/// Unsuspend an institution
+Future<Map<String, dynamic>> unsuspendInstitution(String instId) async {
+  final response = await dio.post('institutions/$instId/unsuspend');
+  return response.data is Map ? response.data as Map<String, dynamic> : {};
+}
+
+/// Delete an institution (soft delete)
+Future<Map<String, dynamic>> deleteInstitution(String instId) async {
+  final response = await dio.delete('institutions/$instId');
+  return response.data is Map ? response.data as Map<String, dynamic> : {};
+}
+
+/// Add a new institution manually
+Future<Map<String, dynamic>> createInstitution({
+  required String name,
+  required String category,
+  String? phone,
+  String? email,
+  String? address,
+  String? city,
+  String? street,
+  String? postalCode,
+  String? firstName,
+  String? lastName,
+  String? title,
+}) async {
+  final response = await dio.post(
+    'institutions',
+    data: {
+      'name': name,
+      'category': category,
+      'phone': phone,
+      'email': email,
+      'address': address,
+      'city': city,
+      'street': street,
+      'postalCode': postalCode,
+      'firstName': firstName,
+      'lastName': lastName,
+      'title': title,
+    },
+  );
+  return response.data is Map ? response.data as Map<String, dynamic> : {};
+}

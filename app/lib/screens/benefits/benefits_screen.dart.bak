@@ -1,0 +1,1057 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/constants.dart';
+import '../../core/money.dart';
+import '../../models/benefit.dart';
+import '../../models/visit.dart';
+import '../../providers/benefits_provider.dart';
+import '../../providers/visits_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../utils/benefit_forecast.dart';
+import '../../widgets/common/loading_shimmer.dart';
+import '../../widgets/common/empty_state.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+List<Visit> _ytdVisits(List<Visit> visits) {
+  final now = DateTime.now();
+  return visits.where((v) {
+    final d = v.treatmentDateParsed;
+    return d != null && d.year == now.year;
+  }).toList();
+}
+
+bool _isOutPatient(String t) => isOutPatient(t);
+bool _isDental(String t) => isDental(t);
+bool _isOptical(String t) => isOptical(t);
+bool _isInPatient(String t) => isInPatient(t);
+
+double _spendFor(List<Visit> visits, bool Function(String) match) {
+  double s = 0;
+  for (final v in visits) {
+    if (match(v.treatmentType)) s += v.totalAmount;
+  }
+  return s;
+}
+
+String _shortAmount(double v) {
+  if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(v >= 10000000 ? 0 : 1)}M';
+  if (v >= 1000) return '${(v / 1000).toStringAsFixed(v >= 10000 ? 0 : 1)}K';
+  return v.toStringAsFixed(0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+class BenefitsScreen extends ConsumerWidget {
+  const BenefitsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final member = ref.watch(authProvider).member;
+    if (member == null) {
+      return const Scaffold(
+        body: EmptyState(
+          icon: Icons.person_off_outlined,
+          title: 'Not signed in',
+          subtitle: 'Please sign in to view your benefits.',
+        ),
+      );
+    }
+
+    final benefitAsync = ref.watch(benefitProvider(member.memberNumber));
+    final visitsAsync = ref.watch(visitsProvider);
+
+    return Scaffold(
+      backgroundColor: kBg,
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(gradient: kPrimaryGradient),
+        ),
+        title: const Text('My Benefits',
+            style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 18)),
+        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: benefitAsync.when(
+        loading: () => ListView(
+          padding: const EdgeInsets.all(16),
+          children: const [
+            LoadingStatCardRow(),
+            SizedBox(height: 16),
+            LoadingStatCardRow(),
+          ],
+        ),
+        error: (e, _) => EmptyState(
+          icon: Icons.error_outline,
+          title: 'Failed to load benefits',
+          subtitle: e.toString(),
+          buttonLabel: 'Retry',
+          onButton: () => ref.invalidate(benefitProvider(member.memberNumber)),
+        ),
+        data: (benefit) {
+          final visits = visitsAsync.valueOrNull ?? const <Visit>[];
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(benefitProvider(member.memberNumber));
+              ref.invalidate(visitsProvider);
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _BenefitsAnalytics(
+                  benefit: benefit,
+                  visits: visits,
+                  isLoading: visitsAsync.isLoading,
+                ),
+                if (!visitsAsync.isLoading) ...[
+                  const SizedBox(height: 16),
+                  BenefitsAdvisorCard(
+                    advice: buildBenefitAdvice(
+                      benefit: benefit,
+                      visits: visits,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                BenefitsView(benefit: benefit, visits: visits),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Analytics
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BenefitsAnalytics extends StatelessWidget {
+  final Benefit benefit;
+  final List<Visit> visits;
+  final bool isLoading;
+
+  const _BenefitsAnalytics({
+    required this.benefit,
+    required this.visits,
+    required this.isLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return Column(
+        children: const [
+          LoadingStatCardRow(),
+          SizedBox(height: 16),
+          LoadingStatCardRow(),
+        ],
+      );
+    }
+
+    final ytd = _ytdVisits(visits);
+    final ytdSpend = ytd.fold<double>(0, (a, v) => a + v.totalAmount);
+    final totalAllocation = benefit.outPatient +
+        benefit.inPatient +
+        benefit.dental +
+        benefit.optical;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _UtilisationSummaryCard(
+          benefit: benefit,
+          ytdVisits: ytd,
+          ytdSpend: ytdSpend,
+          totalAllocation: totalAllocation,
+        ),
+        const SizedBox(height: 16),
+        _SpendByCategoryCard(visits: ytd),
+        const SizedBox(height: 16),
+        _MonthlyTrendCard(visits: visits),
+      ],
+    );
+  }
+}
+
+class _UtilisationSummaryCard extends StatelessWidget {
+  final Benefit benefit;
+  final List<Visit> ytdVisits;
+  final double ytdSpend;
+  final double totalAllocation;
+
+  const _UtilisationSummaryCard({
+    required this.benefit,
+    required this.ytdVisits,
+    required this.ytdSpend,
+    required this.totalAllocation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final utilRatio = totalAllocation <= 0 ? 0.0 : (ytdSpend / totalAllocation);
+    final clamped = utilRatio.clamp(0.0, 1.0);
+    final pct = (clamped * 100).round();
+    final danger = clamped >= 0.8;
+    final fillColor = danger ? kError : kAccentLight;
+    final avg = ytdVisits.isEmpty ? 0.0 : ytdSpend / ytdVisits.length;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: kPrimaryGradient,
+        borderRadius: BorderRadius.circular(kRadiusLg),
+        boxShadow: kShadowMd,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Total YTD Spend',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Money(
+            amount: ytdSpend,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                'of ',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 13,
+                ),
+              ),
+              Money(
+                amount: totalAllocation,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.95),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                ' total allocation',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(kRadiusFull),
+            child: LinearProgressIndicator(
+              value: clamped,
+              minHeight: 8,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              valueColor: AlwaysStoppedAnimation<Color>(fillColor),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$pct% utilised',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Divider(color: Colors.white.withValues(alpha: 0.2), height: 1),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _MiniStat(
+                  label: 'Claims this year',
+                  value: ytdVisits.length.toString(),
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 32,
+                color: Colors.white.withValues(alpha: 0.2),
+              ),
+              Expanded(
+                child: _MiniStat(
+                  label: 'Avg per visit',
+                  value: formatMoney(avg, 'UGX'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _MiniStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.75),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpendByCategoryCard extends StatelessWidget {
+  final List<Visit> visits;
+  const _SpendByCategoryCard({required this.visits});
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = <_CategoryEntry>[
+      _CategoryEntry('Out Patient', _spendFor(visits, _isOutPatient), kPrimaryLight),
+      _CategoryEntry('In Patient', _spendFor(visits, _isInPatient), kPurple),
+      _CategoryEntry('Dental', _spendFor(visits, _isDental), kSuccess),
+      _CategoryEntry('Optical', _spendFor(visits, _isOptical), kAccentAmber),
+    ].where((e) => e.amount > 0).toList();
+
+    final total = entries.fold<double>(0, (a, e) => a + e.amount);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(kRadiusLg),
+        boxShadow: kCardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Spend by Category',
+            style: TextStyle(
+              color: kText,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Year-to-date breakdown',
+            style: TextStyle(color: kSubtext, fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          if (entries.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'No spend recorded yet this year.',
+                style: TextStyle(color: kSubtext, fontSize: 13),
+              ),
+            )
+          else
+            ...entries.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _RankedBar(
+                    label: e.label,
+                    amount: e.amount,
+                    total: total,
+                    color: e.color,
+                  ),
+                )),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryEntry {
+  final String label;
+  final double amount;
+  final Color color;
+  _CategoryEntry(this.label, this.amount, this.color);
+}
+
+class _RankedBar extends StatelessWidget {
+  final String label;
+  final double amount;
+  final double total;
+  final Color color;
+
+  const _RankedBar({
+    required this.label,
+    required this.amount,
+    required this.total,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = total <= 0 ? 0.0 : (amount / total);
+    final pct = (ratio * 100).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: kText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Money(
+              amount: amount,
+              style: const TextStyle(
+                color: kText,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$pct%',
+              style: const TextStyle(
+                color: kSubtext,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(kRadiusFull),
+          child: LinearProgressIndicator(
+            value: ratio.clamp(0.0, 1.0),
+            minHeight: 5,
+            backgroundColor: color.withValues(alpha: 0.12),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthlyTrendCard extends StatelessWidget {
+  final List<Visit> visits;
+  const _MonthlyTrendCard({required this.visits});
+
+  static const _monthLabels = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final months = List<DateTime>.generate(
+      6,
+      (i) => DateTime(now.year, now.month - (5 - i), 1),
+    );
+
+    final totals = List<double>.filled(6, 0);
+    for (final v in visits) {
+      final d = v.treatmentDateParsed;
+      if (d == null) continue;
+      for (var i = 0; i < months.length; i++) {
+        final m = months[i];
+        if (d.year == m.year && d.month == m.month) {
+          totals[i] += v.totalAmount;
+          break;
+        }
+      }
+    }
+
+    final maxVal = totals.fold<double>(0, (a, b) => b > a ? b : a);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(kRadiusLg),
+        boxShadow: kCardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Monthly Spend Trend',
+            style: TextStyle(
+              color: kText,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Last 6 months',
+            style: TextStyle(color: kSubtext, fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 120,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: List.generate(months.length, (i) {
+                final value = totals[i];
+                final ratio = maxVal <= 0 ? 0.0 : (value / maxVal);
+                final h = value <= 0 ? 4.0 : (4 + ratio * 76);
+                final isCurrent = i == months.length - 1;
+                final color = isCurrent
+                    ? kPrimary
+                    : kPrimary.withValues(alpha: 0.25);
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (value > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              _shortAmount(value),
+                              style: const TextStyle(
+                                color: kSubtext,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        Container(
+                          height: h,
+                          decoration: BoxDecoration(
+                            color: color,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(months.length, (i) {
+              return Expanded(
+                child: Text(
+                  _monthLabels[months[i].month - 1],
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: kSubtext,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BenefitsView (reusable)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class BenefitsView extends StatelessWidget {
+  final Benefit benefit;
+  final List<Visit> visits;
+
+  const BenefitsView({
+    super.key,
+    required this.benefit,
+    this.visits = const <Visit>[],
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ytd = _ytdVisits(visits);
+    final outSpent = _spendFor(ytd, _isOutPatient);
+    final inSpent = _spendFor(ytd, _isInPatient);
+    final dentalSpent = _spendFor(ytd, _isDental);
+    final opticalSpent = _spendFor(ytd, _isOptical);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (benefit.coPayActive)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: kAccentAmber.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(kRadiusMd),
+              border: Border.all(color: kAccentAmber.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              children: const [
+                Icon(Icons.info_outline, color: kAccentAmber, size: 18),
+                SizedBox(width: 8),
+                Text(
+                  'Co-payment is active on this plan',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: kAccentAmber,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        _BenefitCard(
+          icon: Icons.local_hospital_outlined,
+          label: 'Outpatient',
+          allocation: benefit.outPatient,
+          spent: outSpent,
+          color: kPrimary,
+        ),
+        const SizedBox(height: 10),
+        _BenefitCard(
+          icon: Icons.bed_outlined,
+          label: 'Inpatient',
+          allocation: benefit.inPatient,
+          spent: inSpent,
+          color: kPurple,
+        ),
+        const SizedBox(height: 10),
+        _BenefitCard(
+          icon: Icons.medical_services_outlined,
+          label: 'Dental',
+          allocation: benefit.dental,
+          spent: dentalSpent,
+          color: kSuccess,
+        ),
+        const SizedBox(height: 10),
+        _BenefitCard(
+          icon: Icons.visibility_outlined,
+          label: 'Optical',
+          allocation: benefit.optical,
+          spent: opticalSpent,
+          color: kAccentAmber,
+        ),
+      ],
+    );
+  }
+}
+
+class _BenefitCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final double allocation;
+  final double spent;
+  final Color color;
+
+  const _BenefitCard({
+    required this.icon,
+    required this.label,
+    required this.allocation,
+    required this.spent,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = allocation <= 0 ? 0.0 : (spent / allocation);
+    final clamped = ratio.clamp(0.0, 1.0);
+    final pct = (clamped * 100).round();
+    final danger = clamped >= 0.9;
+    final remaining = (allocation - spent).clamp(0, double.infinity).toDouble();
+    final fill = danger ? kError : color;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: kSurface,
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        boxShadow: kCardShadow,
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: kSubtext,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Money(
+                      amount: allocation,
+                      style: const TextStyle(
+                        color: kText,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    spent > 0 ? '$pct% used' : 'Unused',
+                    style: TextStyle(
+                      color: spent > 0 ? fill : kSubtext,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      const Text('Left ',
+                          style: TextStyle(
+                              color: kSubtext, fontSize: 10.5)),
+                      Money(
+                        amount: remaining,
+                        style: const TextStyle(
+                          color: kText,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(kRadiusFull),
+            child: LinearProgressIndicator(
+              value: clamped,
+              minHeight: 5,
+              backgroundColor: color.withValues(alpha: 0.12),
+              valueColor: AlwaysStoppedAnimation<Color>(fill),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Benefits Advisor — depletion forecast & guidance
+// ─────────────────────────────────────────────────────────────────────────────
+
+class BenefitsAdvisorCard extends StatelessWidget {
+  final BenefitAdvice advice;
+  const BenefitsAdvisorCard({super.key, required this.advice});
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = _toneFor(advice.overallSeverity);
+    final atRisk = advice.atRiskCategories;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(kRadiusLg),
+        boxShadow: kCardShadow,
+        border: Border.all(color: tone.color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: tone.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(kRadiusMd),
+                ),
+                child: Icon(tone.icon, color: tone.color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tone.label,
+                      style: TextStyle(
+                        color: tone.color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Benefit Forecast',
+                      style: TextStyle(
+                        color: kText,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            advice.headline,
+            style: const TextStyle(
+              color: kText,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            advice.recommendation,
+            style: const TextStyle(
+              color: kSubtext,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
+          if (atRisk.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Divider(color: kSubtext.withValues(alpha: 0.15), height: 1),
+            const SizedBox(height: 12),
+            const Text(
+              'At-risk categories',
+              style: TextStyle(
+                color: kSubtext,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...atRisk.map((c) => Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: _ForecastRow(forecast: c),
+                )),
+          ] else if (advice.overall.depletionDate != null) ...[
+            const SizedBox(height: 14),
+            Divider(color: kSubtext.withValues(alpha: 0.15), height: 1),
+            const SizedBox(height: 12),
+            _ForecastRow(forecast: advice.overall),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ForecastRow extends StatelessWidget {
+  final CategoryForecast forecast;
+  const _ForecastRow({required this.forecast});
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = _toneFor(forecast.severity);
+    final months = forecast.monthsRemaining;
+    final date = forecast.depletionDate;
+
+    String runway;
+    if (forecast.remaining <= 0) {
+      runway = 'Fully utilised';
+    } else if (months == null) {
+      runway = 'No spend yet';
+    } else if (months >= 12) {
+      runway = '> 12 months left';
+    } else if (months >= 1) {
+      runway = '${months.toStringAsFixed(months >= 3 ? 0 : 1)} months left';
+    } else {
+      runway = 'Under a month left';
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.only(top: 6),
+          decoration:
+              BoxDecoration(color: tone.color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      forecast.category,
+                      style: const TextStyle(
+                        color: kText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    runway,
+                    style: TextStyle(
+                      color: tone.color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Text('Remaining ',
+                      style:
+                          TextStyle(color: kSubtext, fontSize: 11.5)),
+                  Money(
+                    amount: forecast.remaining,
+                    style: const TextStyle(
+                      color: kText,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (forecast.monthlyBurn > 0) ...[
+                    const Text(' • ',
+                        style:
+                            TextStyle(color: kSubtext, fontSize: 11.5)),
+                    Text('~',
+                        style:
+                            TextStyle(color: kSubtext, fontSize: 11.5)),
+                    Money(
+                      amount: forecast.monthlyBurn,
+                      style: const TextStyle(
+                        color: kSubtext,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Text('/mo',
+                        style:
+                            TextStyle(color: kSubtext, fontSize: 11.5)),
+                  ],
+                  if (date != null && forecast.depletesThisYear) ...[
+                    const Text(' • ',
+                        style:
+                            TextStyle(color: kSubtext, fontSize: 11.5)),
+                    Text(
+                      'runs out ${_monthYearShort(date)}',
+                      style: TextStyle(
+                          color: tone.color,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Tone {
+  final Color color;
+  final IconData icon;
+  final String label;
+  const _Tone(this.color, this.icon, this.label);
+}
+
+_Tone _toneFor(ForecastSeverity s) {
+  switch (s) {
+    case ForecastSeverity.critical:
+      return const _Tone(kError, Icons.warning_amber_rounded, 'ACTION NEEDED');
+    case ForecastSeverity.watch:
+      return const _Tone(kAccentAmber, Icons.trending_up_rounded, 'WATCH');
+    case ForecastSeverity.onTrack:
+      return const _Tone(kSuccess, Icons.check_circle_outline, 'ON TRACK');
+    case ForecastSeverity.noActivity:
+      return const _Tone(kPrimary, Icons.lightbulb_outline, 'TIP');
+  }
+}
+
+const _monthAbbr = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+String _monthYearShort(DateTime d) => '${_monthAbbr[d.month - 1]} ${d.year}';
