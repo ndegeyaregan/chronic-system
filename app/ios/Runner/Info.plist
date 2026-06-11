@@ -55,5 +55,19 @@
 	<!-- Pedometer / motion permission for step counting -->
 	<key>NSMotionUsageDescription</key>
 	<string>SanCare+ counts your steps using the phone motion sensor to track your daily activity.</string>
+	<!-- HealthKit permissions: read steps / distance / energy from Apple Health
+	     so the daily activity total stays accurate even if the app wasn't open. -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>SanCare+ reads your step count, walking/running distance and active energy from Apple Health to show your daily activity.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>SanCare+ does not write to Apple Health.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SanCare+ uses the camera so you can attach photos to claims and documents.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SanCare+ uses your photo library so you can select pictures for claims and documents.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SanCare+ uses the microphone for voice notes and media recording features.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>SanCare+ saves images to your photo library when you export or save documents.</string>
 </dict>
 </plist>

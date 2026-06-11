@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../core/constants.dart';
+import '../../core/app_colors.dart';
 
 class ShimmerBox extends StatelessWidget {
   final double width;
@@ -129,7 +130,7 @@ class LoadingMedicationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
       baseColor: const Color(0xFFE2E8F0),
-      highlightColor: kBg,
+      highlightColor: context.c.bg,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         height: 100,

@@ -10,14 +10,16 @@ import '../providers/auth_provider.dart';
 import '../services/notification_service.dart';
 import 'preauth_provider.dart';
 
-/// Persists the set of `claimNo`s for which we've already shown a
-/// "decision arrived" notification, so we never notify twice for the
-/// same approval/rejection — even across app restarts.
-const _kSeenPreauthsKey = 'seen_preauth_decisions_v1';
+/// Persists the set of `claimNo|status` keys for which we've already shown a
+/// notification, so we never notify twice for the same status transition —
+/// even across app restarts. A single pre-auth can fire up to two
+/// notifications: once when it first appears as Open, and once when it
+/// transitions to Approved or Rejected.
+const _kSeenPreauthsKey = 'seen_preauth_events_v2';
 
 /// Mounts a global listener that watches the member's pre-auth list and
 /// surfaces a system notification (with sound) the first time a request
-/// transitions into Approved / Rejected (within the last 14 days).
+/// is seen in Open / Approved / Rejected status (within the last 14 days).
 ///
 /// Drop one [PreauthNotificationListener] near the top of the
 /// authenticated widget tree. It renders nothing.
@@ -37,13 +39,16 @@ class _PreauthNotificationListenerState
   bool _seeded = false; // prevents notifying for items we already had
   Timer? _pollTimer;
 
-  static const _pollInterval = Duration(minutes: 2);
+  static const _pollInterval = Duration(seconds: 10);
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadSeen();
+    // Kick off an immediate refresh so the user doesn't have to wait a full
+    // poll cycle for the first notification after login / app launch.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
     _pollTimer = Timer.periodic(_pollInterval, (_) => _refresh());
   }
 
@@ -58,6 +63,10 @@ class _PreauthNotificationListenerState
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refresh();
+      // Re-process whatever's already loaded in case nothing changed
+      // server-side but we missed an event while paused.
+      final current = ref.read(allPreauthsProvider);
+      current.whenData(_handleUpdate);
     }
   }
 
@@ -70,11 +79,19 @@ class _PreauthNotificationListenerState
   Future<void> _loadSeen() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getStringList(_kSeenPreauthsKey);
+    if (!mounted) return;
     setState(() {
       _seen = stored?.toSet() ?? <String>{};
       // First-ever launch: seed without notifying so users aren't blasted.
       _seeded = stored != null;
     });
+    // The provider may have already produced a value before _loadSeen
+    // finished. ref.listen only fires on *changes*, so without this we'd
+    // miss the first data event entirely and notifications would only
+    // appear on the next 30-second poll (or, worse, never if the data
+    // doesn't change). Process the current value right now.
+    final current = ref.read(allPreauthsProvider);
+    current.whenData(_handleUpdate);
   }
 
   Future<void> _persistSeen() async {
@@ -88,51 +105,69 @@ class _PreauthNotificationListenerState
     final seen = _seen;
     if (seen == null) return;
 
-    final decided = all.where((p) =>
-        (p.status == PreauthStatus.approved ||
-            p.status == PreauthStatus.rejected) &&
-        p.isRecent());
+    String keyOf(Preauth p) => '${p.claimNo}|${p.status.name}';
 
-    final newlyDecided = decided.where((p) => !seen.contains(p.claimNo)).toList();
+    final relevant = all.where((p) =>
+        (p.status == PreauthStatus.open ||
+            p.status == PreauthStatus.approved ||
+            p.status == PreauthStatus.rejected) &&
+        p.claimNo.isNotEmpty);
+
+    final newlySeen = relevant.where((p) => !seen.contains(keyOf(p))).toList();
 
     if (!_seeded) {
       // First load on this device — record everything as seen, don't notify.
-      seen.addAll(decided.map((p) => p.claimNo));
+      seen.addAll(relevant.map(keyOf));
       _seeded = true;
       await _persistSeen();
       return;
     }
 
-    if (newlyDecided.isEmpty) return;
+    if (newlySeen.isEmpty) return;
 
-    for (final p in newlyDecided) {
-      seen.add(p.claimNo);
+    for (final p in newlySeen) {
+      seen.add(keyOf(p));
       _fireNotification(p);
     }
     await _persistSeen();
   }
 
   void _fireNotification(Preauth p) {
-    final isApproved = p.status == PreauthStatus.approved;
-    final emoji = isApproved ? '✅' : '❌';
-    final verb = isApproved ? 'approved' : 'rejected';
-    final title = '$emoji Pre-authorisation $verb';
+    final String title;
+    final String verb;
+    switch (p.status) {
+      case PreauthStatus.approved:
+        title = '✅ Pre-authorisation approved';
+        verb = 'approved';
+        break;
+      case PreauthStatus.rejected:
+        title = '❌ Pre-authorisation rejected';
+        verb = 'rejected';
+        break;
+      case PreauthStatus.open:
+        title = '📨 Pre-authorisation received';
+        verb = 'received and is being reviewed';
+        break;
+      default:
+        return;
+    }
 
     final service = p.description.isNotEmpty
         ? p.description
         : (p.diagnosis.isNotEmpty ? p.diagnosis : 'Your request');
 
     String body = 'Your request for "$service" has been $verb.';
-    if (isApproved && p.approvedAmount > 0) {
+    if (p.status == PreauthStatus.approved && p.approvedAmount > 0) {
       final amt = p.approvedAmount.toStringAsFixed(0);
       body += ' Approved up to UGX $amt.';
     }
-    if (!isApproved && p.insurerNote.isNotEmpty) {
+    if (p.status == PreauthStatus.rejected && p.insurerNote.isNotEmpty) {
       body += ' Note: ${p.insurerNote}';
     }
 
-    // Stable id per claim — prevents duplicates if Android replays.
-    final id = p.claimNo.hashCode & 0x7fffffff;
+    // Stable id per (claim, status) — prevents duplicates if Android replays,
+    // and lets Open + decided notifications coexist without overwriting.
+    final id = '${p.claimNo}:${p.status.name}'.hashCode & 0x7fffffff;
 
     NotificationService.show(
       id: id,

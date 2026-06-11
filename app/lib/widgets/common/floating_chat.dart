@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/chat_provider.dart';
+
+const _kWhatsAppNumber = '256753115723';
+const _kWhatsAppUrl = 'https://wa.me/$_kWhatsAppNumber'
+    '?text=Hello%20SanCare%20Support%2C%20I%20need%20assistance.';
 
 class FloatingChat extends ConsumerStatefulWidget {
   const FloatingChat({super.key});
@@ -227,6 +232,9 @@ class _ChatPanel extends ConsumerWidget {
               ),
             ),
 
+            // WhatsApp quick-link banner
+            _WhatsAppBanner(),
+
             // Messages list
             Expanded(
               child: chatState.isLoading
@@ -425,6 +433,67 @@ class _EmptyChat extends StatelessWidget {
             style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WhatsAppBanner extends StatelessWidget {
+  static const _green = Color(0xFF25D366);
+
+  Future<void> _openWhatsApp() async {
+    final uri = Uri.parse(_kWhatsAppUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _openWhatsApp,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE9FBF0),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _green.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: _green,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Chat on WhatsApp',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: Color(0xFF075E54),
+                    ),
+                  ),
+                  Text(
+                    'Tap to message our team directly',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF4A9C6E)),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 13, color: Color(0xFF25D366)),
+          ],
+        ),
       ),
     );
   }

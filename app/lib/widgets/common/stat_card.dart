@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../../core/constants.dart';
+import '../../core/app_colors.dart';
 
 class StatCard extends StatelessWidget {
   final String title;
@@ -59,7 +60,7 @@ class StatCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: gradient != null ? Colors.white : kText,
+                color: gradient != null ? Colors.white : context.c.text,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -71,7 +72,7 @@ class StatCard extends StatelessWidget {
                 fontSize: 12,
                 color: gradient != null
                     ? Colors.white.withOpacity(0.85)
-                    : kSubtext,
+                    : context.c.subtext,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -165,7 +166,7 @@ class MetricCard extends StatelessWidget {
                     label,
                     style: TextStyle(
                       fontSize: 11,
-                      color: isAlert ? accent : kSubtext,
+                      color: isAlert ? accent : context.c.subtext,
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
@@ -184,7 +185,7 @@ class MetricCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: isAlert ? kError : kText,
+                      color: isAlert ? kError : context.c.text,
                       height: 1,
                       letterSpacing: -0.3,
                     ),
@@ -197,8 +198,8 @@ class MetricCard extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 1),
                   child: Text(
                     unit,
-                    style: const TextStyle(
-                        fontSize: 10, color: kSubtext),
+                    style: TextStyle(
+                        fontSize: 10, color: context.c.subtext),
                   ),
                 ),
               ],

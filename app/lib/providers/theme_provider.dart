@@ -14,14 +14,13 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 
   Future<void> _load() async {
+    // Dark mode is currently disabled app-wide because screens use
+    // hard-coded light surface colours. Always force light and clear any
+    // previously persisted 'dark' setting so existing users get a readable UI.
+    state = ThemeMode.light;
     final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getString(_key);
-    if (value == 'dark') {
-      state = ThemeMode.dark;
-    } else if (value == 'light') {
-      state = ThemeMode.light;
-    } else {
-      state = ThemeMode.system;
+    if (prefs.getString(_key) != 'light') {
+      await prefs.setString(_key, 'light');
     }
   }
 

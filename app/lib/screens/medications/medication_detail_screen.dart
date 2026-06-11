@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../providers/medications_provider.dart';
+import '../../core/app_colors.dart';
 
 class MedicationDetailScreen extends ConsumerWidget {
   final String id;
@@ -17,7 +18,7 @@ class MedicationDetailScreen extends ConsumerWidget {
 
     if (med == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Medication')),
+        appBar: AppBar(title: Text('Medication')),
         body: const Center(child: Text('Medication not found')),
       );
     }
@@ -32,19 +33,19 @@ class MedicationDetailScreen extends ConsumerWidget {
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (_) => AlertDialog(
-                  title: const Text('Remove Medication'),
+                  title: Text('Remove Medication'),
                   content: Text(
                       'Remove ${med.name} from your medications?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
+                      child: Text('Cancel'),
                     ),
                     ElevatedButton(
                       onPressed: () => Navigator.pop(context, true),
                       style: ElevatedButton.styleFrom(
                           backgroundColor: kError),
-                      child: const Text('Remove'),
+                      child: Text('Remove'),
                     ),
                   ],
                 ),
@@ -97,16 +98,16 @@ class MedicationDetailScreen extends ConsumerWidget {
                       children: [
                         Text(
                           med.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: kText,
+                            color: context.c.text,
                           ),
                         ),
                         Text(
                           med.dosage,
-                          style: const TextStyle(
-                              fontSize: 14, color: kSubtext),
+                          style: TextStyle(
+                              fontSize: 14, color: context.c.subtext),
                         ),
                       ],
                     ),
@@ -115,15 +116,15 @@ class MedicationDetailScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 20),
-            _detailRow(Icons.schedule_outlined, 'Frequency', med.frequency),
+            _detailRow(context, Icons.schedule_outlined, 'Frequency', med.frequency),
             if (med.condition != null)
-              _detailRow(Icons.local_hospital_outlined, 'Condition',
+              _detailRow(context, Icons.local_hospital_outlined, 'Condition',
                   med.condition!),
             if (med.instructions != null)
-              _detailRow(
+              _detailRow(context, 
                   Icons.info_outline, 'Instructions', med.instructions!),
             if (med.nextDoseTime != null)
-              _detailRow(Icons.alarm_outlined, 'Next Dose', med.nextDoseTime!),
+              _detailRow(context, Icons.alarm_outlined, 'Next Dose', med.nextDoseTime!),
             const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(16),
@@ -140,12 +141,12 @@ class MedicationDetailScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     '7-Day Adherence',
                     style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: kText),
+                        color: context.c.text),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -168,7 +169,7 @@ class MedicationDetailScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(6),
                           child: LinearProgressIndicator(
                             value: med.adherencePercent / 100,
-                            backgroundColor: kBorder,
+                            backgroundColor: context.c.border,
                             valueColor: AlwaysStoppedAnimation<Color>(
                               med.adherencePercent >= 80
                                   ? kSuccess
@@ -195,7 +196,7 @@ class MedicationDetailScreen extends ConsumerWidget {
                           .read(medicationsProvider.notifier)
                           .logDose(med.id, 'skipped'),
                       icon: const Icon(Icons.close),
-                      label: const Text('Skip Today'),
+                      label: Text('Skip Today'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -205,7 +206,7 @@ class MedicationDetailScreen extends ConsumerWidget {
                           .read(medicationsProvider.notifier)
                           .logDose(med.id, 'taken'),
                       icon: const Icon(Icons.check),
-                      label: const Text('Mark Taken'),
+                      label: Text('Mark Taken'),
                       style: ElevatedButton.styleFrom(
                           backgroundColor: kSuccess),
                     ),
@@ -229,7 +230,7 @@ class MedicationDetailScreen extends ConsumerWidget {
                           ? 'Medication taken today ✓'
                           : 'Dose skipped today',
                       style: TextStyle(
-                        color: med.isTakenToday ? kSuccess : kSubtext,
+                        color: med.isTakenToday ? kSuccess : context.c.subtext,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -248,14 +249,14 @@ class MedicationDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _detailRow(IconData icon, String label, String value) {
+  Widget _detailRow(BuildContext context, IconData icon, String label, String value) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.c.border),
       ),
       child: Row(
         children: [
@@ -265,10 +266,10 @@ class MedicationDetailScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style: const TextStyle(fontSize: 11, color: kSubtext)),
+                  style: TextStyle(fontSize: 11, color: context.c.subtext)),
               Text(value,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w500, color: kText)),
+                  style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w500, color: context.c.text)),
             ],
           ),
         ],
@@ -331,14 +332,14 @@ class _MedicationMediaSectionState extends State<_MedicationMediaSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.perm_media_outlined, color: kPrimary, size: 16),
               SizedBox(width: 6),
               Text(
                 'Doctor Visit Media',
                 style: TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 14, color: kText),
+                    fontWeight: FontWeight.w600, fontSize: 14, color: context.c.text),
               ),
             ],
           ),
@@ -456,7 +457,7 @@ class _MediaTile extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(label,
-                style: const TextStyle(fontSize: 13, color: kText)),
+                style: TextStyle(fontSize: 13, color: context.c.text)),
           ),
           if (trailing != null) trailing!,
         ],

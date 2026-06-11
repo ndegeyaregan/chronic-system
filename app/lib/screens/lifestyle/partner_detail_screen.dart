@@ -7,6 +7,7 @@ import '../../core/constants.dart';
 import '../../providers/lifestyle_provider.dart';
 import '../../models/lifestyle_partner.dart';
 import 'workout_video_player_screen.dart';
+import '../../core/app_colors.dart';
 
 class PartnerDetailScreen extends ConsumerStatefulWidget {
   const PartnerDetailScreen({super.key, required this.partner});
@@ -146,10 +147,10 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                           children: [
                             Text(
                               partner.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
-                                color: kText,
+                                color: context.c.text,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -167,15 +168,15 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                                 crossAxisAlignment:
                                     CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.location_on_outlined,
-                                      size: 12, color: kSubtext),
+                                  Icon(Icons.location_on_outlined,
+                                      size: 12, color: context.c.subtext),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
                                       partner.address!,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 12,
-                                          color: kSubtext),
+                                          color: context.c.subtext),
                                     ),
                                   ),
                                 ],
@@ -184,13 +185,13 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                const Icon(Icons.location_city_outlined,
-                                    size: 12, color: kSubtext),
+                                Icon(Icons.location_city_outlined,
+                                    size: 12, color: context.c.subtext),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${partner.city}, ${partner.province}',
-                                  style: const TextStyle(
-                                      fontSize: 12, color: kSubtext),
+                                  style: TextStyle(
+                                      fontSize: 12, color: context.c.subtext),
                                 ),
                               ],
                             ),
@@ -290,16 +291,16 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                         color: const Color(0xFFF2F2F2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.map_outlined,
-                                size: 36, color: kSubtext),
+                                size: 36, color: context.c.subtext),
                             SizedBox(height: 8),
                             Text('Map available on mobile',
                                 style: TextStyle(
-                                    color: kSubtext, fontSize: 13)),
+                                    color: context.c.subtext, fontSize: 13)),
                           ],
                         ),
                       ),
@@ -351,7 +352,7 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                 ),
               )
             else if (_videos.isEmpty)
-              const Center(
+              Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 32),
                   child: Column(
@@ -361,7 +362,7 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                       SizedBox(height: 12),
                       Text('No videos yet',
                           style:
-                              TextStyle(color: kSubtext, fontSize: 14)),
+                              TextStyle(color: context.c.subtext, fontSize: 14)),
                     ],
                   ),
                 ),
@@ -412,10 +413,10 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                                     width: 80,
                                     height: 80,
                                     color: const Color(0xFFF2F2F2),
-                                    child: const Icon(
+                                    child: Icon(
                                         Icons.play_circle_outline,
                                         size: 32,
-                                        color: kSubtext),
+                                        color: context.c.subtext),
                                   ),
                                 ),
                               ),
@@ -427,10 +428,10 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                                   children: [
                                     Text(
                                       v.title,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
-                                        color: kText,
+                                        color: context.c.text,
                                       ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -438,14 +439,14 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
-                                        const Icon(Icons.timer_outlined,
-                                            size: 12, color: kSubtext),
+                                        Icon(Icons.timer_outlined,
+                                            size: 12, color: context.c.subtext),
                                         const SizedBox(width: 4),
                                         Text(
                                           v.durationLabel,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontSize: 12,
-                                              color: kSubtext),
+                                              color: context.c.subtext),
                                         ),
                                         const SizedBox(width: 8),
                                         Container(
@@ -473,14 +474,14 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       v.category,
-                                      style: const TextStyle(
-                                          fontSize: 11, color: kSubtext),
+                                      style: TextStyle(
+                                          fontSize: 11, color: context.c.subtext),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right,
-                                  color: kSubtext),
+                              Icon(Icons.chevron_right,
+                                  color: context.c.subtext),
                             ],
                           ),
                         ),

@@ -42,6 +42,12 @@ const cycleRoutes = require('./routes/cycle');
 const cardReprintsRoutes = require('./routes/cardReprints');
 const reimbursementsRoutes = require('./routes/reimbursements');
 const institutionsRoutes = require('./routes/institutions');
+const complaintsRoutes = require('./routes/complaints');
+const appVersionRoutes = require('./routes/appVersion');
+const productLinksRoutes = require('./routes/productLinks');
+const servicePricesRoutes = require('./routes/servicePrices');
+const membershipAuthorizationsRoutes = require('./routes/membershipAuthorizations');
+const claimsAnalysisRoutes = require('./routes/claimsAnalysis');
 
 const app = express();
 
@@ -140,6 +146,12 @@ app.use('/api/cycle', cycleRoutes);
 app.use('/api/card-reprints', cardReprintsRoutes);
 app.use('/api/reimbursements', reimbursementsRoutes);
 app.use('/api/institutions', institutionsRoutes);
+app.use('/api/complaints', complaintsRoutes);
+app.use('/api/app', appVersionRoutes);
+app.use('/api/product-links', productLinksRoutes);
+app.use('/api/service-prices', servicePricesRoutes);
+app.use('/api/membership-authorizations', membershipAuthorizationsRoutes);
+app.use('/api/claims-analysis', claimsAnalysisRoutes);
 app.use('/api/dev', devRoutes);
 
 // 404 handler

@@ -3,13 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/dependants_provider.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/dependant_tile.dart';
+import '../../core/app_colors.dart';
 
 const _kAddDependantsUrl =
     'http://sanlamallianz4u.co.ug/medicalform/index.php';
+
+bool _isPrincipalOrSpouse(String relation) {
+  final r = relation.trim().toLowerCase();
+  return r == 'principal' || r == 'spouse';
+}
 
 class DependantsListScreen extends ConsumerWidget {
   const DependantsListScreen({super.key});
@@ -17,14 +24,17 @@ class DependantsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final depAsync = ref.watch(dependantsProvider);
+    final myRelation =
+        (ref.watch(authProvider).member?.relation ?? '').trim().toLowerCase();
+    final viewerIsPeer = _isPrincipalOrSpouse(myRelation);
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),
         ),
-        title: const Text('Dependants',
+        title: Text('Dependants',
             style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -65,13 +75,29 @@ class DependantsListScreen extends ConsumerWidget {
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: deps.length,
-                  itemBuilder: (context, i) => DependantTile(
-                    dependant: deps[i],
-                    onTap: () => context.push(
-                      '$routeDependants/${Uri.encodeComponent(deps[i].memberNo)}',
-                      extra: deps[i],
-                    ),
-                  ),
+                  itemBuilder: (context, i) {
+                    final dep = deps[i];
+                    final targetIsPeer = _isPrincipalOrSpouse(dep.relation);
+                    final isPrivate = viewerIsPeer && targetIsPeer;
+                    return DependantTile(
+                      dependant: dep,
+                      isPrivate: isPrivate,
+                      onTap: isPrivate
+                          ? () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Private — details are hidden for this member.'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          : () => context.push(
+                                '$routeDependants/${Uri.encodeComponent(dep.memberNo)}',
+                                extra: dep,
+                              ),
+                    );
+                  },
                 ),
         ),
       ),
@@ -112,20 +138,20 @@ class _NoDependantsView extends StatelessWidget {
             child: const Icon(Icons.group_outlined,
                 size: 42, color: kPrimary),
           ),
-          const Text(
+          Text(
             'No dependants found',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: kText,
+              color: context.c.text,
               fontSize: 17,
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'You don’t have any dependants registered on your policy yet.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: kSubtext, fontSize: 13.5, height: 1.4),
+            style: TextStyle(color: context.c.subtext, fontSize: 13.5, height: 1.4),
           ),
           const SizedBox(height: 24),
           Container(
@@ -138,11 +164,11 @@ class _NoDependantsView extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const Text(
+                Text(
                   'Want to add dependants to your scheme?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: kText,
+                    color: context.c.text,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -156,15 +182,15 @@ class _NoDependantsView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     icon: const Icon(Icons.open_in_new, size: 18),
-                    label: const Text('Click here to add dependants'),
+                    label: Text('Click here to add dependants'),
                     onPressed: () => _openAddForm(context),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'You will be taken to our online registration form.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: kSubtext, fontSize: 11.5),
+                  style: TextStyle(color: context.c.subtext, fontSize: 11.5),
                 ),
               ],
             ),

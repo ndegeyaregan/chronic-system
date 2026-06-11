@@ -7,6 +7,7 @@ import '../../models/institution.dart';
 import '../../models/co_pay.dart';
 import '../../providers/co_pays_provider.dart';
 import '../../services/api_service.dart';
+import '../../core/app_colors.dart';
 
 class InstitutionDetailScreen extends ConsumerWidget {
   final Institution institution;
@@ -52,9 +53,10 @@ class InstitutionDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final coPaysAsync = ref.watch(coPaysByInstIdProvider);
+    final instCoPaysAsync = ref.watch(instCoPaysByInstIdProvider);
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -75,7 +77,7 @@ class InstitutionDetailScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         children: [
-          _header(),
+          _header(context),
           const SizedBox(height: 16),
           coPaysAsync.when(
             loading: () => const Padding(
@@ -86,11 +88,27 @@ class InstitutionDetailScreen extends ConsumerWidget {
             data: (map) {
               final key = institution.sanlamId ?? '';
               final cp = map[key];
-              return _coPaySection(cp);
+              final instCp = instCoPaysAsync.maybeWhen(
+                data: (m) => m[key],
+                orElse: () => null,
+              );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (cp != null && cp.hasAnyCharge)
+                    _coPaySection(context, cp)
+                  else if (instCp == null || !instCp.hasAnyCharge)
+                    _coPaySection(context, cp),
+                  if (instCp != null && instCp.hasAnyCharge) ...[
+                    const SizedBox(height: 12),
+                    _instCoPaySection(context, instCp),
+                  ],
+                ],
+              );
             },
           ),
           const SizedBox(height: 12),
-          _contactCard(),
+          _contactCard(context),
           const SizedBox(height: 12),
           _actions(context),
         ],
@@ -98,7 +116,7 @@ class InstitutionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _header() {
+  Widget _header(BuildContext context) {
     final cityLine = [institution.city, institution.province]
         .where((s) => s != null && s.isNotEmpty)
         .join(', ');
@@ -129,14 +147,14 @@ class InstitutionDetailScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(institution.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
-                            color: kText)),
+                            color: context.c.text)),
                     if (cityLine.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(cityLine,
-                          style: const TextStyle(fontSize: 12, color: kSubtext)),
+                          style: TextStyle(fontSize: 12, color: context.c.subtext)),
                     ],
                     const SizedBox(height: 6),
                     Container(
@@ -236,7 +254,7 @@ class InstitutionDetailScreen extends ConsumerWidget {
         ),
       );
 
-  Widget _coPaySection(CoPay? cp) {
+  Widget _coPaySection(BuildContext context, CoPay? cp) {
     if (cp == null || !cp.hasAnyCharge) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -249,11 +267,11 @@ class InstitutionDetailScreen extends ConsumerWidget {
           children: [
             const Icon(Icons.verified_rounded, color: kSuccess, size: 22),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Text(
                 'No co-pay required at this facility for your scheme.',
                 style: TextStyle(
-                    fontSize: 13, color: kText, fontWeight: FontWeight.w600),
+                    fontSize: 13, color: context.c.text, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -271,13 +289,14 @@ class InstitutionDetailScreen extends ConsumerWidget {
         parts.add('${percent.toStringAsFixed(percent.truncateToDouble() == percent ? 0 : 2)}%');
       }
       if (max != null && max > 0) parts.add('max ${_money(max)}');
-      rows.add(_coPayRow(label, parts.join(' + ')));
+      rows.add(_coPayRow(context, label, parts.join(' + ')));
     }
 
     addRow('Out-Patient', cp.outPatient, cp.outPatientPercent, cp.outPatientMax);
     addRow('In-Patient',  cp.inPatient,  cp.inPatientPercent,  cp.inPatientMax);
     addRow('Dental',      cp.dental,     cp.dentalPercent,     null);
     addRow('Optical',     cp.optical,    cp.opticalPercent,    null);
+    addRow('Pharmacy',    cp.pharma,     cp.pharmaPercent,     null);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -295,7 +314,7 @@ class InstitutionDetailScreen extends ConsumerWidget {
               Icon(Icons.account_balance_wallet_rounded,
                   color: Colors.amber.shade800, size: 20),
               const SizedBox(width: 8),
-              Text('Your Co-Pay at this Facility',
+              Text('Your Scheme Co-Pay at this Facility',
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -305,7 +324,7 @@ class InstitutionDetailScreen extends ConsumerWidget {
           if ((cp.benefitSchemes ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text('Applies to: ${cp.benefitSchemes}',
-                style: const TextStyle(fontSize: 11, color: kSubtext)),
+                style: TextStyle(fontSize: 11, color: context.c.subtext)),
           ],
           const SizedBox(height: 12),
           ...rows,
@@ -319,23 +338,90 @@ class InstitutionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _coPayRow(String label, String value) => Padding(
+  Widget _coPayRow(BuildContext context, String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
             Expanded(
               child: Text(label,
-                  style: const TextStyle(
-                      fontSize: 13, color: kText, fontWeight: FontWeight.w500)),
+                  style: TextStyle(
+                      fontSize: 13, color: context.c.text, fontWeight: FontWeight.w500)),
             ),
             Text(value,
-                style: const TextStyle(
-                    fontSize: 14, color: kText, fontWeight: FontWeight.w700)),
+                style: TextStyle(
+                    fontSize: 14, color: context.c.text, fontWeight: FontWeight.w700)),
           ],
         ),
       );
 
-  Widget _contactCard() {
+  /// Renders the institution-imposed co-pay (e.g. Nakasero 25%) — distinct from
+  /// the scheme co-pay above. Uses an orange palette so members can tell them
+  /// apart at a glance.
+  Widget _instCoPaySection(BuildContext context, CoPay cp) {
+    final rows = <Widget>[];
+    void addRow(String label, double? amount, double? percent, double? max) {
+      if ((amount == null || amount == 0) &&
+          (percent == null || percent == 0)) return;
+      final parts = <String>[];
+      if (amount != null && amount > 0) parts.add(_money(amount));
+      if (percent != null && percent > 0) {
+        parts.add(
+            '${percent.toStringAsFixed(percent.truncateToDouble() == percent ? 0 : 2)}%');
+      }
+      if (max != null && max > 0) parts.add('max ${_money(max)}');
+      rows.add(_coPayRow(context, label, parts.join(' + ')));
+    }
+
+    addRow('Out-Patient', cp.outPatient, cp.outPatientPercent, cp.outPatientMax);
+    addRow('In-Patient', cp.inPatient, cp.inPatientPercent, cp.inPatientMax);
+    addRow('Dental', cp.dental, cp.dentalPercent, null);
+    addRow('Optical', cp.optical, cp.opticalPercent, null);
+    addRow('Pharmacy', cp.pharma, cp.pharmaPercent, null);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.deepOrange.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(kRadiusLg),
+        boxShadow: kCardShadow,
+        border: Border.all(color: Colors.deepOrange.shade300, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_hospital_rounded,
+                  color: Colors.deepOrange.shade700, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Institution Co-Pay',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.deepOrange.shade900)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'This facility charges its own co-pay on top of (or in place of) your scheme co-pay.',
+            style:
+                TextStyle(fontSize: 11, color: Colors.deepOrange.shade900),
+          ),
+          const SizedBox(height: 12),
+          ...rows,
+          if ((cp.coPayFor ?? '').isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('Applies to: ${cp.coPayFor}',
+                style: TextStyle(fontSize: 11, color: context.c.subtext)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _contactCard(BuildContext context) {
     final rows = <Widget>[];
     void add(IconData ic, String? v, {VoidCallback? onTap}) {
       if (v == null || v.isEmpty) return;
@@ -345,16 +431,16 @@ class InstitutionDetailScreen extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
-              Icon(ic, size: 16, color: kSubtext),
+              Icon(ic, size: 16, color: context.c.subtext),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(v,
-                    style: const TextStyle(fontSize: 13, color: kText)),
+                    style: TextStyle(fontSize: 13, color: context.c.text)),
               ),
               if (onTap != null)
                 GestureDetector(
                   onTap: () => Clipboard.setData(ClipboardData(text: v)),
-                  child: const Icon(Icons.copy_rounded, size: 14, color: kSubtext),
+                  child: Icon(Icons.copy_rounded, size: 14, color: context.c.subtext),
                 ),
             ],
           ),
@@ -470,7 +556,7 @@ class InstitutionDetailScreen extends ConsumerWidget {
               label: const Text('More'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                side: const BorderSide(color: kBorder),
+                side: BorderSide(color: context.c.border),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(kRadiusMd),
                 ),

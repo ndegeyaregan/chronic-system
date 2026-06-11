@@ -1,8 +1,24 @@
+import { useEffect, useState } from 'react';
 import sanlamLogo from '../assets/sanlam-logo.png';
 
-const APK_URL = '/uploads/apk/sanlam-chronic-care.apk';
+const APK_URL = '/uploads/apk/SanCare%2B.apk';
 
 export default function DownloadPage() {
+  const [info, setInfo] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/app/version')
+      .then(r => r.ok ? r.json() : null)
+      .then(setInfo)
+      .catch(() => {});
+  }, []);
+
+  const sizeMb = info?.sizeBytes
+    ? `${(info.sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+    : '~76 MB';
+  const version = info?.latest;
+  const notes = Array.isArray(info?.releaseNotes) ? info.releaseNotes : [];
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -58,9 +74,46 @@ export default function DownloadPage() {
         <h1 style={{ margin: '0 0 8px', fontSize: '24px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px' }}>
           Download Mobile App
         </h1>
-        <p style={{ margin: '0 0 32px', color: '#64748b', fontSize: '14px', lineHeight: 1.7 }}>
+
+        {version && (
+          <div style={{
+            display: 'inline-block',
+            padding: '4px 12px',
+            margin: '0 0 12px',
+            background: '#003DA50f',
+            border: '1px solid #003DA533',
+            borderRadius: '999px',
+            fontSize: '12px',
+            fontWeight: 700,
+            color: '#003DA5',
+            letterSpacing: '0.3px',
+          }}>
+            Latest version: v{version}
+          </div>
+        )}
+
+        <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: '14px', lineHeight: 1.7 }}>
           Get the Sanlam Allianz Chronic Care app on your Android device to manage your health on the go.
         </p>
+
+        {/* What's new (only when manifest provided notes) */}
+        {notes.length > 0 && (
+          <div style={{
+            textAlign: 'left',
+            marginBottom: '24px',
+            padding: '14px 16px',
+            background: '#f8fafc',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+          }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '8px', letterSpacing: '0.3px' }}>
+              ✨ WHAT&apos;S NEW
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '18px', color: '#334155', fontSize: '13px', lineHeight: 1.7 }}>
+              {notes.map((n, i) => <li key={i}>{n}</li>)}
+            </ul>
+          </div>
+        )}
 
         {/* Features */}
         <div style={{ textAlign: 'left', marginBottom: '32px' }}>
@@ -87,7 +140,7 @@ export default function DownloadPage() {
         {/* Download button */}
         <a
           href={APK_URL}
-          download="sanlam-chronic-care.apk"
+          download="SanCare+.apk"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -116,12 +169,12 @@ export default function DownloadPage() {
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          Download for Android
+          {version ? `Download v${version} for Android` : 'Download for Android'}
         </a>
 
         <p style={{ margin: '20px 0 0', fontSize: '12px', color: '#94a3b8', lineHeight: 1.6 }}>
-          Android 6.0+ required · ~66 MB<br />
-          You may need to enable "Install from unknown sources" in your device settings.
+          Android 6.0+ required · {sizeMb}<br />
+          You may need to enable &quot;Install from unknown sources&quot; in your device settings.
         </p>
       </div>
 
@@ -147,3 +200,4 @@ export default function DownloadPage() {
     </div>
   );
 }
+

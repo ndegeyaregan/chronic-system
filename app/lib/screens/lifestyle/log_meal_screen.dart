@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/lifestyle_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
+import '../../core/app_colors.dart';
 
 class LogMealScreen extends ConsumerStatefulWidget {
   const LogMealScreen({super.key});
@@ -61,19 +62,19 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
     return showDialog<ImageSource>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Add Photo'),
+        title: Text('Add Photo'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (!kIsWeb)
               ListTile(
                 leading: const Icon(Icons.camera_alt_outlined),
-                title: const Text('Camera'),
+                title: Text('Camera'),
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Gallery'),
+              title: Text('Gallery'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
           ],
@@ -242,15 +243,15 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
     final advice = _getAdvice(conditions);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Log Meal')),
+      appBar: AppBar(title: Text('Log Meal')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Meal Type',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: kText),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: context.c.text),
             ),
             const SizedBox(height: 10),
             Row(
@@ -267,7 +268,7 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
                             color: _mealType == t['key'] ? kPrimary : Colors.white,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: _mealType == t['key'] ? kPrimary : kBorder,
+                              color: _mealType == t['key'] ? kPrimary : context.c.border,
                             ),
                           ),
                           child: Column(
@@ -279,7 +280,7 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w500,
-                                  color: _mealType == t['key'] ? Colors.white : kText,
+                                  color: _mealType == t['key'] ? Colors.white : context.c.text,
                                 ),
                               ),
                             ],
@@ -320,7 +321,7 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
                         border: Border.all(
                             color: kPrimary.withValues(alpha: 0.15)),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text('📸', style: TextStyle(fontSize: 18)),
@@ -328,7 +329,7 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
                           Text(
                             'Add Photo (optional)',
                             style:
-                                TextStyle(fontSize: 13, color: kSubtext),
+                                TextStyle(fontSize: 13, color: context.c.subtext),
                           ),
                         ],
                       ),
@@ -353,7 +354,7 @@ class _LogMealScreenState extends ConsumerState<LogMealScreen> {
                   onPressed: () =>
                       setState(() => _snacks.add(_SnackEntry())),
                   icon: const Icon(Icons.add),
-                  label: const Text('+ Add Another Snack'),
+                  label: Text('+ Add Another Snack'),
                   style: TextButton.styleFrom(
                       foregroundColor: kPrimary),
                 ),
@@ -491,7 +492,7 @@ class _SnackCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.c.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -504,20 +505,20 @@ class _SnackCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('🍎', style: TextStyle(fontSize: 16)),
+              Text('🍎', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Text(
                 'Snack ${index + 1}',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: kText),
+                    color: context.c.text),
               ),
               const Spacer(),
               if (canRemove)
                 GestureDetector(
                   onTap: onRemove,
-                  child: const Icon(Icons.close, size: 18, color: kSubtext),
+                  child: Icon(Icons.close, size: 18, color: context.c.subtext),
                 ),
             ],
           ),

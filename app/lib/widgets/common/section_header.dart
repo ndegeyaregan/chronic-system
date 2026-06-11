@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants.dart';
+import '../../core/app_colors.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -24,10 +25,10 @@ class SectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: kText,
+                color: context.c.text,
               ),
             ),
           ),
@@ -134,10 +135,10 @@ class EmptyState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: kSubtext,
+                color: context.c.subtext,
               ),
               textAlign: TextAlign.center,
             ),
@@ -145,7 +146,7 @@ class EmptyState extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 subtitle!,
-                style: const TextStyle(fontSize: 13, color: kSubtext),
+                style: TextStyle(fontSize: 13, color: context.c.subtext),
                 textAlign: TextAlign.center,
               ),
             ],

@@ -18,20 +18,45 @@ import '../../providers/member_type_provider.dart';
 import '../../providers/preauth_provider.dart';
 import '../../providers/visits_provider.dart';
 import '../../utils/benefit_forecast.dart' as bf;
+import '../../services/app_update_service.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/section_header.dart' hide EmptyState;
 import '../../widgets/common/visit_tile.dart';
 import '../notifications/notifications_screen.dart';
+import '../news/news_screen.dart';
+import '../../core/app_colors.dart';
 
 // ── Dashboard background matches chronic dashboard ────────────────────────────
 const _kBg = Color(0xFFF2F4F8);
 
-class MemberDashboardScreen extends ConsumerWidget {
+class MemberDashboardScreen extends ConsumerStatefulWidget {
   const MemberDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MemberDashboardScreen> createState() =>
+      _MemberDashboardScreenState();
+}
+
+class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
+  static bool _updateChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_updateChecked) {
+      _updateChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          maybeShowUpdateDialog(context, ref);
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final member = ref.watch(authProvider).member;
 
     if (member == null) {
@@ -127,17 +152,17 @@ class _HeroCard extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(kRadiusMd)),
-        title: const Text('Log out?'),
-        content: const Text('You will need to sign in again to use the app.'),
+        title: Text('Log out?'),
+        content: Text('You will need to sign in again to use the app.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
-            child: const Text('Logout'),
+            child: Text('Logout'),
           ),
         ],
       ),
@@ -153,6 +178,7 @@ class _HeroCard extends ConsumerWidget {
         ref.watch(notificationsProvider).where((n) => !n.isRead).length;
     final visitsAsync = ref.watch(familyVisitsProvider);
     final dependantsAsync = ref.watch(dependantsProvider);
+    final canViewDependants = ref.watch(canViewDependantsProvider);
 
     // Profile picture: prefer Sanlam-side photo (base64), then live
     // memberProvider state, fall back to the auth member.
@@ -393,7 +419,7 @@ class _HeroCard extends ConsumerWidget {
                     _HeroStat(
                       label: 'Spent YTD',
                       valueWidget: visitsAsync.isLoading
-                          ? const Text(
+                          ? Text(
                               '…',
                               style: TextStyle(
                                 color: Colors.white,
@@ -402,7 +428,7 @@ class _HeroCard extends ConsumerWidget {
                               ),
                             )
                           : visitsAsync.hasError
-                              ? const Text(
+                              ? Text(
                                   '—',
                                   style: TextStyle(
                                     color: Colors.white,
@@ -421,16 +447,18 @@ class _HeroCard extends ConsumerWidget {
                                 ),
                       onTap: () => context.push(routeClaims),
                     ),
-                    _HeroStatDivider(),
-                    _HeroStat(
-                      label: 'Dependants',
-                      value: dependantsAsync.when(
-                        data: (d) => '${d.length}',
-                        loading: () => '…',
-                        error: (_, __) => '—',
+                    if (canViewDependants) ...[
+                      _HeroStatDivider(),
+                      _HeroStat(
+                        label: 'Dependants',
+                        value: dependantsAsync.when(
+                          data: (d) => '${d.length}',
+                          loading: () => '…',
+                          error: (_, __) => '—',
+                        ),
+                        onTap: () => context.push(routeDependants),
                       ),
-                      onTap: () => context.push(routeDependants),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -608,7 +636,7 @@ class _BenefitsSummaryCard extends ConsumerWidget {
           error: (_, __) => Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: kSurface,
+              color: context.c.surface,
               borderRadius: BorderRadius.circular(kRadiusLg),
               boxShadow: kCardShadow,
             ),
@@ -616,10 +644,10 @@ class _BenefitsSummaryCard extends ConsumerWidget {
               children: [
                 const Icon(Icons.error_outline, color: kError, size: 28),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Unable to load benefits',
                   style: TextStyle(
-                    color: kText,
+                    color: context.c.text,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
@@ -628,7 +656,7 @@ class _BenefitsSummaryCard extends ConsumerWidget {
                 TextButton.icon(
                   onPressed: () => ref.invalidate(benefitProvider(memberNo)),
                   icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Retry'),
+                  label: Text('Retry'),
                 ),
               ],
             ),
@@ -715,18 +743,18 @@ class _BenefitMiniCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final remaining =
-        (allocation - spent).clamp(0, double.infinity).toDouble();
-    final pct = allocation > 0
-        ? (spent / allocation).clamp(0.0, 1.0).toDouble()
-        : 0.0;
+    // The Sanlam API returns the *current available balance* per
+    // category — not the annual allocation. Display it directly; do
+    // NOT subtract YTD visit spend (that double-counts and made cards
+    // look fully depleted).
+    final balance = allocation;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: kSurface,
+          color: context.c.surface,
           borderRadius: BorderRadius.circular(kRadiusMd),
           boxShadow: kShadowSm,
         ),
@@ -748,10 +776,10 @@ class _BenefitMiniCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: kSubtext,
+                      color: context.c.subtext,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -764,52 +792,43 @@ class _BenefitMiniCard extends StatelessWidget {
               ],
             ),
             const Spacer(),
-            const Text(
-              'Balance',
+            Text(
+              'Available',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: kSubtext,
+                color: context.c.subtext,
               ),
             ),
             const SizedBox(height: 1),
             Money(
-              amount: showSpent ? remaining : allocation,
-              style: const TextStyle(
+              amount: balance,
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
-                color: kText,
+                color: context.c.text,
               ),
             ),
-            const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: showSpent ? pct : null,
-                minHeight: 4,
-                backgroundColor: color.withValues(alpha: 0.12),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  showSpent ? 'Used' : '',
-                  style: const TextStyle(fontSize: 9, color: kSubtext),
-                ),
-                if (showSpent)
+            if (showSpent) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'YTD claimed',
+                    style: TextStyle(fontSize: 9, color: context.c.subtext),
+                  ),
                   Money(
                     amount: spent,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
-                      color: kSubtext,
+                      color: context.c.subtext,
                     ),
                   ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -838,13 +857,30 @@ class _RecentClaimsSection extends ConsumerWidget {
         const SizedBox(height: 12),
         visitsAsync.when(
           loading: () => const LoadingListCard(count: 1),
-          error: (e, _) => EmptyState(
-            icon: Icons.receipt_long_outlined,
-            title: 'Could not load claims',
-            subtitle: e.toString(),
-            buttonLabel: 'Retry',
-            onButton: () => ref.invalidate(familyVisitsProvider),
-          ),
+          error: (e, _) {
+            // Sanlam quirks (e.g. "Member number is not maching with
+            // signed member no") shouldn't be surfaced to the user.
+            // Treat them as "no claims yet" for a friendlier UX.
+            final msg = e.toString().toLowerCase();
+            final looksEmpty = msg.contains('not matching') ||
+                msg.contains('not maching') ||
+                msg.contains('no record') ||
+                msg.contains('not found');
+            if (looksEmpty) {
+              return const EmptyState(
+                icon: Icons.receipt_long_outlined,
+                title: 'No claims yet',
+                subtitle: 'Your recent medical claims will appear here.',
+              );
+            }
+            return EmptyState(
+              icon: Icons.receipt_long_outlined,
+              title: 'Could not load claims',
+              subtitle: 'Please pull to refresh and try again.',
+              buttonLabel: 'Retry',
+              onButton: () => ref.invalidate(familyVisitsProvider),
+            );
+          },
           data: (visits) {
             if (visits.isEmpty) {
               return const EmptyState(
@@ -888,14 +924,18 @@ class _QuickActionsGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isChronic = ref.watch(isChronicMemberProvider);
+    final canViewDependants = ref.watch(canViewDependantsProvider);
     final actions = <_QA>[
       const _QA('Membership\nCard', Icons.badge_rounded, kPrimary, routeMembershipCard),
       const _QA('Pre-Auths', Icons.verified_user_rounded, kAccentAmber, routePreauths),
+      const _QA('Request\nPre-Auth', Icons.assignment_add,
+          Color(0xFF0EA5E9), '/authorizations'),
       const _QA('Prescriptions', Icons.medication_liquid_rounded,
           Color(0xFF0891B2), routePrescriptions),
       const _QA('Reimburse', Icons.receipt_long_rounded,
           Color(0xFFEF4444), routeReimbursement),
-      const _QA('Dependants', Icons.family_restroom_rounded, kAccent, routeDependants),
+      if (canViewDependants)
+        const _QA('Dependants', Icons.family_restroom_rounded, kAccent, routeDependants),
       const _QA('Find Hospital', Icons.local_hospital_rounded,
           Color(0xFF059669), routeNetwork),
       const _QA('Vitals', Icons.monitor_heart_rounded,
@@ -905,7 +945,7 @@ class _QuickActionsGrid extends ConsumerWidget {
       if (isChronic)
         const _QA('Medications', Icons.medication_rounded,
             Color(0xFFFF9500), routeMedications),
-      const _QA('Education', Icons.menu_book_rounded, kPurple, routeEducation),
+      const _QA('News', Icons.newspaper_rounded, kPurple, routeNews),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -926,12 +966,14 @@ class _QuickActionsGrid extends ConsumerWidget {
   }
 }
 
-class _QATile extends StatelessWidget {
+class _QATile extends ConsumerWidget {
   final _QA action;
   const _QATile({required this.action});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isNews = action.route == routeNews;
+    final unread = isNews ? ref.watch(unreadNewsCountProvider) : 0;
     return GestureDetector(
       onTap: () => context.push(action.route),
       child: Container(
@@ -954,24 +996,55 @@ class _QATile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: action.color,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(action.icon, color: Colors.white, size: 17),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: action.color,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(action.icon, color: Colors.white, size: 17),
+                ),
+                if (isNews && unread > 0)
+                  Positioned(
+                    top: -5,
+                    right: -6,
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(minWidth: 16, minHeight: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDC2626),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        unread > 99 ? '99+' : '$unread',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 5),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3),
               child: Text(
                 action.label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: kText,
+                  color: context.c.text,
                   height: 1.2,
                 ),
                 textAlign: TextAlign.center,
@@ -994,7 +1067,13 @@ class _ChronicCareTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => context.push('/home/chronic'),
+      onTap: () {
+        // Use `go` instead of `push` to reliably navigate to the
+        // /home/chronic route (which lives ABOVE the ShellRoute with
+        // parentNavigatorKey: _rootNavigatorKey). Pushing across navigator
+        // levels was rendering a blank screen on some devices.
+        context.go('/home/chronic');
+      },
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -1082,7 +1161,7 @@ class _WellnessTipCardState extends State<_WellnessTipCard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: kSurface,
+        color: context.c.surface,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kShadowSm,
         border: Border.all(color: kSuccess.withValues(alpha: 0.2)),
@@ -1108,7 +1187,7 @@ class _WellnessTipCardState extends State<_WellnessTipCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Wellness Tip',
                   style: TextStyle(
                     fontSize: 12,
@@ -1119,9 +1198,9 @@ class _WellnessTipCardState extends State<_WellnessTipCard> {
                 const SizedBox(height: 4),
                 Text(
                   _tip,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: kText,
+                    color: context.c.text,
                     height: 1.45,
                   ),
                 ),

@@ -5,6 +5,7 @@ import '../../providers/member_provider.dart';
 import '../../providers/education_provider.dart';
 import '../../utils/content_mapper.dart';
 import '../../services/cms_service.dart';
+import '../../core/app_colors.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  DATA MODEL
@@ -238,7 +239,7 @@ class ConditionEducationScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -332,8 +333,8 @@ class ConditionEducationScreen extends ConsumerWidget {
                   conditionList.isEmpty
                       ? 'General health education to help you live well every day.'
                       : 'Condition-specific guidance tailored to your health profile.',
-                  style: const TextStyle(
-                      fontSize: 13, color: kText, height: 1.4),
+                  style: TextStyle(
+                      fontSize: 13, color: context.c.text, height: 1.4),
                 ),
               ),
             ],
@@ -406,17 +407,17 @@ class _ConditionCardState extends State<_ConditionCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(widget.info.title,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: kText)),
+                                color: context.c.text)),
                         const SizedBox(height: 2),
                         Text(
                             _expanded
                                 ? 'Tap to collapse'
                                 : 'Tap to learn more',
-                            style: const TextStyle(
-                                fontSize: 11, color: kSubtext)),
+                            style: TextStyle(
+                                fontSize: 11, color: context.c.subtext)),
                       ],
                     ),
                   ),
@@ -424,7 +425,7 @@ class _ConditionCardState extends State<_ConditionCard> {
                     _expanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: kSubtext,
+                    color: context.c.subtext,
                   ),
                 ],
               ),
@@ -433,24 +434,24 @@ class _ConditionCardState extends State<_ConditionCard> {
 
           // ── Expanded content ─────────────────────────────────────────────
           if (_expanded) ...[
-            const Divider(height: 1, color: kBorder),
+            Divider(height: 1, color: context.c.border),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _section('📋 What is it?',
+                  _section(context, '📋 What is it?',
                       [widget.info.whatIsIt], isText: true),
                   const SizedBox(height: 14),
-                  _section('⚠️ Warning Signs', widget.info.warningSigns),
+                  _section(context, '⚠️ Warning Signs', widget.info.warningSigns),
                   const SizedBox(height: 14),
-                  _section('🥗 Diet Recommendations', widget.info.dietTips),
+                  _section(context, '🥗 Diet Recommendations', widget.info.dietTips),
                   const SizedBox(height: 14),
-                  _section('🏃 Lifestyle Tips', widget.info.lifestyleTips),
+                  _section(context, '🏃 Lifestyle Tips', widget.info.lifestyleTips),
                   const SizedBox(height: 14),
-                  _section('💊 Medication Tips', widget.info.medicationTips),
+                  _section(context, '💊 Medication Tips', widget.info.medicationTips),
                   const SizedBox(height: 14),
-                  _urgentSection(widget.info.whenToSeekHelp),
+                  _urgentSection(context, widget.info.whenToSeekHelp),
                 ],
               ),
             ),
@@ -460,20 +461,20 @@ class _ConditionCardState extends State<_ConditionCard> {
     );
   }
 
-  Widget _section(String title, List<String> items, {bool isText = false}) {
+  Widget _section(BuildContext context, String title, List<String> items, {bool isText = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: kText)),
+                color: context.c.text)),
         const SizedBox(height: 8),
         if (isText)
           Text(items.first,
-              style: const TextStyle(
-                  fontSize: 13, color: kSubtext, height: 1.5))
+              style: TextStyle(
+                  fontSize: 13, color: context.c.subtext, height: 1.5))
         else
           ...items.map((item) => Padding(
                 padding: const EdgeInsets.only(bottom: 5),
@@ -492,9 +493,9 @@ class _ConditionCardState extends State<_ConditionCard> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(item,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 13,
-                              color: kSubtext,
+                              color: context.c.subtext,
                               height: 1.4)),
                     ),
                   ],
@@ -504,7 +505,7 @@ class _ConditionCardState extends State<_ConditionCard> {
     );
   }
 
-  Widget _urgentSection(String text) {
+  Widget _urgentSection(BuildContext context, String text) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -529,8 +530,8 @@ class _ConditionCardState extends State<_ConditionCard> {
                         color: kError)),
                 const SizedBox(height: 4),
                 Text(text,
-                    style: const TextStyle(
-                        fontSize: 12, color: kText, height: 1.4)),
+                    style: TextStyle(
+                        fontSize: 12, color: context.c.text, height: 1.4)),
               ],
             ),
           ),
@@ -591,7 +592,7 @@ class _GeneralWellnessCardState extends State<_GeneralWellnessCard> {
                         child: Text('🌟', style: TextStyle(fontSize: 22))),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -599,11 +600,11 @@ class _GeneralWellnessCardState extends State<_GeneralWellnessCard> {
                             style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: kText)),
+                                color: context.c.text)),
                         SizedBox(height: 2),
                         Text('Healthy habits for everyone',
                             style: TextStyle(
-                                fontSize: 11, color: kSubtext)),
+                                fontSize: 11, color: context.c.subtext)),
                       ],
                     ),
                   ),
@@ -611,14 +612,14 @@ class _GeneralWellnessCardState extends State<_GeneralWellnessCard> {
                     _expanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: kSubtext,
+                    color: context.c.subtext,
                   ),
                 ],
               ),
             ),
           ),
           if (_expanded) ...[
-            const Divider(height: 1, color: kBorder),
+            Divider(height: 1, color: context.c.border),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
               child: Column(
@@ -630,9 +631,9 @@ class _GeneralWellnessCardState extends State<_GeneralWellnessCard> {
                             children: [
                               Expanded(
                                 child: Text(tip,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 13,
-                                        color: kSubtext,
+                                        color: context.c.subtext,
                                         height: 1.4)),
                               ),
                             ],

@@ -3,7 +3,7 @@ const router = express.Router();
 const { body, param } = require('express-validator');
 const validate = require('../middleware/validate');
 const { authenticate, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
-const { listSchemes, createScheme, updateScheme, deleteScheme, getSchemePerformance } = require('../controllers/schemesController');
+const { listSchemes, createScheme, updateScheme, deleteScheme, getSchemePerformance, bulkImportSchemes, hardDeleteScheme } = require('../controllers/schemesController');
 
 const idParam = [param('id').isUUID().withMessage('Invalid ID format')];
 
@@ -23,5 +23,9 @@ router.put('/:id', authenticate, requireAdmin, [
   body('is_active').optional().isBoolean().withMessage('is_active must be boolean'),
 ], validate, updateScheme);
 router.delete('/:id', authenticate, requireAdmin, idParam, validate, deleteScheme);
+router.delete('/:id/hard', authenticate, requireSuperAdmin, idParam, validate, hardDeleteScheme);
+router.post('/bulk-import', authenticate, requireAdmin, [
+  body('schemes').isArray({ min: 1 }).withMessage('schemes array is required'),
+], validate, bulkImportSchemes);
 
 module.exports = router;

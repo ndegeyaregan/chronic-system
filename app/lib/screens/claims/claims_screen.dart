@@ -8,6 +8,7 @@ import '../../utils/benefit_forecast.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/visit_tile.dart';
+import '../../core/app_colors.dart';
 
 enum ClaimCategory { all, outpatient, inpatient, dental, optical }
 
@@ -56,7 +57,7 @@ class ClaimsScreen extends ConsumerWidget {
     final filter = ref.watch(claimCategoryFilterProvider);
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),

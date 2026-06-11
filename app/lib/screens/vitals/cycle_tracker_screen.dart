@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import '../../models/cycle.dart';
 import '../../providers/cycle_tracker_provider.dart';
+import '../../core/app_colors.dart';
 
 class CycleTrackerScreen extends ConsumerWidget {
   const CycleTrackerScreen({super.key});
@@ -15,7 +16,7 @@ class CycleTrackerScreen extends ConsumerWidget {
     final stats = state.stats;
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),

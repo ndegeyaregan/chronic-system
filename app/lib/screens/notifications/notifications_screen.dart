@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import '../../models/notification_model.dart';
 import '../../services/api_service.dart';
+import '../../core/app_colors.dart';
 
 final notificationsProvider = StateNotifierProvider<NotifNotifier,
     List<AppNotification>>((ref) => NotifNotifier());
@@ -57,12 +58,16 @@ class NotificationsScreen extends ConsumerWidget {
         return Icons.monitor_heart_outlined;
       case NotificationType.lifestyle:
         return Icons.spa_outlined;
+      case NotificationType.preauth:
+        return Icons.verified_user_outlined;
+      case NotificationType.claim:
+        return Icons.receipt_long_outlined;
       default:
         return Icons.notifications_outlined;
     }
   }
 
-  Color _typeColor(NotificationType t) {
+  Color _typeColor(BuildContext context, NotificationType t) {
     switch (t) {
       case NotificationType.medication:
         return kAccent;
@@ -72,8 +77,12 @@ class NotificationsScreen extends ConsumerWidget {
         return kError;
       case NotificationType.lifestyle:
         return const Color(0xFF22C55E);
+      case NotificationType.preauth:
+        return const Color(0xFF7C3AED);
+      case NotificationType.claim:
+        return const Color(0xFF0EA5E9);
       default:
-        return kSubtext;
+        return context.c.subtext;
     }
   }
 
@@ -136,7 +145,7 @@ class NotificationsScreen extends ConsumerWidget {
         ],
       ),
       body: notifications.isEmpty
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -145,7 +154,7 @@ class NotificationsScreen extends ConsumerWidget {
                   SizedBox(height: 16),
                   Text(
                     'No notifications yet',
-                    style: TextStyle(color: kSubtext, fontSize: 15),
+                    style: TextStyle(color: context.c.subtext, fontSize: 15),
                   ),
                 ],
               ),
@@ -164,9 +173,22 @@ class NotificationsScreen extends ConsumerWidget {
                         ? Colors.transparent
                         : kPrimary.withValues(alpha: 0.04),
                     child: InkWell(
-                      onTap: () => ref
-                          .read(notificationsProvider.notifier)
-                          .markRead(n.id),
+                      onTap: () {
+                        ref
+                            .read(notificationsProvider.notifier)
+                            .markRead(n.id);
+                        final route = n.actionRoute;
+                        if (route != null && route.isNotEmpty) {
+                          // If the notification carries a specific entity ID,
+                          // deep-link to the detail screen; otherwise list screen.
+                          final id = n.actionId;
+                          if (id != null && id.isNotEmpty) {
+                            context.push('$route/$id');
+                          } else {
+                            context.push(route);
+                          }
+                        }
+                      },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
@@ -177,12 +199,12 @@ class NotificationsScreen extends ConsumerWidget {
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: _typeColor(n.type)
+                                color: _typeColor(context, n.type)
                                     .withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(_typeIcon(n.type),
-                                  color: _typeColor(n.type), size: 20),
+                                  color: _typeColor(context, n.type), size: 20),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -200,22 +222,22 @@ class NotificationsScreen extends ConsumerWidget {
                                                 ? FontWeight.w500
                                                 : FontWeight.w700,
                                             fontSize: 14,
-                                            color: kText,
+                                            color: context.c.text,
                                           ),
                                         ),
                                       ),
                                       Text(
                                         _timeAgo(n.createdAt),
-                                        style: const TextStyle(
-                                            fontSize: 11, color: kSubtext),
+                                        style: TextStyle(
+                                            fontSize: 11, color: context.c.subtext),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     n.message,
-                                    style: const TextStyle(
-                                        fontSize: 13, color: kSubtext),
+                                    style: TextStyle(
+                                        fontSize: 13, color: context.c.subtext),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -232,6 +254,13 @@ class NotificationsScreen extends ConsumerWidget {
                                   shape: BoxShape.circle,
                                 ),
                               ),
+                            ],
+                            if (n.actionRoute != null) ...[
+                              const SizedBox(width: 4),
+                              Icon(Icons.chevron_right,
+                                  size: 18,
+                                  color: context.c.subtext
+                                      .withValues(alpha: 0.5)),
                             ],
                           ],
                         ),

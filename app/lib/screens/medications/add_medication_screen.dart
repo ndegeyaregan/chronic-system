@@ -16,6 +16,7 @@ import '../../widgets/common/app_input.dart';
 import '../../widgets/common/media_attachment_widget.dart';
 import '../../services/auth_service.dart';
 import '../../utils/medications_data.dart';
+import '../../core/app_colors.dart';
 
 class AddMedicationScreen extends ConsumerStatefulWidget {
   const AddMedicationScreen({super.key});
@@ -261,7 +262,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
     final state = ref.watch(medicationsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Medication')),
+      appBar: AppBar(title: Text('Add Medication')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -273,12 +274,12 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Medication Name',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: kText),
+                        color: context.c.text),
                   ),
                   const SizedBox(height: 6),
                   TextFormField(
@@ -287,8 +288,8 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       hintText: 'Search or type medication name',
-                      prefixIcon: const Icon(Icons.medication_outlined,
-                          color: kSubtext),
+                      prefixIcon: Icon(Icons.medication_outlined,
+                          color: context.c.subtext),
                       suffixIcon: _loadingSuggestions
                           ? const Padding(
                               padding: EdgeInsets.all(12),
@@ -308,7 +309,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       margin: const EdgeInsets.only(top: 2),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        border: Border.all(color: kBorder),
+                        border: Border.all(color: context.c.border),
                         borderRadius: BorderRadius.circular(kRadiusMd),
                         boxShadow: kShadowSm,
                       ),
@@ -347,8 +348,8 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                                     horizontal: 16, vertical: 12),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.medication_outlined,
-                                        size: 16, color: kSubtext),
+                                    Icon(Icons.medication_outlined,
+                                        size: 16, color: context.c.subtext),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(suggestion,
@@ -370,8 +371,8 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         'No suggestions found — your typed name will be used.',
-                        style: const TextStyle(
-                            fontSize: 11, color: kSubtext),
+                        style: TextStyle(
+                            fontSize: 11, color: context.c.subtext),
                       ),
                     ),
                 ],
@@ -387,27 +388,27 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Frequency',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: kText),
+                        color: context.c.text),
                   ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
                     value: _frequency,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.schedule_outlined,
-                          color: kSubtext),
+                      prefixIcon: Icon(Icons.schedule_outlined,
+                          color: context.c.subtext),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: kBorder)),
+                          borderSide: BorderSide(color: context.c.border)),
                       enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: kBorder)),
+                          borderSide: BorderSide(color: context.c.border)),
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 14),
                     ),
@@ -424,12 +425,12 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Start Date',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: kText),
+                        color: context.c.text),
                   ),
                   const SizedBox(height: 6),
                   GestureDetector(
@@ -440,17 +441,17 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: kBorder),
+                        border: Border.all(color: context.c.border),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_today_outlined,
-                              color: kSubtext, size: 18),
+                          Icon(Icons.calendar_today_outlined,
+                              color: context.c.subtext, size: 18),
                           const SizedBox(width: 10),
                           Text(
                             DateFormat('dd MMM yyyy').format(_startDate),
-                            style: const TextStyle(
-                                color: kText, fontSize: 14),
+                            style: TextStyle(
+                                color: context.c.text, fontSize: 14),
                           ),
                         ],
                       ),
@@ -465,17 +466,17 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                 children: [
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'End Date',
                         style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: kText),
+                            color: context.c.text),
                       ),
                       const SizedBox(width: 6),
-                      const Text(
+                      Text(
                         '(optional — leave blank for ongoing)',
-                        style: TextStyle(fontSize: 11, color: kSubtext),
+                        style: TextStyle(fontSize: 11, color: context.c.subtext),
                       ),
                     ],
                   ),
@@ -488,12 +489,12 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: kBorder),
+                        border: Border.all(color: context.c.border),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.event_outlined,
-                              color: kSubtext, size: 18),
+                          Icon(Icons.event_outlined,
+                              color: context.c.subtext, size: 18),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -501,7 +502,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                                   ? DateFormat('dd MMM yyyy').format(_endDate!)
                                   : 'Ongoing (no end date)',
                               style: TextStyle(
-                                color: _endDate != null ? kText : kSubtext,
+                                color: _endDate != null ? context.c.text : context.c.subtext,
                                 fontSize: 14,
                               ),
                             ),
@@ -509,8 +510,8 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                           if (_endDate != null)
                             GestureDetector(
                               onTap: () => setState(() => _endDate = null),
-                              child: const Icon(Icons.close,
-                                  size: 16, color: kSubtext),
+                              child: Icon(Icons.close,
+                                  size: 16, color: context.c.subtext),
                             ),
                         ],
                       ),
@@ -523,12 +524,12 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Start Time (first dose)',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: kText),
+                        color: context.c.text),
                   ),
                   const SizedBox(height: 6),
                   GestureDetector(
@@ -547,12 +548,12 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: kBorder),
+                        border: Border.all(color: context.c.border),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.access_time_outlined,
-                              color: kSubtext, size: 18),
+                          Icon(Icons.access_time_outlined,
+                              color: context.c.subtext, size: 18),
                           const SizedBox(width: 10),
                           Text(
                             _startTime != null
@@ -560,7 +561,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                                 : 'Select start time',
                             style: TextStyle(
                               color:
-                                  _startTime != null ? kText : kSubtext,
+                                  _startTime != null ? context.c.text : context.c.subtext,
                               fontSize: 14,
                             ),
                           ),
@@ -583,12 +584,12 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Prescription (Optional)',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: kText),
+                        color: context.c.text),
                   ),
                   const SizedBox(height: 6),
                   GestureDetector(
@@ -603,7 +604,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Text('📎',
+                          Text('📎',
                               style: TextStyle(fontSize: 18)),
                           const SizedBox(width: 10),
                           Expanded(
@@ -612,8 +613,8 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                                   'Attach Prescription',
                               style: TextStyle(
                                 color: _prescriptionFileName != null
-                                    ? kText
-                                    : kSubtext,
+                                    ? context.c.text
+                                    : context.c.subtext,
                                 fontSize: 13,
                               ),
                             ),
@@ -622,8 +623,8 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                             GestureDetector(
                               onTap: () => setState(
                                   () => _prescriptionFileName = null),
-                              child: const Icon(Icons.close,
-                                  size: 16, color: kSubtext),
+                              child: Icon(Icons.close,
+                                  size: 16, color: context.c.subtext),
                             ),
                         ],
                       ),
@@ -636,31 +637,31 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Related Condition (optional)',
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: kText),
+                          color: context.c.text),
                     ),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       value: _selectedCondition,
-                      hint: const Text('Select condition'),
+                      hint: Text('Select condition'),
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                             Icons.local_hospital_outlined,
-                            color: kSubtext),
+                            color: context.c.subtext),
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide:
-                                const BorderSide(color: kBorder)),
+                                BorderSide(color: context.c.border)),
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide:
-                                const BorderSide(color: kBorder)),
+                                BorderSide(color: context.c.border)),
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 14),
                       ),
@@ -740,14 +741,14 @@ class _PharmacyPicker extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Pickup Pharmacy (optional)',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: kText),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: context.c.text),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           'Select the pharmacy where you collect this medication',
-          style: TextStyle(fontSize: 11, color: kSubtext),
+          style: TextStyle(fontSize: 11, color: context.c.subtext),
         ),
         const SizedBox(height: 8),
         if (state.isLoading)
@@ -755,17 +756,17 @@ class _PharmacyPicker extends ConsumerWidget {
         else
           DropdownButtonFormField<String>(
             value: selected?.id,
-            hint: const Text('Select pharmacy'),
+            hint: Text('Select pharmacy'),
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.local_pharmacy_outlined, color: kSubtext),
+              prefixIcon: Icon(Icons.local_pharmacy_outlined, color: context.c.subtext),
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: kBorder)),
+                  borderSide: BorderSide(color: context.c.border)),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: kBorder)),
+                  borderSide: BorderSide(color: context.c.border)),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
@@ -781,8 +782,8 @@ class _PharmacyPicker extends ConsumerWidget {
                       Text(p.name, style: const TextStyle(fontSize: 14)),
                       if (p.address != null)
                         Text(p.address!,
-                            style: const TextStyle(
-                                fontSize: 11, color: kSubtext)),
+                            style: TextStyle(
+                                fontSize: 11, color: context.c.subtext)),
                     ],
                   ),
                 ),
@@ -821,29 +822,29 @@ class _RefillIntervalPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Refill Reminder',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: kText),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: context.c.text),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           'Get notified before your medication runs out',
-          style: TextStyle(fontSize: 11, color: kSubtext),
+          style: TextStyle(fontSize: 11, color: context.c.subtext),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<int?>(
           value: value,
-          hint: const Text('Select refill cycle'),
+          hint: Text('Select refill cycle'),
           decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.refresh_outlined, color: kSubtext),
+            prefixIcon: Icon(Icons.refresh_outlined, color: context.c.subtext),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: kBorder)),
+                borderSide: BorderSide(color: context.c.border)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: kBorder)),
+                borderSide: BorderSide(color: context.c.border)),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),

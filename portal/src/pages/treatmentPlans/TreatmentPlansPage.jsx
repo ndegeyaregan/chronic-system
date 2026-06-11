@@ -13,8 +13,9 @@ import {
   XCircleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
-import { getAllTreatmentPlans, adminCreateTreatmentPlan, adminUpdateTreatmentPlan } from '../../api/treatmentPlans';
+import { getAllTreatmentPlans, adminCreateTreatmentPlan, adminUpdateTreatmentPlan, adminDeleteAttachment } from '../../api/treatmentPlans';
 import { getConditions } from '../../api/conditions';
 import Table from '../../components/UI/Table';
 import Modal from '../../components/UI/Modal';
@@ -74,11 +75,10 @@ export default function TreatmentPlansPage() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: conditionsData } = useQuery({
+  const { data: conditions = [] } = useQuery({
     queryKey: ['conditions'],
-    queryFn: getConditions,
+    queryFn: () => getConditions().then((r) => (Array.isArray(r.data) ? r.data : [])),
   });
-  const conditions = conditionsData?.data || conditionsData || [];
 
   const plans = Array.isArray(data) ? data : (data?.plans || data?.data || []);
   const totalPlans = data?.total || plans.length;
@@ -107,6 +107,15 @@ export default function TreatmentPlansPage() {
       closeEditModal();
     },
     onError: () => toast.error('Failed to update treatment plan'),
+  });
+
+  const deleteAttachmentMut = useMutation({
+    mutationFn: ({ id, kind }) => adminDeleteAttachment(id, kind),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['treatment-plans'] });
+      toast.success('Attachment deleted');
+    },
+    onError: () => toast.error('Failed to delete attachment'),
   });
 
   const closeModal = () => {
@@ -177,27 +186,48 @@ export default function TreatmentPlansPage() {
     width: '100%', boxSizing: 'border-box',
   };
 
+  const handleDeleteAttachment = (row, kind, label) => {
+    if (!window.confirm(`Delete ${label.toLowerCase()} attachment from this treatment plan? This cannot be undone.`)) return;
+    deleteAttachmentMut.mutate({ id: row.id, kind });
+  };
+
   const attachmentIcons = (row) => {
     const items = [
-      { url: row.document_url, Icon: DocumentIcon, label: 'Doc' },
-      { url: row.photo_url, Icon: PhotoIcon, label: 'Photo' },
-      { url: row.audio_url, Icon: MusicalNoteIcon, label: 'Audio' },
-      { url: row.video_url, Icon: VideoCameraIcon, label: 'Video' },
+      { url: row.document_url, Icon: DocumentIcon, label: 'Doc', kind: 'document' },
+      { url: row.photo_url, Icon: PhotoIcon, label: 'Photo', kind: 'photo' },
+      { url: row.audio_url, Icon: MusicalNoteIcon, label: 'Audio', kind: 'audio' },
+      { url: row.video_url, Icon: VideoCameraIcon, label: 'Video', kind: 'video' },
     ];
     const present = items.filter((i) => i.url);
     if (present.length === 0) return <span style={{ color: '#94a3b8' }}>—</span>;
+    const isDeleting = deleteAttachmentMut.isPending;
     return (
-      <div style={{ display: 'flex', gap: '6px' }}>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         {present.map((item) => (
-          <a key={item.label} href={item.url} target="_blank" rel="noreferrer"
-            title={item.label}
-            style={{
-              width: 26, height: 26, borderRadius: '6px', background: '#f1f5f9',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#3b82f6', textDecoration: 'none',
-            }}>
-            <item.Icon style={{ width: 14, height: 14 }} />
-          </a>
+          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <a href={item.url} target="_blank" rel="noreferrer"
+              title={`Open ${item.label}`}
+              style={{
+                width: 26, height: 26, borderRadius: '6px 0 0 6px', background: '#f1f5f9',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#3b82f6', textDecoration: 'none',
+              }}>
+              <item.Icon style={{ width: 14, height: 14 }} />
+            </a>
+            <button
+              type="button"
+              onClick={() => handleDeleteAttachment(row, item.kind, item.label)}
+              disabled={isDeleting}
+              title={`Delete ${item.label}`}
+              style={{
+                width: 20, height: 26, borderRadius: '0 6px 6px 0',
+                background: '#fef2f2', border: 'none', cursor: isDeleting ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#dc2626', padding: 0,
+              }}>
+              <TrashIcon style={{ width: 12, height: 12 }} />
+            </button>
+          </div>
         ))}
       </div>
     );

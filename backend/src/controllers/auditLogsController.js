@@ -63,4 +63,61 @@ const getMemberAuditLogs = async (req, res) => {
   }
 };
 
-module.exports = { getAuditLogs, getMemberAuditLogs };
+const getMemberLogins = async (req, res) => {
+  try {
+    const { search, from, to, page = 1, limit = 50 } = req.query;
+    const pageNum = Math.max(parseInt(page) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit) || 50, 1), 200);
+    const offset = (pageNum - 1) * limitNum;
+
+    const params = [];
+    const filters = [`al.actor_type = 'member'`, `al.action = 'login'`];
+    let idx = 1;
+
+    if (search) {
+      filters.push(
+        `(m.first_name ILIKE $${idx} OR m.last_name ILIKE $${idx} OR m.member_number ILIKE $${idx} OR m.email ILIKE $${idx})`
+      );
+      params.push(`%${search}%`);
+      idx++;
+    }
+    if (from) { filters.push(`al.created_at >= $${idx++}`); params.push(from); }
+    if (to)   { filters.push(`al.created_at <= $${idx++}`); params.push(to); }
+
+    const whereClause = `WHERE ${filters.join(' AND ')}`;
+
+    const dataParams = [...params, limitNum, offset];
+    const result = await pool.query(
+      `SELECT al.id, al.created_at, al.ip_address, al.details,
+              m.id AS member_id, m.member_number, m.first_name, m.last_name,
+              m.email, m.phone
+       FROM audit_logs al
+       LEFT JOIN members m ON m.id = al.actor_id
+       ${whereClause}
+       ORDER BY al.created_at DESC
+       LIMIT $${idx++} OFFSET $${idx++}`,
+      dataParams
+    );
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*)
+       FROM audit_logs al
+       LEFT JOIN members m ON m.id = al.actor_id
+       ${whereClause}`,
+      params
+    );
+
+    const total = parseInt(countResult.rows[0].count, 10);
+    return res.json({
+      logins: result.rows,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum) || 1,
+    });
+  } catch (err) {
+    console.error('getMemberLogins error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { getAuditLogs, getMemberAuditLogs, getMemberLogins };

@@ -275,6 +275,55 @@ const adminUpdateTreatmentPlan = async (req, res) => {
   }
 };
 
+// DELETE /treatment-plans/admin/:id/attachment/:kind
+// kind: document | photo | audio | video
+const adminDeleteAttachment = async (req, res) => {
+  try {
+    const { id, kind } = req.params;
+    const allowedKinds = ['document', 'photo', 'audio', 'video'];
+    if (!allowedKinds.includes(kind)) {
+      return res.status(400).json({ message: 'Invalid attachment kind' });
+    }
+    const column = `${kind}_url`;
+
+    const existing = await pool.query(
+      `SELECT ${column} AS url FROM treatment_plans WHERE id = $1`,
+      [id]
+    );
+    if (!existing.rows.length) {
+      return res.status(404).json({ message: 'Treatment plan not found' });
+    }
+
+    const currentUrl = existing.rows[0].url;
+    if (currentUrl) {
+      const filename = path.basename(currentUrl);
+      const filePath = path.join(uploadsDir, filename);
+      fs.unlink(filePath, (err) => {
+        if (err && err.code !== 'ENOENT') {
+          console.warn('adminDeleteAttachment unlink warning:', err.message);
+        }
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE treatment_plans SET ${column} = NULL, updated_at = NOW()
+       WHERE id = $1 RETURNING *`,
+      [id]
+    );
+
+    await pool.query(
+      `INSERT INTO audit_logs (actor_id, actor_type, action, entity, entity_id, details, ip_address)
+       VALUES ($1, 'admin', 'delete_treatment_plan_attachment', 'treatment_plan', $2, $3, $4)`,
+      [req.user.id, id, JSON.stringify({ kind, admin_name: req.user.name || req.user.email }), req.ip]
+    );
+
+    return res.json(result.rows[0]);
+  } catch (err) {
+    console.error('adminDeleteAttachment error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getMyTreatmentPlans,
   createTreatmentPlan,
@@ -283,4 +332,5 @@ module.exports = {
   getAllTreatmentPlans,
   adminCreateTreatmentPlan,
   adminUpdateTreatmentPlan,
+  adminDeleteAttachment,
 };

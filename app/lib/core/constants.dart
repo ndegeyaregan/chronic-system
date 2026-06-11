@@ -137,6 +137,7 @@ const String routeReimbursement   = '/home/reimbursement';
 const String routeReimbursementHistory = '/home/reimbursement/history';
 const String routeCardReprintHistory   = '/home/card/reprints';
 const String routePrescriptions        = '/home/prescriptions';
+const String routeNews                 = '/home/news';
 
 // ── Wellness tips ─────────────────────────────────────────────────────────
 const List<String> kWellnessTips = [

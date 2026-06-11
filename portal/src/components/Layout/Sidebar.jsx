@@ -4,7 +4,6 @@ import {
   HomeIcon,
   UsersIcon,
   BuildingOffice2Icon,
-  BuildingStorefrontIcon,
   CalendarDaysIcon,
   HeartIcon,
   SparklesIcon,
@@ -24,6 +23,10 @@ import {
   DocumentArrowDownIcon,
   DocumentMagnifyingGlassIcon,
   RectangleStackIcon,
+  ClockIcon,
+  CurrencyDollarIcon,
+  IdentificationIcon,
+  LinkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import { getAdminAlerts } from '../../api/alerts';
@@ -34,9 +37,13 @@ const NAV_ITEMS = [
   { to: '/members', label: 'Members', Icon: UsersIcon },
   { to: '/schemes', label: 'Schemes', Icon: RectangleStackIcon },
   { to: '/hospitals', label: 'Hospitals', Icon: BuildingOffice2Icon },
-  { to: '/pharmacies', label: 'Pharmacies', Icon: BuildingStorefrontIcon },
+  { to: '/institution-price-lists', label: 'Instution Price List', Icon: DocumentTextIcon },
+  { to: '/service-cost-comparison', label: 'Service Cost Comparison', Icon: CurrencyDollarIcon },
   { to: '/appointments', label: 'Appointments', Icon: CalendarDaysIcon },
   { to: '/medications', label: 'Medications', Icon: HeartIcon },
+  { to: '/reimbursements', label: 'Reimbursements', Icon: CurrencyDollarIcon },
+  { to: '/card-reprints', label: 'Card Reprints', Icon: IdentificationIcon },
+  { to: '/membership-authorizations', label: 'Authorization Docs', Icon: ShieldCheckIcon },
   { to: '/treatment-plans', label: 'Treatment Plans', Icon: ClipboardDocumentCheckIcon },
   { to: '/care-buddies', label: 'Care Buddies', Icon: UserGroupIcon },
   { to: '/lifestyle-partners', label: 'Lifestyle Partners', Icon: SparklesIcon },
@@ -51,7 +58,10 @@ const NAV_ITEMS = [
   { to: '/reports', label: 'Reports', Icon: DocumentArrowDownIcon },
   { to: '/alerts', label: 'Alerts', Icon: BellAlertIcon, showBadge: true },
   { to: '/analytics', label: 'Analytics', Icon: ChartBarIcon },
+  { to: '/claims-analysis', label: 'Claims Analysis', Icon: ChartBarIcon },
   { to: '/audit-logs', label: 'Audit Logs', Icon: DocumentMagnifyingGlassIcon },
+  { to: '/member-logins', label: 'Member Logins', Icon: ClockIcon },
+  { to: '/product-links', label: 'App Product Links', Icon: LinkIcon },
   { to: '/settings', label: 'Settings', Icon: Cog6ToothIcon },
 ];
 
@@ -85,8 +95,20 @@ export default function Sidebar() {
     if (item.to === '/audit-logs' && !isSuperAdmin) {
       return false;
     }
+    // Hide schemes from non-super admins
+    if (item.to === '/schemes' && !isSuperAdmin) {
+      return false;
+    }
+    // Hide product links manager from non-super admins
+    if (item.to === '/product-links' && !isSuperAdmin) {
+      return false;
+    }
     // Hide notifications from content_admin
     if (item.to === '/notifications' && user?.role === 'content_admin') {
+      return false;
+    }
+    // Hide claims analysis from content_admin
+    if (item.to === '/claims-analysis' && user?.role === 'content_admin') {
       return false;
     }
     return true;

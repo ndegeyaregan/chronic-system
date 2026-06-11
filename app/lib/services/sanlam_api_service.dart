@@ -70,6 +70,8 @@ class SanlamApiService {
       final desc = description.toLowerCase();
       final looksEmpty = desc.contains('not found') ||
           desc.contains('no record') ||
+          desc.contains('not matching') ||
+          desc.contains('is not maching') ||
           RegExp(r'\bno\b.*\b(found|exist|available)\b').hasMatch(desc);
       if (looksEmpty) return [];
       throw SanlamApiException(status, description);
@@ -115,6 +117,17 @@ class SanlamApiService {
     }
     if (data is Map) return Map<String, dynamic>.from(data);
     return {};
+  }
+
+  /// Returns institution-specific co-pays applicable to this member.
+  /// Endpoint: `POST GetInstCoPay` → `{ data: [ { InstId, Institution, ... } ] }`
+  /// Each entry covers one institution that imposes a co-pay regardless of the
+  /// member's scheme (e.g. Nakasero Hospital 25% out-patient). Returns an empty
+  /// list when none apply or when the API responds "no records found".
+  Future<List<Map<String, dynamic>>> getInstCoPay(String memberNo) async {
+    final response =
+        await _dio.post('GetInstCoPay', data: {'MemberNo': memberNo});
+    return _unwrapList(response.data);
   }
 
   Future<List<Map<String, dynamic>>> getPlanBenefitList(

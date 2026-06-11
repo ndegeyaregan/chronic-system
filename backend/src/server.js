@@ -4,6 +4,9 @@ const app = require('./app');
 const pool = require('./config/db');
 const alertService = require('./services/alertService');
 const { sendRefillReminders } = require('./services/refillReminderService');
+const { syncInstitutionsFromSanlam } = require('./services/sanlamInstitutionSyncService');
+const { checkPendingClaimsAndAlert } = require('./services/pendingClaimsAlertService');
+const { checkPreauthsAndAlert } = require('./services/preauthInstantAlertService');
 const notificationService = require('./services/notificationService');
 
 const PORT = process.env.PORT || 3000;
@@ -125,6 +128,30 @@ cron.schedule('30 9 * * *', runCron('labtest-due-date-sms', () =>
 // Every day at 07:00 — medication refill reminders (7-day and 2-day before pickup)
 cron.schedule('0 7 * * *', runCron('refill-reminders', () =>
   sendRefillReminders()
+));
+
+// Every 3 days at 03:00 — pull the live institution catalogue from the
+// Sanlam Member API and upsert it into the local DB. This runs in
+// addition to the in-app "Sync from Sanlam" button so the catalogue
+// stays fresh even if no member triggers a manual sync.
+cron.schedule('0 3 */3 * *', runCron('sanlam-institution-sync', () =>
+  syncInstitutionsFromSanlam()
+));
+
+// Every day at 09:00 — alert members about claims that have been pending
+// for over 24 hours. Outpatient & dental claims send Push + SMS; optical
+// claims send Push only (no SMS). Idempotent via claim_pending_alerts.
+cron.schedule('0 9 * * *', runCron('pending-claims-alert', () =>
+  checkPendingClaimsAndAlert()
+));
+
+// Every minute — instant pre-authorisation alerts. Polls Sanlam for any
+// new pre-auth (Open / Approved / Rejected) and pushes a notification to
+// the member the moment one appears. Dedupe is handled by the unique
+// (member_no, request_no, status) constraint on preauth_events, so members
+// only ever get one notification per status transition.
+cron.schedule('* * * * *', runCron('preauth-instant-alert', () =>
+  checkPreauthsAndAlert()
 ));
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────

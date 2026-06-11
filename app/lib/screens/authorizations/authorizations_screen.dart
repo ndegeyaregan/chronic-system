@@ -6,6 +6,7 @@ import '../../core/constants.dart';
 import '../../models/authorization_request.dart';
 import '../../providers/authorizations_provider.dart';
 import '../../widgets/common/loading_shimmer.dart';
+import '../../core/app_colors.dart';
 
 class AuthorizationsScreen extends ConsumerStatefulWidget {
   const AuthorizationsScreen({super.key});
@@ -30,7 +31,7 @@ class _AuthorizationsScreenState extends ConsumerState<AuthorizationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pre-Authorization Requests'),
+        title: Text('Pre-Authorization Requests'),
         centerTitle: false,
         actions: [
           IconButton(
@@ -44,7 +45,7 @@ class _AuthorizationsScreenState extends ConsumerState<AuthorizationsScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/authorizations/request'),
         icon: const Icon(Icons.add),
-        label: const Text('New Request'),
+        label: Text('New Request'),
         backgroundColor: kPrimary,
       ),
       body: RefreshIndicator(
@@ -76,20 +77,20 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.assignment_outlined,
-                size: 64, color: kSubtext.withValues(alpha: 0.4)),
+                size: 64, color: context.c.subtext.withValues(alpha: 0.4)),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No Authorization Requests',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: kSubtext),
+                  color: context.c.subtext),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Submit a request to get Sanlam approval\nbefore picking up medication or\nundergoing a procedure.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: kSubtext),
+              style: TextStyle(fontSize: 13, color: context.c.subtext),
             ),
           ],
         ),
@@ -102,13 +103,13 @@ class _AuthCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statusInfo = _statusInfo(request.status);
+    final statusInfo = _statusInfo(context, request.status);
 
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: kBorder.withValues(alpha: 0.7)),
+        side: BorderSide(color: context.c.border.withValues(alpha: 0.7)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -184,13 +185,13 @@ class _AuthCard extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: kSurfaceAlt,
+                  color: context.c.surfaceAlt,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   request.notes!,
                   style:
-                      const TextStyle(fontSize: 12, color: kSubtext),
+                      TextStyle(fontSize: 12, color: context.c.subtext),
                 ),
               ),
             ],
@@ -244,13 +245,13 @@ class _AuthCard extends ConsumerWidget {
             // Cancel button (only for pending)
             if (request.status == AuthRequestStatus.pending) ...[
               const SizedBox(height: 12),
-              const Divider(height: 1, color: kBorder),
+              Divider(height: 1, color: context.c.border),
               const SizedBox(height: 8),
               TextButton.icon(
                 onPressed: () => _confirmCancel(context, ref),
                 icon: const Icon(Icons.cancel_outlined,
                     size: 15, color: kError),
-                label: const Text(
+                label: Text(
                   'Cancel Request',
                   style: TextStyle(
                       color: kError,
@@ -274,17 +275,17 @@ class _AuthCard extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Cancel Request?'),
-        content: const Text(
+        title: Text('Cancel Request?'),
+        content: Text(
             'Are you sure you want to cancel this authorization request?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('No')),
+              child: Text('No')),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
               child:
-                  const Text('Yes, Cancel', style: TextStyle(color: kError))),
+                  Text('Yes, Cancel', style: TextStyle(color: kError))),
         ],
       ),
     );
@@ -295,14 +296,14 @@ class _AuthCard extends ConsumerWidget {
     }
   }
 
-  (Color, String) _statusInfo(AuthRequestStatus status) {
+  (Color, String) _statusInfo(BuildContext context, AuthRequestStatus status) {
     switch (status) {
       case AuthRequestStatus.approved:
         return (kSuccess, 'Approved');
       case AuthRequestStatus.rejected:
         return (kError, 'Rejected');
       case AuthRequestStatus.cancelled:
-        return (kSubtext, 'Cancelled');
+        return (context.c.subtext, 'Cancelled');
       default:
         return (kWarning, 'Pending Review');
     }
@@ -322,7 +323,7 @@ class _InfoRow extends StatelessWidget {
         child: Row(
           children: [
             Icon(icon,
-                size: 13, color: subtle ? kSubtext.withValues(alpha: 0.6) : kSubtext),
+                size: 13, color: subtle ? context.c.subtext.withValues(alpha: 0.6) : context.c.subtext),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
@@ -330,8 +331,8 @@ class _InfoRow extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 12,
                     color: subtle
-                        ? kSubtext.withValues(alpha: 0.7)
-                        : kSubtext),
+                        ? context.c.subtext.withValues(alpha: 0.7)
+                        : context.c.subtext),
               ),
             ),
           ],

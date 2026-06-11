@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import {
   MagnifyingGlassIcon, ArrowUpTrayIcon, ArrowDownTrayIcon,
   EyeIcon, LockClosedIcon, UserPlusIcon,
-  DocumentArrowDownIcon,
+  DocumentArrowDownIcon, HeartIcon, TrashIcon,
 } from '@heroicons/react/24/outline';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -17,10 +17,13 @@ import {
   uploadMembersCSV,
   toggleMemberStatus,
   exportMembers,
+  updateMember,
+  deleteMember,
 } from '../../api/members';
 import { resetMemberPassword } from '../../api/auth';
 import { getConditions } from '../../api/conditions';
 import { getSchemes } from '../../api/schemes';
+import { useAuth } from '../../context/AuthContext';
 import Table from '../../components/UI/Table';
 import Badge from '../../components/UI/Badge';
 import Button from '../../components/UI/Button';
@@ -33,6 +36,9 @@ const CSV_TEMPLATE = `member_number,first_name,last_name,email,phone,scheme,cond
 export default function MembersPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { user, isSuperAdmin } = useAuth();
+  const canDelete =
+    (user?.email || '').toLowerCase() === 'eddyregan4@gmail.com';
   const [search, setSearch] = useState('');
   const [condition, setCondition] = useState('');
   const [status, setStatus] = useState('');
@@ -42,6 +48,8 @@ export default function MembersPage() {
   const [dragOver, setDragOver] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [chronicMember, setChronicMember] = useState(null);
+  const [chronicSelected, setChronicSelected] = useState([]);
   const fileRef = useRef();
   const {
     register,
@@ -125,6 +133,53 @@ export default function MembersPage() {
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to register member'),
   });
+
+  const chronicMutation = useMutation({
+    mutationFn: ({ id, conditions }) => updateMember(id, { conditions }),
+    onSuccess: () => {
+      qc.invalidateQueries(['members']);
+      toast.success(
+        chronicSelected.length === 0
+          ? 'Member removed from chronic list'
+          : `Saved ${chronicSelected.length} condition(s)`
+      );
+      setChronicMember(null);
+      setChronicSelected([]);
+    },
+    onError: (err) =>
+      toast.error(err.response?.data?.message || 'Failed to save conditions'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteMember,
+    onSuccess: () => {
+      qc.invalidateQueries(['members']);
+      toast.success('Member deleted');
+    },
+    onError: (err) =>
+      toast.error(err.response?.data?.message || 'Failed to delete member'),
+  });
+
+  const handleDelete = (row) => {
+    if (!canDelete) return;
+    const name = `${row.first_name || ''} ${row.last_name || ''}`.trim() || row.member_number;
+    const confirmed = window.confirm(
+      `Permanently delete ${name} (${row.member_number})?\n\nThis removes the member and ALL related records (conditions, vitals, medications, claims, etc.). This cannot be undone.`
+    );
+    if (!confirmed) return;
+    deleteMutation.mutate(row.id);
+  };
+
+  const openChronicModal = (row) => {
+    setChronicMember(row);
+    setChronicSelected(Array.isArray(row.conditions) ? [...row.conditions] : []);
+  };
+
+  const toggleChronicCondition = (name) => {
+    setChronicSelected((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+    );
+  };
 
   const handleExport = async () => {
     try {
@@ -276,6 +331,30 @@ export default function MembersPage() {
           <Button variant="secondary" onClick={() => resetPwMutation.mutate(row.id)} style={{ padding: '4px 8px', fontSize: '12px' }}>
             <LockClosedIcon style={{ width: 13, height: 13 }} /> Reset PW
           </Button>
+          <Button
+            variant={row.is_chronic ? 'success' : 'primary'}
+            onClick={() => openChronicModal(row)}
+            style={{ padding: '4px 8px', fontSize: '12px' }}
+            title={
+              row.is_chronic
+                ? `Chronic: ${Array.isArray(row.conditions) ? row.conditions.join(', ') : ''}`
+                : 'Mark as chronic and assign conditions'
+            }
+          >
+            <HeartIcon style={{ width: 13, height: 13 }} />
+            {row.is_chronic ? ' Chronic' : ' Mark Chronic'}
+          </Button>
+          {canDelete && (
+            <Button
+              variant="danger"
+              onClick={() => handleDelete(row)}
+              style={{ padding: '4px 8px', fontSize: '12px' }}
+              title="Permanently delete this member (super admin only)"
+              disabled={deleteMutation.isPending}
+            >
+              <TrashIcon style={{ width: 13, height: 13 }} /> Delete
+            </Button>
+          )}
         </div>
       ),
     },
@@ -311,9 +390,11 @@ export default function MembersPage() {
           <option value="inactive">Inactive</option>
         </select>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-          <Button variant="primary" onClick={() => setShowCreateMember(true)}>
-            <UserPlusIcon style={{ width: 15, height: 15 }} /> Register Member
-          </Button>
+          {isSuperAdmin && (
+            <Button variant="primary" onClick={() => setShowCreateMember(true)}>
+              <UserPlusIcon style={{ width: 15, height: 15 }} /> Register Member
+            </Button>
+          )}
           <Button variant="secondary" onClick={handleExport}>
             <ArrowDownTrayIcon style={{ width: 15, height: 15 }} /> Export CSV
           </Button>
@@ -521,6 +602,86 @@ export default function MembersPage() {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {chronicMember && (
+        <Modal
+          title={`Chronic Conditions — ${chronicMember.first_name || ''} ${chronicMember.last_name || ''}`.trim()}
+          width="640px"
+          onClose={() => { setChronicMember(null); setChronicSelected([]); }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ fontSize: '13px', color: '#64748b' }}>
+              Member #: <strong style={{ color: 'var(--text)' }}>{chronicMember.member_number}</strong>
+              {Array.isArray(chronicMember.conditions) && chronicMember.conditions.length > 0 && (
+                <span style={{ marginLeft: '12px' }}>
+                  Currently: <strong style={{ color: 'var(--text)' }}>{chronicMember.conditions.join(', ')}</strong>
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 500, color: '#475569' }}>
+                Select chronic conditions to assign
+              </label>
+              {conditionsData.length === 0 ? (
+                <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>No conditions defined yet.</p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
+                  {conditionsData.map((conditionItem) => {
+                    const checked = chronicSelected.includes(conditionItem.name);
+                    return (
+                      <label
+                        key={conditionItem.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          background: checked ? '#eff6ff' : '#fff',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleChronicCondition(conditionItem.name)}
+                        />
+                        <span style={{ fontSize: '13px', color: 'var(--text)' }}>{conditionItem.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0' }}>
+                Saving with no conditions selected will remove this member from the chronic list.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button
+                variant="secondary"
+                onClick={() => { setChronicMember(null); setChronicSelected([]); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                disabled={chronicMutation.isPending}
+                onClick={() =>
+                  chronicMutation.mutate({
+                    id: chronicMember.id,
+                    conditions: chronicSelected,
+                  })
+                }
+              >
+                {chronicMutation.isPending ? 'Saving…' : 'Save Conditions'}
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

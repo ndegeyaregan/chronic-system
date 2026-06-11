@@ -10,7 +10,9 @@ import MembersPage from './pages/members/MembersPage';
 import MemberDetailPage from './pages/members/MemberDetailPage';
 import HospitalsPage from './pages/hospitals/HospitalsPage';
 import InstitutionsPage from './pages/hospitals/InstitutionsPage';
-import PharmaciesPage from './pages/pharmacies/PharmaciesPage';
+import InstitutionPriceListPage from './pages/hospitals/InstitutionPriceListPage';
+import AllInstitutionPriceListsPage from './pages/hospitals/AllInstitutionPriceListsPage';
+import ServiceCostComparisonPage from './pages/hospitals/ServiceCostComparisonPage';
 import AppointmentsPage from './pages/appointments/AppointmentsPage';
 import MedicationsPage from './pages/MedicationsPage';
 import LifestylePartnersPage from './pages/lifestyle/LifestylePartnersPage';
@@ -27,10 +29,17 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import SchemesPage from './pages/schemes/SchemesPage';
 import AuditLogsPage from './pages/admin/AuditLogsPage';
+import MemberLoginsPage from './pages/admin/MemberLoginsPage';
+import ReimbursementsPage from './pages/admin/ReimbursementsPage';
+import CardReprintsPage from './pages/admin/CardReprintsPage';
+import MembershipAuthorizationsPage from './pages/admin/MembershipAuthorizationsPage';
+import ProductLinksPage from './pages/admin/ProductLinksPage';
 import VitalsThresholdsPage from './pages/vitals/VitalsThresholdsPage';
 import TreatmentPlansPage from './pages/treatmentPlans/TreatmentPlansPage';
 import CareBuddiesPage from './pages/careBuddies/CareBuddiesPage';
 import DownloadPage from './pages/DownloadPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import ClaimsAnalysisPage from './pages/claims/ClaimsAnalysisPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,11 +79,15 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/download" element={<DownloadPage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="/" element={<ProtectedPage><Dashboard /></ProtectedPage>} />
             <Route path="/members" element={<ProtectedPage><MembersPage /></ProtectedPage>} />
             <Route path="/members/:id" element={<ProtectedPage><MemberDetailPage /></ProtectedPage>} />
             <Route path="/hospitals" element={<ProtectedPage><InstitutionsPage /></ProtectedPage>} />
-            <Route path="/pharmacies" element={<ProtectedPage><PharmaciesPage /></ProtectedPage>} />
+            <Route path="/institution-price-lists" element={<ProtectedPage><InstitutionPriceListPage /></ProtectedPage>} />
+            <Route path="/institution-price-lists/all" element={<ProtectedPage><AllInstitutionPriceListsPage /></ProtectedPage>} />
+            <Route path="/service-cost-comparison" element={<ProtectedPage><ServiceCostComparisonPage /></ProtectedPage>} />
             <Route path="/appointments" element={<ProtectedPage><AppointmentsPage /></ProtectedPage>} />
             <Route path="/medications" element={<ProtectedPage><MedicationsPage /></ProtectedPage>} />
             <Route path="/lifestyle-partners" element={<ProtectedPage><LifestylePartnersPage /></ProtectedPage>} />
@@ -86,13 +99,19 @@ export default function App() {
             <Route path="/lab-tests/queue" element={<ProtectedPage><LabTestsQueuePage /></ProtectedPage>} />
             <Route path="/admin-users" element={<SuperAdminPage><AdminUsersPage /></SuperAdminPage>} />
             <Route path="/reports" element={<ProtectedPage><ReportsPage /></ProtectedPage>} />
-            <Route path="/schemes" element={<ProtectedPage><SchemesPage /></ProtectedPage>} />
+            <Route path="/schemes" element={<SuperAdminPage><SchemesPage /></SuperAdminPage>} />
             <Route path="/alerts" element={<ProtectedPage><AlertsPage /></ProtectedPage>} />
             <Route path="/vitals-thresholds" element={<ProtectedPage><VitalsThresholdsPage /></ProtectedPage>} />
             <Route path="/treatment-plans" element={<ProtectedPage><TreatmentPlansPage /></ProtectedPage>} />
             <Route path="/care-buddies" element={<ProtectedPage><CareBuddiesPage /></ProtectedPage>} />
             <Route path="/audit-logs" element={<SuperAdminPage><AuditLogsPage /></SuperAdminPage>} />
+            <Route path="/member-logins" element={<ProtectedPage><MemberLoginsPage /></ProtectedPage>} />
+            <Route path="/reimbursements" element={<ProtectedPage><ReimbursementsPage /></ProtectedPage>} />
+            <Route path="/card-reprints" element={<ProtectedPage><CardReprintsPage /></ProtectedPage>} />
+            <Route path="/membership-authorizations" element={<ProtectedPage><MembershipAuthorizationsPage /></ProtectedPage>} />
+            <Route path="/product-links" element={<SuperAdminPage><ProductLinksPage /></SuperAdminPage>} />
             <Route path="/analytics" element={<NotForContentAdminPage><AnalyticsPage /></NotForContentAdminPage>} />
+            <Route path="/claims-analysis" element={<NotForContentAdminPage><ClaimsAnalysisPage /></NotForContentAdminPage>} />
             <Route path="/settings" element={<ProtectedPage><SettingsPage /></ProtectedPage>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

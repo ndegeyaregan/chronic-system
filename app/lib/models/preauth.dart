@@ -85,6 +85,14 @@ class Preauth {
   /// we parse here.
   final DateTime? requestDate;
 
+  /// When the pre-auth was first submitted (from `createdAt`).
+  /// Used to start the turnaround-time clock on the Pre-Auth screen.
+  final DateTime? createdAt;
+
+  /// When the pre-auth was last updated (from `updatedAt`).
+  /// Used to stop the turnaround-time clock once a decision is made.
+  final DateTime? updatedAt;
+
   const Preauth({
     required this.claimNo,
     required this.memberNo,
@@ -101,10 +109,28 @@ class Preauth {
     required this.insurerNote,
     required this.authCode,
     required this.requestDate,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
   /// Stable id used for routing. Falls back to authCode if claimNo missing.
   String get id => claimNo.isNotEmpty ? claimNo : authCode;
+
+  /// Turnaround time:
+  ///  - For Open requests → time elapsed since [createdAt] until now (live).
+  ///  - For decided (Approved/Rejected) → fixed duration from [createdAt]
+  ///    to [updatedAt].
+  /// Returns null if we can't compute it from the available timestamps.
+  Duration? turnaroundDuration({DateTime? now}) {
+    final start = createdAt;
+    if (start == null) return null;
+    if (status == PreauthStatus.open) {
+      return (now ?? DateTime.now()).difference(start);
+    }
+    final end = updatedAt;
+    if (end == null) return null;
+    return end.difference(start);
+  }
 
   /// Normalised request-type bucket: out / in / dental / optical / other.
   String get requestTypeBucket {
@@ -144,6 +170,8 @@ class Preauth {
 
     final claimNo = pick(['claimNo', 'ClaimNo', 'claim_no']);
     final statusRaw = pick(['Status', 'status']);
+    final createdAt = _parseSanlamDateTime(pick(['createdAt', 'CreatedAt']));
+    final updatedAt = _parseSanlamDateTime(pick(['updatedAt', 'UpdatedAt']));
 
     return Preauth(
       claimNo: claimNo,
@@ -154,15 +182,43 @@ class Preauth {
       statusLabel: statusRaw.isEmpty ? 'Unknown' : statusRaw,
       diagnosis: pick(['diagnosis', 'Diagnosis']),
       symptoms: pick(['symptoms', 'Symptoms']),
-      requestType: pick(['requestType', 'RequestType']),
+      requestType: pick(['requestType', 'RequestType', 'treatmentType', 'TreatmentType']),
       requestedAmount: parseAmount(j['requestedAmount'] ?? j['RequestedAmount']),
       approvedAmount: parseAmount(j['approvedAmount'] ?? j['ApprovedAmount']),
       description: pick(['description', 'Description']),
       insurerNote: pick(['insNote', 'InsNote', 'insurerNote']),
       authCode: pick(['authcode', 'authCode', 'AuthCode']),
-      requestDate: _dateFromClaimNo(claimNo),
+      requestDate: createdAt ?? _dateFromClaimNo(claimNo),
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
+}
+
+/// Parses Sanlam-format date-time strings such as
+/// `"03/02/2026 8:09:30 PM"` (DD/MM/YYYY h:mm:ss AM/PM).
+/// Falls back to ISO parsing if the format doesn't match.
+DateTime? _parseSanlamDateTime(String raw) {
+  final s = raw.trim();
+  if (s.isEmpty) return null;
+
+  final m = RegExp(
+    r'^(\d{1,2})/(\d{1,2})/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$',
+    caseSensitive: false,
+  ).firstMatch(s);
+  if (m != null) {
+    final day = int.parse(m.group(1)!);
+    final month = int.parse(m.group(2)!);
+    final year = int.parse(m.group(3)!);
+    var hour = int.parse(m.group(4)!);
+    final minute = int.parse(m.group(5)!);
+    final second = int.tryParse(m.group(6) ?? '0') ?? 0;
+    final ampm = m.group(7)?.toUpperCase();
+    if (ampm == 'PM' && hour < 12) hour += 12;
+    if (ampm == 'AM' && hour == 12) hour = 0;
+    return DateTime(year, month, day, hour, minute, second);
+  }
+  return DateTime.tryParse(s);
 }
 
 /// Sanlam claim numbers follow `SHORTCODE-YYMMDD-seq`, e.g. `PRHE-260428-127`.

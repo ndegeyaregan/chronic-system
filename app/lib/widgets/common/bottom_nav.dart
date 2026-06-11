@@ -7,11 +7,12 @@ class BottomNav extends StatelessWidget {
 
   int _locationToIndex(String location) {
     if (location.startsWith('/home/chronic')) return 0;
+    if (location == routeDashboard) return 0;
     if (location.startsWith(routeBenefits)) return 1;
     if (location.startsWith(routeClaims)) return 2;
-    if (location.startsWith(routeMembershipCard)) return 3;
+    if (location.startsWith(routeFacilityFinder)) return 3;
     if (location.startsWith(routeProfile)) return 4;
-    return 0;
+    return -1; // sub-page that doesn't belong to any tab — no tab active
   }
 
   String _indexToRoute(int index) {
@@ -21,7 +22,7 @@ class BottomNav extends StatelessWidget {
       case 2:
         return routeClaims;
       case 3:
-        return routeMembershipCard;
+        return routeFacilityFinder;
       case 4:
         return routeProfile;
       default:
@@ -43,7 +44,7 @@ class BottomNav extends StatelessWidget {
       ),
       _NavItem(icon: Icons.account_balance_wallet_rounded, label: 'Benefits', color: const Color(0xFF32ADE6)),
       _NavItem(icon: Icons.receipt_long_rounded,           label: 'Claims',   color: const Color(0xFF34C759)),
-      _NavItem(icon: Icons.badge_rounded,                  label: 'Card',     color: const Color(0xFFFF9500)),
+      _NavItem(icon: Icons.local_hospital_rounded,         label: 'Facility', color: const Color(0xFFFF9500)),
       _NavItem(icon: Icons.person_rounded,                 label: 'Profile',  color: const Color(0xFFFF3B30)),
     ];
 
@@ -98,6 +99,9 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final col = item.color;
+    // Inactive icon = neutral gray with strong contrast (was a faint
+    // 38% tint of the brand color which members reported as "looks disabled").
+    const inactiveColor = Color(0xFF6B7280); // slate-500: clearly visible on white
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -114,8 +118,8 @@ class _NavButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(item.icon,
-                size: 22,
-                color: isActive ? col : col.withValues(alpha: 0.38)),
+                size: 24,
+                color: isActive ? col : inactiveColor),
             if (isActive) ...[
               const SizedBox(width: 6),
               Text(

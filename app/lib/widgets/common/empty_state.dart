@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants.dart';
+import '../../core/app_colors.dart';
 
 class EmptyState extends StatelessWidget {
   final IconData icon;
@@ -37,15 +38,15 @@ class EmptyState extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               title,
-              style: const TextStyle(
-                  fontSize: 17, fontWeight: FontWeight.w700, color: kText),
+              style: TextStyle(
+                  fontSize: 17, fontWeight: FontWeight.w700, color: context.c.text),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               subtitle,
-              style: const TextStyle(
-                  fontSize: 13, color: kSubtext, height: 1.5),
+              style: TextStyle(
+                  fontSize: 13, color: context.c.subtext, height: 1.5),
               textAlign: TextAlign.center,
             ),
             if (buttonLabel != null && onButton != null) ...[

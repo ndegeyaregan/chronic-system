@@ -5,6 +5,7 @@ import '../../core/constants.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
+import '../../core/app_colors.dart';
 
 /// Two-step forgot-password flow:
 ///   1. Member enters their member number → backend tells us which channels
@@ -107,13 +108,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: kText, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: context.c.text, size: 20),
           onPressed: () {
             if (_step == _Step.choose) {
               setState(() {
@@ -129,13 +130,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: _step == _Step.input ? _buildInput() : _buildChoose(),
+          child: _step == _Step.input ? _buildInput(context) : _buildChoose(context),
         ),
       ),
     );
   }
 
-  Widget _buildInput() {
+  Widget _buildInput(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -151,17 +152,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               color: kPrimary, size: 36),
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Forgot Password?',
           style: TextStyle(
-              fontSize: 24, fontWeight: FontWeight.bold, color: kText),
+              fontSize: 24, fontWeight: FontWeight.bold, color: context.c.text),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Enter your member number and we will check which contact methods '
           'are on file for you.',
-          style: TextStyle(fontSize: 14, color: kSubtext, height: 1.5),
+          style: TextStyle(fontSize: 14, color: context.c.subtext, height: 1.5),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
@@ -182,7 +183,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   hint: 'e.g. 333307-00',
                   controller: _memberNumberCtrl,
                   prefixIcon:
-                      const Icon(Icons.badge_outlined, color: kSubtext),
+                      Icon(Icons.badge_outlined, color: context.c.subtext),
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _lookup(),
                   validator: (v) => v == null || v.trim().isEmpty
@@ -207,22 +208,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildChoose() {
+  Widget _buildChoose(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'Where should we send the OTP?',
           style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.bold, color: kText),
+              fontSize: 22, fontWeight: FontWeight.bold, color: context.c.text),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
           'Pick the contact method you would like Sanlam to use for member '
           '$_memberNumber.',
-          style: const TextStyle(fontSize: 14, color: kSubtext, height: 1.5),
+          style: TextStyle(fontSize: 14, color: context.c.subtext, height: 1.5),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
@@ -298,18 +299,18 @@ class _ChannelCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: kText)),
+                            color: context.c.text)),
                     const SizedBox(height: 4),
                     Text(subtitle,
                         style:
-                            const TextStyle(fontSize: 13, color: kSubtext)),
+                            TextStyle(fontSize: 13, color: context.c.subtext)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: kSubtext),
+              Icon(Icons.chevron_right_rounded, color: context.c.subtext),
             ],
           ),
         ),

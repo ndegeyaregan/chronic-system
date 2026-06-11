@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants.dart';
+import '../../core/app_colors.dart';
 
 /// Full-screen Terms & Conditions reader.
 ///
@@ -22,13 +23,13 @@ class TermsScreen extends StatelessWidget {
           elevation: 0,
           surfaceTintColor: Colors.white,
           leading: IconButton(
-            icon: const Icon(Icons.close, color: kText),
+            icon: Icon(Icons.close, color: context.c.text),
             onPressed: () => Navigator.of(context).pop(false),
           ),
-          title: const Text(
+          title: Text(
             'Terms & Conditions',
             style: TextStyle(
-              color: kText,
+              color: context.c.text,
               fontWeight: FontWeight.w700,
               fontSize: 17,
             ),
@@ -52,7 +53,7 @@ class TermsScreen extends StatelessWidget {
                           border: Border.all(
                               color: kPrimary.withValues(alpha: 0.15)),
                         ),
-                        child: const Row(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Icon(Icons.info_outline,
@@ -63,7 +64,7 @@ class TermsScreen extends StatelessWidget {
                                 'Please read these terms carefully. You must accept them to create an account.',
                                 style: TextStyle(
                                     fontSize: 13,
-                                    color: kText,
+                                    color: context.c.text,
                                     height: 1.45),
                               ),
                             ),
@@ -71,11 +72,11 @@ class TermsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      const Text(
+                      Text(
                         kTermsBody,
                         style: TextStyle(
                           fontSize: 14,
-                          color: kText,
+                          color: context.c.text,
                           height: 1.6,
                         ),
                       ),
@@ -90,7 +91,7 @@ class TermsScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border(
-                    top: BorderSide(color: kBorder, width: 1),
+                    top: BorderSide(color: context.c.border, width: 1),
                   ),
                 ),
                 child: Row(
@@ -99,14 +100,14 @@ class TermsScreen extends StatelessWidget {
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(false),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: kSubtext,
-                          side: const BorderSide(color: kBorder),
+                          foregroundColor: context.c.subtext,
+                          side: BorderSide(color: context.c.border),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                               borderRadius:
                                   BorderRadius.circular(kRadiusMd)),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Decline',
                           style: TextStyle(fontWeight: FontWeight.w600),
                         ),
@@ -119,7 +120,7 @@ class TermsScreen extends StatelessWidget {
                         onPressed: () => Navigator.of(context).pop(true),
                         icon: const Icon(Icons.check_circle_outline,
                             color: Colors.white, size: 20),
-                        label: const Text(
+                        label: Text(
                           'I Agree & Continue',
                           style: TextStyle(
                               color: Colors.white,

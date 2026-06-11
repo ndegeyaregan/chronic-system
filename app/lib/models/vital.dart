@@ -10,6 +10,8 @@ class Vital {
   final int? painLevel;
   final String? mood;
   final String? notes;
+  final String? footSensitivity;
+  final String? eyesight;
   final DateTime loggedAt;
 
   const Vital({
@@ -24,6 +26,8 @@ class Vital {
     this.painLevel,
     this.mood,
     this.notes,
+    this.footSensitivity,
+    this.eyesight,
     required this.loggedAt,
   });
 
@@ -40,6 +44,9 @@ class Vital {
         painLevel: _toInt(json['pain_level'] ?? json['painLevel']),
         mood: json['mood'] as String?,
         notes: json['notes'] as String?,
+        footSensitivity:
+            json['foot_sensitivity'] as String? ?? json['footSensitivity'] as String?,
+        eyesight: json['eyesight'] as String?,
         loggedAt: DateTime.parse(
             (json['recorded_at'] ?? json['logged_at'] ?? json['loggedAt'] ?? DateTime.now().toIso8601String())
                 .toString()),
@@ -71,6 +78,8 @@ class Vital {
         'pain_level': painLevel,
         'mood': mood,
         'notes': notes,
+        'foot_sensitivity': footSensitivity,
+        'eyesight': eyesight,
         'logged_at': loggedAt.toIso8601String(),
       };
 

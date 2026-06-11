@@ -78,7 +78,7 @@ const createAppointment = async (req, res) => {
       const member = memberResult.rows[0];
       notificationService.sendEmail(
         hospital.email,
-        'New Appointment Request — Sanlam Chronic Care',
+        'New Appointment Request — SanCare+',
         `<p>Dear ${hospital.contact_person},</p>
          <p>A new appointment has been requested:</p>
          <ul>
@@ -233,7 +233,7 @@ const updateAppointmentStatus = async (req, res) => {
       if (appointment.hospital_email) {
         notificationService.sendEmail(
           appointment.hospital_email,
-          'Appointment Confirmed — Sanlam Chronic Care',
+          'Appointment Confirmed — SanCare+',
           `<p>Dear ${appointment.contact_person || appointment.hospital_name},</p>
            <p>A Sanlam admin has confirmed the following appointment:</p>
            <ul>

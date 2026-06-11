@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants.dart';
+import '../../core/app_colors.dart';
 
 class AppInput extends StatefulWidget {
   final String label;
@@ -82,7 +83,7 @@ class _AppInputState extends State<AppInput> {
             _showPassword
                 ? Icons.visibility_off_outlined
                 : Icons.visibility_outlined,
-            color: _hasFocus ? kPrimary : kSubtext,
+            color: _hasFocus ? kPrimary : context.c.subtext,
             size: 20,
           ),
         ),
@@ -97,7 +98,7 @@ class _AppInputState extends State<AppInput> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: _hasFocus ? kPrimary : kText,
+            color: _hasFocus ? kPrimary : context.c.text,
           ),
           child: Text(widget.label),
         ),
@@ -132,28 +133,28 @@ class _AppInputState extends State<AppInput> {
             onTap: widget.onTap,
             inputFormatters: widget.inputFormatters,
             autofocus: widget.autofocus,
-            style: const TextStyle(
-                fontSize: 15, color: kText, fontWeight: FontWeight.w400),
+            style: TextStyle(
+                fontSize: 15, color: context.c.text, fontWeight: FontWeight.w400),
             decoration: InputDecoration(
               hintText: widget.hint,
               prefixIcon: widget.prefixIcon != null
                   ? IconTheme(
                       data: IconThemeData(
-                          color: _hasFocus ? kPrimary : kSubtext, size: 20),
+                          color: _hasFocus ? kPrimary : context.c.subtext, size: 20),
                       child: widget.prefixIcon!,
                     )
                   : null,
               suffixIcon: suffix,
               counterText: '',
               filled: true,
-              fillColor: _hasFocus ? Colors.white : kSurfaceAlt,
+              fillColor: _hasFocus ? Colors.white : context.c.surfaceAlt,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kRadiusMd),
-                borderSide: const BorderSide(color: kBorder),
+                borderSide: BorderSide(color: context.c.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kRadiusMd),
-                borderSide: const BorderSide(color: kBorder, width: 1),
+                borderSide: BorderSide(color: context.c.border, width: 1),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(kRadiusMd),

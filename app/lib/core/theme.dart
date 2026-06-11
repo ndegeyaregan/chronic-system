@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'app_colors.dart';
 import 'constants.dart';
 
 // ── Dark mode colours ─────────────────────────────────────────────────────
@@ -33,6 +34,9 @@ ThemeData _buildTheme(Brightness brightness) {
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
+    extensions: <ThemeExtension<dynamic>>[
+      isDark ? AppColors.dark : AppColors.light,
+    ],
     colorScheme: ColorScheme.fromSeed(
       seedColor: kPrimary,
       brightness: brightness,

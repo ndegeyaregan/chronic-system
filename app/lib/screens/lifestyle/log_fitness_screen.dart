@@ -7,6 +7,7 @@ import '../../core/constants.dart';
 import '../../providers/lifestyle_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
+import '../../core/app_colors.dart';
 
 class LogFitnessScreen extends ConsumerStatefulWidget {
   const LogFitnessScreen({super.key});
@@ -134,7 +135,7 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Log Activity'),
+        title: Text('Log Activity'),
         backgroundColor: const Color(0xFF003DA5),
         foregroundColor: Colors.white,
         leading: IconButton(
@@ -160,19 +161,19 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "📊 Today's Progress",
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: kText),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.c.text),
                   ),
                   const SizedBox(height: 12),
-                  _buildProgressRow(
+                  _buildProgressRow(context, 
                     '👣 Steps',
                     '$todaySteps / $stepsGoal',
                     stepsProgress,
                     kPrimary,
                   ),
                   const SizedBox(height: 10),
-                  _buildProgressRow(
+                  _buildProgressRow(context, 
                     '⏱️ Active Minutes',
                     '$todayActiveMinutes / $minutesGoal min',
                     minutesProgress,
@@ -184,9 +185,9 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
             const SizedBox(height: 20),
 
             // Activity type selector
-            const Text(
+            Text(
               'Activity Type',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: kText),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: context.c.text),
             ),
             const SizedBox(height: 10),
             GridView.count(
@@ -206,7 +207,7 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
                           color: _activityType == a['key'] ? kPrimary : Colors.white,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: _activityType == a['key'] ? kPrimary : kBorder,
+                            color: _activityType == a['key'] ? kPrimary : context.c.border,
                           ),
                         ),
                         child: Column(
@@ -219,7 +220,7 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
-                                color: _activityType == a['key'] ? Colors.white : kText,
+                                color: _activityType == a['key'] ? Colors.white : context.c.text,
                               ),
                             ),
                           ],
@@ -246,9 +247,9 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
               ),
               child: Column(
                 children: [
-                  const Text(
+                  Text(
                     '⏱️ Activity Timer',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: kText),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.c.text),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -258,9 +259,9 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
                       shape: BoxShape.circle,
                       color: _timerRunning
                           ? kPrimary.withValues(alpha: 0.08)
-                          : kBg,
+                          : context.c.bg,
                       border: Border.all(
-                        color: _timerRunning ? kPrimary : kBorder,
+                        color: _timerRunning ? kPrimary : context.c.border,
                         width: 3,
                       ),
                     ),
@@ -270,7 +271,7 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: _timerRunning ? kPrimary : kSubtext,
+                          color: _timerRunning ? kPrimary : context.c.subtext,
                         ),
                       ),
                     ),
@@ -283,7 +284,7 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
                         ElevatedButton.icon(
                           onPressed: _startTimer,
                           icon: const Icon(Icons.play_arrow_rounded),
-                          label: const Text('Start'),
+                          label: Text('Start'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: kSuccess,
                             foregroundColor: Colors.white,
@@ -296,7 +297,7 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
                           OutlinedButton.icon(
                             onPressed: _resetTimer,
                             icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Reset'),
+                            label: Text('Reset'),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -307,7 +308,7 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
                         ElevatedButton.icon(
                           onPressed: _stopTimer,
                           icon: const Icon(Icons.stop_rounded),
-                          label: const Text('Stop & Save'),
+                          label: Text('Stop & Save'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: kError,
                             foregroundColor: Colors.white,
@@ -389,18 +390,18 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '📋 Activity Summary',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: kText),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.c.text),
                     ),
                     const SizedBox(height: 10),
-                    _summaryRow('Activity',
+                    _summaryRow(context, 'Activity',
                         _activities.firstWhere((a) => a['key'] == _activityType,
                             orElse: () => {'label': _activityType})['label']!),
-                    _summaryRow('Duration', '${_durationCtrl.text} minutes'),
+                    _summaryRow(context, 'Duration', '${_durationCtrl.text} minutes'),
                     if (_stepsCtrl.text.isNotEmpty)
-                      _summaryRow('Steps', _stepsCtrl.text),
-                    _summaryRow(
+                      _summaryRow(context, 'Steps', _stepsCtrl.text),
+                    _summaryRow(context, 
                       'Est. Calories',
                       _caloriesCtrl.text.isNotEmpty
                           ? '${_caloriesCtrl.text} kcal'
@@ -432,14 +433,14 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
     );
   }
 
-  Widget _buildProgressRow(String label, String value, double progress, Color color) {
+  Widget _buildProgressRow(BuildContext context, String label, String value, double progress, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: kText)),
+            Text(label, style: TextStyle(fontSize: 12, color: context.c.text)),
             Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
           ],
         ),
@@ -457,18 +458,18 @@ class _LogFitnessScreenState extends ConsumerState<LogFitnessScreen> {
     );
   }
 
-  Widget _summaryRow(String label, String value) {
+  Widget _summaryRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
           SizedBox(
             width: 110,
-            child: Text(label, style: const TextStyle(fontSize: 12, color: kSubtext)),
+            child: Text(label, style: TextStyle(fontSize: 12, color: context.c.subtext)),
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: kText)),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: context.c.text)),
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import '../../core/constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
+import '../../core/app_colors.dart';
 
 class CreatePasswordScreen extends ConsumerStatefulWidget {
   const CreatePasswordScreen({super.key});
@@ -62,7 +63,7 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
     final member = authState.member;
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -83,17 +84,17 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
               const SizedBox(height: 24),
               Text(
                 'Welcome, ${member?.firstName ?? 'Member'}!',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: kText,
+                  color: context.c.text,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Please create a password to secure your account.',
-                style: TextStyle(fontSize: 14, color: kSubtext),
+                style: TextStyle(fontSize: 14, color: context.c.subtext),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -122,7 +123,7 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
                         obscureText: true,
                         showPasswordToggle: true,
                         prefixIcon:
-                            const Icon(Icons.lock_outline, color: kSubtext),
+                            Icon(Icons.lock_outline, color: context.c.subtext),
                         onChanged: _checkStrength,
                         textInputAction: TextInputAction.next,
                         validator: (v) {
@@ -144,7 +145,7 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
                                   value: _strength,
-                                  backgroundColor: kBorder,
+                                  backgroundColor: context.c.border,
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                       _strengthColor),
                                   minHeight: 6,
@@ -163,9 +164,9 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'Use uppercase, numbers & special characters for a stronger password.',
-                          style: TextStyle(fontSize: 11, color: kSubtext),
+                          style: TextStyle(fontSize: 11, color: context.c.subtext),
                         ),
                         const SizedBox(height: 16),
                       ],
@@ -176,7 +177,7 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
                         obscureText: true,
                         showPasswordToggle: true,
                         prefixIcon:
-                            const Icon(Icons.lock_outline, color: kSubtext),
+                            Icon(Icons.lock_outline, color: context.c.subtext),
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _submit(),
                         validator: (v) {
@@ -209,11 +210,11 @@ class _CreatePasswordScreenState extends ConsumerState<CreatePasswordScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8),
                 child: Text(
                   '🔒  Your password is encrypted and never stored in plain text.',
-                  style: TextStyle(fontSize: 12, color: kSubtext),
+                  style: TextStyle(fontSize: 12, color: context.c.subtext),
                   textAlign: TextAlign.center,
                 ),
               ),

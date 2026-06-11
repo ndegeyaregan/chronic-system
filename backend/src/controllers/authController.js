@@ -286,9 +286,9 @@ const requestPasswordReset = async (req, res) => {
 
     await notificationService.sendEmail(
       email,
-      'Password Reset OTP – Sanlam Chronic Care',
+      'Password Reset OTP – SanCare+',
       `<p>Hello ${admin.name || admin.email},</p>
-       <p>Your OTP for resetting your Sanlam Chronic Care password is:</p>
+       <p>Your OTP for resetting your SanCare+ password is:</p>
        <h2 style="letter-spacing:8px">${otp}</h2>
        <p>This OTP expires in <strong>10 minutes</strong>. Do not share it with anyone.</p>`
     );
@@ -684,8 +684,67 @@ const sanlamLogin = async (req, res) => {
       console.warn('GetMemberContactInfo refresh skipped:', e.message);
     }
 
+    // Sync the member's corporate (corpName from Sanlam GetCoPay) into our
+    // local `schemes` table and link the member to it. Best-effort — never
+    // block login on failure. This keeps the admin /schemes page in sync with
+    // real Sanlam corporates the moment members start logging in.
+    try {
+      const copayRes = await axios.post(
+        'https://ehosccs.net/SanlamMemberApi/api/member/GetCoPay',
+        { MemberNo: member_number },
+        { headers: { Authorization: `Bearer ${sanlam_token}` }, timeout: 10000 }
+      );
+      if ((copayRes.data?.status || '') === 'OK') {
+        const d = copayRes.data?.data;
+        const entry = Array.isArray(d) ? d[0] : d;
+        const corpName = (entry?.corpName || entry?.CorpName || '')
+          .toString().trim();
+        if (corpName) {
+          const upsert = await pool.query(
+            `INSERT INTO schemes (name, code, is_active)
+             VALUES ($1, $1, TRUE)
+             ON CONFLICT (name) DO UPDATE
+               SET is_active = TRUE, updated_at = NOW()
+             RETURNING id`,
+            [corpName]
+          );
+          const schemeId = upsert.rows[0].id;
+          if (memberRow.scheme_id !== schemeId) {
+            await pool.query(
+              'UPDATE members SET scheme_id = $1, updated_at = NOW() WHERE id = $2',
+              [schemeId, memberRow.id]
+            );
+            memberRow.scheme_id = schemeId;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Corporate/scheme sync skipped:', e.message);
+    }
+
     const token = signMemberToken(memberRow);
     const refreshToken = signRefreshToken(memberRow.id, 'member');
+
+    // Log the member login (best-effort; never block the login on failure)
+    try {
+      await pool.query(
+        `INSERT INTO audit_logs (actor_id, actor_type, action, entity, entity_id, details, ip_address)
+         VALUES ($1, 'member', 'login', 'member', $1, $2, $3)`,
+        [
+          memberRow.id,
+          JSON.stringify({
+            member_number: memberRow.member_number,
+            name: `${memberRow.first_name || ''} ${memberRow.last_name || ''}`.trim(),
+            user_agent: req.headers['user-agent'] || null,
+            source: 'sanlam',
+          }),
+          req.ip,
+        ]
+      );
+    } catch (logErr) {
+      console.warn('member login audit log skipped:', logErr.message);
+    }
+
     return res.json({
       token,
       refreshToken,

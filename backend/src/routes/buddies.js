@@ -19,7 +19,7 @@ const memberIdParam = [param('memberId').isUUID().withMessage('Invalid member ID
 const buddyIdParam = [param('buddyId').isUUID().withMessage('Invalid buddy ID format')];
 
 const buddyBody = [
-  body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 255 }).withMessage('Name too long'),
+  body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 259 }).withMessage('Name too long'),
   body('phone').trim().notEmpty().withMessage('Phone is required').isLength({ max: 50 }).withMessage('Phone too long'),
   body('relationship').optional().trim().isLength({ max: 100 }).withMessage('Relationship too long'),
 ];

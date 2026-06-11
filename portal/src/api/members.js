@@ -9,5 +9,6 @@ export const uploadMembersCSV = (formData) =>
   });
 export const toggleMemberStatus = (id) => api.patch(`/members/${id}/status`);
 export const updateMember = (id, data) => api.put(`/members/${id}`, data);
+export const deleteMember = (id) => api.delete(`/members/${id}`);
 export const exportMembers = () =>
   api.get('/reports/members', { responseType: 'blob' });

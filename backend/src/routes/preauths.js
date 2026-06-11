@@ -75,22 +75,30 @@ router.post('/sanlam-webhook', async (req, res) => {
   }
 
   try {
-    // Insert the preauth event
+    // Insert the preauth event — dedupes against same (member, request, status)
+    // tuples already inserted by either the webhook or the polling fallback.
     const insertRes = await pool.query(
       `INSERT INTO preauth_events
          (member_no, request_no, status, approved_amount, decided_at, provider_name, condition)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (member_no, request_no, status) DO NOTHING
        RETURNING id`,
       [
         memberNo,
         requestNo,
-        status,
+        status.toLowerCase(),
         approvedAmount ?? null,
         decidedAt ? new Date(decidedAt) : null,
         providerName ?? null,
         condition ?? null,
       ]
     );
+
+    // If nothing was inserted, the polling fallback (or a previous webhook
+    // delivery) already notified the member — short-circuit.
+    if (!insertRes.rowCount) {
+      return res.status(200).json({ message: 'Already recorded' });
+    }
     const eventId = insertRes.rows[0].id;
 
     // Look up the member by member_no to send a push notification
@@ -100,14 +108,27 @@ router.post('/sanlam-webhook', async (req, res) => {
     );
     if (memberRes.rows.length) {
       const memberId = memberRes.rows[0].id;
-      const title = 'Pre-Authorisation Update';
+      const statusLower = status.toLowerCase();
       const conditionLabel = condition ? ` for ${condition}` : '';
-      const message =
-        status.toLowerCase() === 'approved'
-          ? `Your pre-authorisation${conditionLabel} has been approved.`
-          : status.toLowerCase() === 'rejected'
-          ? `Your pre-authorisation${conditionLabel} has been rejected.`
-          : `Your pre-authorisation${conditionLabel} status: ${status}.`;
+
+      let title;
+      let message;
+      if (statusLower === 'approved') {
+        title = '✅ Pre-authorisation approved';
+        message = `Your pre-authorisation${conditionLabel} has been approved.`;
+        if (approvedAmount && Number(approvedAmount) > 0) {
+          message += ` Approved up to UGX ${Number(approvedAmount).toFixed(0)}.`;
+        }
+      } else if (statusLower === 'rejected') {
+        title = '❌ Pre-authorisation rejected';
+        message = `Your pre-authorisation${conditionLabel} has been rejected.`;
+      } else if (statusLower === 'open') {
+        title = '📨 Pre-authorisation received';
+        message = `Your pre-authorisation request${conditionLabel} has been received and is being reviewed. We'll notify you as soon as a decision is made.`;
+      } else {
+        title = 'Pre-Authorisation Update';
+        message = `Your pre-authorisation${conditionLabel} status: ${status}.`;
+      }
 
       // Fire-and-forget — do not fail the webhook if notification fails
       sendToMember(memberId, {

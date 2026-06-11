@@ -6,6 +6,14 @@ plugins {
     id "com.google.gms.google-services"
 }
 
+// Load the upload-keystore properties (gitignored). Falls back to debug
+// signing if the file is absent so local `flutter run --release` still works.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "co.za.sanlam.sanlam_chronic"
     compileSdk = 36
@@ -22,23 +30,47 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "co.za.sanlam.sanlam_chronic"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 24
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 26
+        // Pinned to 35 — Play Store requires targetSdk 35+ for new uploads
+        // from Aug 31, 2025 (and updates from Aug 31, 2026).
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+                storeFile = file(keystoreProperties['storeFile'])
+                storePassword = keystoreProperties['storePassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
+            signingConfig = keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // Two distribution variants:
+    //   sideload  → keeps REQUEST_INSTALL_PACKAGES so the side-loaded APK
+    //               can self-update from app.sanlamallianz4u.co.ug/download.
+    //   playstore → drops REQUEST_INSTALL_PACKAGES (handled by Play Store).
+    flavorDimensions += "distribution"
+    productFlavors {
+        sideload {
+            dimension = "distribution"
+            // default — same behaviour as before flavors existed.
+        }
+        playstore {
+            dimension = "distribution"
         }
     }
 }

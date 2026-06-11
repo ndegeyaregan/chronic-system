@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import '../../providers/vitals_provider.dart';
 import '../../widgets/common/loading_shimmer.dart';
+import '../../core/app_colors.dart';
 
 class VitalsHistoryScreen extends ConsumerWidget {
   const VitalsHistoryScreen({super.key});
@@ -20,7 +21,7 @@ class VitalsHistoryScreen extends ConsumerWidget {
               child: LoadingListCard(count: 5),
             )
           : state.vitals.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -28,7 +29,7 @@ class VitalsHistoryScreen extends ConsumerWidget {
                           color: Color(0xFFCBD5E1), size: 64),
                       SizedBox(height: 16),
                       Text('No vitals history yet',
-                          style: TextStyle(color: kSubtext, fontSize: 15)),
+                          style: TextStyle(color: context.c.subtext, fontSize: 15)),
                     ],
                   ),
                 )
@@ -55,14 +56,14 @@ class VitalsHistoryScreen extends ConsumerWidget {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.access_time,
-                                  size: 14, color: kSubtext),
+                              Icon(Icons.access_time,
+                                  size: 14, color: context.c.subtext),
                               const SizedBox(width: 4),
                               Text(
                                 DateFormat('dd MMM yyyy, HH:mm')
                                     .format(v.loggedAt),
-                                style: const TextStyle(
-                                    fontSize: 12, color: kSubtext),
+                                style: TextStyle(
+                                    fontSize: 12, color: context.c.subtext),
                               ),
                             ],
                           ),
@@ -101,8 +102,8 @@ class VitalsHistoryScreen extends ConsumerWidget {
                             const SizedBox(height: 8),
                             Text(
                               v.notes!,
-                              style: const TextStyle(
-                                  fontSize: 12, color: kSubtext),
+                              style: TextStyle(
+                                  fontSize: 12, color: context.c.subtext),
                             ),
                           ],
                         ],

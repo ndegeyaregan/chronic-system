@@ -5,6 +5,7 @@ import '../../core/constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
+import '../../core/app_colors.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -51,7 +52,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Change Password')),
+      appBar: AppBar(title: Text('Change Password')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -70,15 +71,15 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     color: kPrimary, size: 32),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Update Your Password',
                 style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold, color: kText),
+                    fontSize: 20, fontWeight: FontWeight.bold, color: context.c.text),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Enter your current password and choose a new one.',
-                style: TextStyle(fontSize: 13, color: kSubtext),
+                style: TextStyle(fontSize: 13, color: context.c.subtext),
               ),
               const SizedBox(height: 28),
               AppInput(
@@ -88,7 +89,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 obscureText: true,
                 showPasswordToggle: true,
                 prefixIcon:
-                    const Icon(Icons.lock_outline, color: kSubtext),
+                    Icon(Icons.lock_outline, color: context.c.subtext),
                 textInputAction: TextInputAction.next,
                 validator: (v) =>
                     v == null || v.isEmpty ? 'Enter current password' : null,
@@ -101,7 +102,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 obscureText: true,
                 showPasswordToggle: true,
                 prefixIcon:
-                    const Icon(Icons.lock_outline, color: kSubtext),
+                    Icon(Icons.lock_outline, color: context.c.subtext),
                 textInputAction: TextInputAction.next,
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Enter new password';
@@ -120,7 +121,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 obscureText: true,
                 showPasswordToggle: true,
                 prefixIcon:
-                    const Icon(Icons.lock_outline, color: kSubtext),
+                    Icon(Icons.lock_outline, color: context.c.subtext),
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _submit(),
                 validator: (v) {

@@ -19,6 +19,8 @@ class NotificationService {
     'SanCare+',
     description: 'Notifications for medication reminders and appointments.',
     importance: Importance.high,
+    playSound: true,
+    enableVibration: true,
   );
 
   static const AndroidNotificationChannel _medsChannel =
@@ -45,14 +47,21 @@ class NotificationService {
     );
 
     if (!kIsWeb) {
-      await _local
+      final androidImpl = _local
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(_channel);
-      await _local
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(_medsChannel);
+              AndroidFlutterLocalNotificationsPlugin>();
+      await androidImpl?.createNotificationChannel(_channel);
+      await androidImpl?.createNotificationChannel(_medsChannel);
+
+      // Android 13+ requires an explicit runtime POST_NOTIFICATIONS request,
+      // otherwise the system silently drops every local + FCM notification
+      // we try to show. FirebaseMessaging.requestPermission does this on iOS
+      // but is unreliable on Android across versions / when Firebase init
+      // fails, so we always ask the local-notifications plugin too.
+      try {
+        await androidImpl?.requestNotificationsPermission();
+        await androidImpl?.requestExactAlarmsPermission();
+      } catch (_) {}
     }
 
     try {
@@ -86,6 +95,8 @@ class NotificationService {
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
+          playSound: true,
+          enableVibration: true,
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,

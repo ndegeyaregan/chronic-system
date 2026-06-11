@@ -13,212 +13,196 @@ const ALLOWED_REASONS = new Set(['lost', 'damaged', 'stolen', 'other']);
 const sanitize = (v) => (typeof v === 'string' ? v.trim() : '');
 
 /**
+ * Sends member SMS/email + team email + push for a reprint request.
+ * Idempotent: marks notifications_sent_at and returns early on second call.
+ */
+const fulfilCardReprintPayment = async (requestId) => {
+  const r = await pool.query(
+    `SELECT cr.*, m.first_name, m.last_name, m.email, m.phone, m.fcm_token,
+            m.member_number
+       FROM card_reprint_requests cr
+       JOIN members m ON m.id = cr.member_id
+      WHERE cr.id = $1`,
+    [requestId]
+  );
+  if (!r.rows.length) return;
+  const req = r.rows[0];
+  if (req.notifications_sent_at) return; // already done
+
+  const memberFullName = `${req.first_name || ''} ${req.last_name || ''}`.trim();
+  const friendlyReason =
+    req.reason === 'other' && req.reason_notes ? req.reason_notes : req.reason;
+  const targetLabel = req.is_for_dependant
+    ? `${req.target_member_name} (${req.target_relation}, ${req.target_member_no})`
+    : `${req.target_member_name} (Principal, ${req.target_member_no})`;
+
+  const smsBody =
+    `Sanlam: Card reprint payment of UGX ${Number(req.amount).toLocaleString()} ` +
+    `received for ${targetLabel}. Ref: ${req.id.slice(0, 8).toUpperCase()}.`;
+
+  const memberEmailHtml = `
+    <p>Hi ${req.first_name || 'Member'},</p>
+    <p>Your card reprint payment has been received. Details:</p>
+    <ul>
+      <li><strong>Card for:</strong> ${req.target_member_name} (${req.target_relation})</li>
+      <li><strong>Member number:</strong> ${req.target_member_no}</li>
+      <li><strong>Reason:</strong> ${friendlyReason}</li>
+      <li><strong>Amount paid:</strong> UGX ${Number(req.amount).toLocaleString()}</li>
+      <li><strong>Reference:</strong> ${req.id}</li>
+      ${req.payment_confirmation_code ? `<li><strong>Confirmation:</strong> ${req.payment_confirmation_code}</li>` : ''}
+    </ul>
+    <p>Our membership team has been notified and will process your new card.</p>
+    <p>Sanlam Allianz Health</p>
+  `;
+
+  const teamEmailHtml = `
+    <h3>New PAID Card Reprint Request</h3>
+    <table cellpadding="6" style="border-collapse:collapse">
+      <tr><td><strong>Reference</strong></td><td>${req.id}</td></tr>
+      <tr><td><strong>Submitted by</strong></td><td>${memberFullName} (${req.member_number})</td></tr>
+      <tr><td><strong>Card for</strong></td><td>${req.target_member_name}</td></tr>
+      <tr><td><strong>Member number</strong></td><td>${req.target_member_no}</td></tr>
+      <tr><td><strong>Relation</strong></td><td>${req.target_relation}</td></tr>
+      <tr><td><strong>Reason</strong></td><td>${friendlyReason}</td></tr>
+      <tr><td><strong>Amount paid</strong></td><td>UGX ${Number(req.amount).toLocaleString()}</td></tr>
+      <tr><td><strong>Payment method</strong></td><td>${req.payment_method_used || 'Mobile Money'}</td></tr>
+      <tr><td><strong>Payment phone</strong></td><td>${req.payment_phone}</td></tr>
+      <tr><td><strong>Confirmation code</strong></td><td>${req.payment_confirmation_code || '-'}</td></tr>
+      <tr><td><strong>Member email</strong></td><td>${req.email || '-'}</td></tr>
+      <tr><td><strong>Member phone</strong></td><td>${req.phone || '-'}</td></tr>
+      <tr><td><strong>Submitted at</strong></td><td>${req.created_at}</td></tr>
+      <tr><td><strong>Paid at</strong></td><td>${req.paid_at || ''}</td></tr>
+    </table>
+  `;
+
+  const log = async (channel, title, message, fn) => {
+    let status = 'failed';
+    try { await fn(); status = 'sent'; }
+    catch (e) { console.error(`reprint notify ${channel} failed:`, e.message); }
+    try {
+      await pool.query(
+        `INSERT INTO notifications (member_id, type, channel, title, message, status, sent_at)
+         VALUES ($1,$2,$3,$4,$5,$6, NOW())`,
+        [req.member_id, 'card_reprint', channel, title, message, status]
+      );
+    } catch (e) { console.error('notification log insert failed:', e.message); }
+  };
+
+  const tasks = [];
+  if (req.phone) {
+    tasks.push(log('sms', 'Card Reprint Paid', smsBody, () => sendSMS(req.phone, smsBody)));
+  }
+  if (req.email) {
+    tasks.push(log('email', 'Card Reprint Payment Received', 'See HTML', () =>
+      sendEmail(req.email, 'Sanlam Card Reprint Payment Received', memberEmailHtml)));
+  }
+  tasks.push(log('email', 'PAID Card Reprint Request (team)', 'See HTML', () =>
+    sendEmail(MEMBERSHIP_INBOX,
+      `PAID Card Reprint Request — ${req.target_member_name} (${req.target_member_no})`,
+      teamEmailHtml)));
+  if (req.fcm_token) {
+    tasks.push(log('push', 'Card Reprint Paid',
+      `Payment received for ${req.target_member_name}'s card.`, () =>
+        sendPush(req.fcm_token, 'Card Reprint Paid',
+          `Payment received for ${req.target_member_name}'s card.`)));
+  }
+
+  await Promise.allSettled(tasks);
+
+  await pool.query(
+    `UPDATE card_reprint_requests SET notifications_sent_at = NOW() WHERE id = $1`,
+    [requestId]
+  );
+};
+
+/**
  * POST /api/card-reprints
  * body: { targetMemberNo, targetMemberName, targetRelation,
- *         isForDependant, reason, reasonNotes, paymentMethod, paymentPhone }
+ *         isForDependant, reason, reasonNotes }
+ *
+ * Creates a pending reprint record. Member pays manually via Mobile Money
+ * USSD (Airtel *185# or MTN *165#) using their Member Number as the
+ * reference. Admins verify the payment and mark the request as paid.
  */
 const create = async (req, res) => {
   try {
     const memberId = req.user.id;
-    const targetMemberNo = sanitize(req.body.targetMemberNo);
-    const targetMemberName = sanitize(req.body.targetMemberName);
-    const targetRelation = sanitize(req.body.targetRelation) || 'Principal';
-    const isForDependant = !!req.body.isForDependant;
-    const reason = sanitize(req.body.reason).toLowerCase();
-    const reasonNotes = sanitize(req.body.reasonNotes) || null;
-    const paymentMethod = sanitize(req.body.paymentMethod) || 'mobile_money';
-    const paymentPhone = sanitize(req.body.paymentPhone);
+    const body = req.body || {};
+    const targetMemberNo = sanitize(body.targetMemberNo);
+    const targetMemberName = sanitize(body.targetMemberName);
+    const targetRelation = sanitize(body.targetRelation) || 'Principal';
+    const isForDependant =
+      body.isForDependant === true ||
+      body.isForDependant === 'true' ||
+      body.isForDependant === '1';
+    const reason = sanitize(body.reason).toLowerCase();
+    const reasonNotes = sanitize(body.reasonNotes) || null;
+    const paymentReference = sanitize(body.paymentReference) || null;
+    const paymentMethod = 'ussd_mobile_money';
+
+    const proofUrl = req.file
+      ? `/uploads/card-reprints/${req.file.filename}`
+      : null;
+    const proofName = req.file ? req.file.originalname : null;
 
     if (!targetMemberNo || !targetMemberName) {
-      return res
-        .status(400)
-        .json({ message: 'targetMemberNo and targetMemberName are required' });
+      return res.status(400).json({ message: 'targetMemberNo and targetMemberName are required' });
     }
     if (!ALLOWED_REASONS.has(reason)) {
       return res.status(400).json({
-        message:
-          "reason must be one of: 'lost', 'damaged', 'stolen', 'other'",
+        message: "reason must be one of: 'lost', 'damaged', 'stolen', 'other'",
       });
     }
     if (reason === 'other' && !reasonNotes) {
-      return res
-        .status(400)
-        .json({ message: 'reasonNotes is required when reason is "other"' });
+      return res.status(400).json({ message: 'reasonNotes is required when reason is "other"' });
     }
-    if (!paymentPhone || paymentPhone.replace(/\D/g, '').length < 9) {
-      return res
-        .status(400)
-        .json({ message: 'A valid mobile money phone number is required' });
+    if (!paymentReference && !proofUrl) {
+      return res.status(400).json({
+        message: 'Please attach a payment screenshot or enter the transaction ID before submitting.',
+      });
     }
 
-    // Load member for notifications
     const memberRes = await pool.query(
-      `SELECT id, member_number, first_name, last_name, email, phone, fcm_token
+      `SELECT id, member_number, first_name, last_name, email, phone
          FROM members WHERE id = $1`,
       [memberId]
     );
     if (!memberRes.rows.length) {
       return res.status(404).json({ message: 'Member not found' });
     }
-    const member = memberRes.rows[0];
-    const memberFullName = `${member.first_name || ''} ${member.last_name || ''}`.trim();
 
-    // Insert request (status starts as pending_payment until MoMo confirmed)
     const insertRes = await pool.query(
       `INSERT INTO card_reprint_requests
          (member_id, target_member_no, target_member_name, target_relation,
           is_for_dependant, reason, reason_notes, payment_method,
-          payment_phone, amount, currency, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'UGX','pending_payment')
+          payment_phone, amount, currency, status, payment_status,
+          payment_confirmation_code, payment_proof_url, payment_proof_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'UGX','pending_payment','pending',$11,$12,$13)
        RETURNING id, created_at`,
       [
-        memberId,
-        targetMemberNo,
-        targetMemberName,
-        targetRelation,
-        isForDependant,
-        reason,
-        reasonNotes,
-        paymentMethod,
-        paymentPhone,
-        REPRINT_FEE_UGX,
+        memberId, targetMemberNo, targetMemberName, targetRelation,
+        isForDependant, reason, reasonNotes, paymentMethod,
+        null, REPRINT_FEE_UGX,
+        paymentReference, proofUrl, proofName,
       ]
     );
     const request = insertRes.rows[0];
 
-    // Notification copy
-    const friendlyReason =
-      reason === 'other' && reasonNotes ? reasonNotes : reason;
-    const targetLabel = isForDependant
-      ? `${targetMemberName} (${targetRelation}, ${targetMemberNo})`
-      : `${targetMemberName} (Principal, ${targetMemberNo})`;
-
-    const smsBody =
-      `Sanlam: Card reprint request received for ${targetLabel}. ` +
-      `Amount UGX ${REPRINT_FEE_UGX.toLocaleString()} will be charged via Mobile Money on ${paymentPhone}. ` +
-      `Ref: ${request.id.slice(0, 8).toUpperCase()}.`;
-
-    const memberEmailHtml = `
-      <p>Hi ${member.first_name || 'Member'},</p>
-      <p>We have received your card reprint request. Details:</p>
-      <ul>
-        <li><strong>Card for:</strong> ${targetMemberName} (${targetRelation})</li>
-        <li><strong>Member number:</strong> ${targetMemberNo}</li>
-        <li><strong>Reason:</strong> ${friendlyReason}</li>
-        <li><strong>Amount:</strong> UGX ${REPRINT_FEE_UGX.toLocaleString()}</li>
-        <li><strong>Payment method:</strong> Mobile Money (${paymentPhone})</li>
-        <li><strong>Reference:</strong> ${request.id}</li>
-      </ul>
-      <p>You will be contacted by our membership team once the payment has been confirmed and the new card is ready.</p>
-      <p>Sanlam Allianz Health</p>
-    `;
-
-    const teamEmailHtml = `
-      <h3>New Card Reprint Request</h3>
-      <table cellpadding="6" style="border-collapse:collapse">
-        <tr><td><strong>Reference</strong></td><td>${request.id}</td></tr>
-        <tr><td><strong>Submitted by</strong></td><td>${memberFullName} (${member.member_number})</td></tr>
-        <tr><td><strong>Card for</strong></td><td>${targetMemberName}</td></tr>
-        <tr><td><strong>Member number</strong></td><td>${targetMemberNo}</td></tr>
-        <tr><td><strong>Relation</strong></td><td>${targetRelation}</td></tr>
-        <tr><td><strong>Reason</strong></td><td>${friendlyReason}</td></tr>
-        <tr><td><strong>Amount</strong></td><td>UGX ${REPRINT_FEE_UGX.toLocaleString()}</td></tr>
-        <tr><td><strong>Payment method</strong></td><td>Mobile Money</td></tr>
-        <tr><td><strong>Payment phone</strong></td><td>${paymentPhone}</td></tr>
-        <tr><td><strong>Member email</strong></td><td>${member.email || '-'}</td></tr>
-        <tr><td><strong>Member phone</strong></td><td>${member.phone || '-'}</td></tr>
-        <tr><td><strong>Submitted at</strong></td><td>${request.created_at}</td></tr>
-      </table>
-    `;
-
-    // Fire notifications in parallel (don't fail the request if any one fails)
-    const tasks = [];
-    const log = async (channel, title, message, fn) => {
-      let status = 'failed';
-      try {
-        await fn();
-        status = 'sent';
-      } catch (e) {
-        console.error(`reprint notify ${channel} failed:`, e.message);
-      }
-      try {
-        await pool.query(
-          `INSERT INTO notifications (member_id, type, channel, title, message, status, sent_at)
-           VALUES ($1,$2,$3,$4,$5,$6, NOW())`,
-          [memberId, 'card_reprint', channel, title, message, status]
-        );
-      } catch (e) {
-        console.error('notification log insert failed:', e.message);
-      }
-    };
-
-    if (member.phone) {
-      tasks.push(
-        log('sms', 'Card Reprint Request', smsBody, () =>
-          sendSMS(member.phone, smsBody)
-        )
-      );
-    }
-    if (member.email) {
-      tasks.push(
-        log(
-          'email',
-          'Card Reprint Request Received',
-          'See HTML',
-          () =>
-            sendEmail(
-              member.email,
-              'Sanlam Card Reprint Request Received',
-              memberEmailHtml
-            )
-        )
-      );
-    }
-    tasks.push(
-      log(
-        'email',
-        'New Card Reprint Request (team)',
-        'See HTML',
-        () =>
-          sendEmail(
-            MEMBERSHIP_INBOX,
-            `New Card Reprint Request — ${targetMemberName} (${targetMemberNo})`,
-            teamEmailHtml
-          )
-      )
-    );
-    if (member.fcm_token) {
-      tasks.push(
-        log(
-          'push',
-          'Card Reprint Submitted',
-          `Your reprint request for ${targetMemberName} has been received.`,
-          () =>
-            sendPush(
-              member.fcm_token,
-              'Card Reprint Submitted',
-              `Your reprint request for ${targetMemberName} has been received.`
-            )
-        )
-      );
-    }
-    // Don't await — run in background; respond immediately to the client.
-    Promise.allSettled(tasks).catch(() => {});
-
     return res.status(201).json({
       id: request.id,
       status: 'pending_payment',
+      paymentStatus: 'pending',
       amount: REPRINT_FEE_UGX,
       currency: 'UGX',
       createdAt: request.created_at,
+      paymentReference,
+      paymentProofUrl: proofUrl,
       message:
-        'Reprint request submitted. You will receive an SMS and email confirmation shortly.',
+        'Request submitted. Our team will verify your Mobile Money payment and process the reprint.',
     });
   } catch (err) {
     console.error('cardReprints.create error:', err);
-    return res
-      .status(500)
-      .json({ message: 'Failed to submit reprint request' });
+    return res.status(500).json({ message: 'Failed to submit reprint request' });
   }
 };
 
@@ -228,8 +212,11 @@ const listMine = async (req, res) => {
     const result = await pool.query(
       `SELECT id, target_member_no, target_member_name, target_relation,
               is_for_dependant, reason, reason_notes, payment_method,
-              payment_phone, amount, currency, status,
-              created_at, paid_at, fulfilled_at
+              payment_phone, amount, currency, status, payment_status,
+              payment_method_used,
+              payment_confirmation_code,
+              payment_proof_url, payment_proof_name,
+              created_at, paid_at, payment_completed_at, fulfilled_at
          FROM card_reprint_requests
         WHERE member_id = $1
         ORDER BY created_at DESC`,
@@ -242,4 +229,153 @@ const listMine = async (req, res) => {
   }
 };
 
-module.exports = { create, listMine, REPRINT_FEE_UGX };
+/** GET /api/card-reprints (admin) — list all reprint requests */
+const listAll = async (req, res) => {
+  try {
+    const status = (req.query.status || '').toString().trim();
+    const paymentStatus = (req.query.payment_status || '').toString().trim();
+    const search = (req.query.search || '').toString().trim();
+
+    const params = [];
+    const filters = [];
+    let idx = 1;
+    if (status) { filters.push(`cr.status = $${idx++}`); params.push(status); }
+    if (paymentStatus) { filters.push(`cr.payment_status = $${idx++}`); params.push(paymentStatus); }
+    if (search) {
+      filters.push(`(m.first_name ILIKE $${idx} OR m.last_name ILIKE $${idx} OR m.member_number ILIKE $${idx} OR cr.target_member_no ILIKE $${idx} OR cr.target_member_name ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+    const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+
+    const result = await pool.query(
+      `SELECT cr.*,
+              m.first_name, m.last_name, m.member_number AS principal_member_number,
+              m.email, m.phone
+         FROM card_reprint_requests cr
+         JOIN members m ON m.id = cr.member_id
+         ${whereClause}
+        ORDER BY cr.created_at DESC
+        LIMIT 500`,
+      params
+    );
+    return res.json(result.rows);
+  } catch (err) {
+    console.error('cardReprints.listAll error:', err);
+    return res.status(500).json({ message: 'Failed to list reprint requests' });
+  }
+};
+
+/** PATCH /api/card-reprints/:id/status (admin) — move along the fulfilment flow */
+const updateStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const status = (req.body.status || '').toString().trim();
+    const adminNotes = typeof req.body.adminNotes === 'string' ? req.body.adminNotes.trim() : null;
+    const allowed = ['pending_payment', 'paid', 'processing', 'fulfilled', 'cancelled'];
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ message: `status must be one of: ${allowed.join(', ')}` });
+    }
+
+    const update = await pool.query(
+      `UPDATE card_reprint_requests
+          SET status = $1::text,
+              paid_at = CASE WHEN $1::text = 'paid' AND paid_at IS NULL THEN NOW() ELSE paid_at END,
+              fulfilled_at = CASE WHEN $1::text = 'fulfilled' THEN NOW() ELSE fulfilled_at END
+        WHERE id = $2::uuid
+        RETURNING *`,
+      [status, id]
+    );
+    if (!update.rows.length) {
+      return res.status(404).json({ message: 'Reprint request not found' });
+    }
+
+    // Respond immediately, run notifications in background to avoid freeze
+    res.json(update.rows[0]);
+
+    setImmediate(async () => {
+      try {
+        const r = await pool.query(
+          `SELECT cr.*, m.first_name, m.last_name, m.email, m.phone, m.fcm_token
+             FROM card_reprint_requests cr
+             JOIN members m ON m.id = cr.member_id
+            WHERE cr.id = $1`, [id]
+        );
+        if (!r.rows.length) return;
+        const c = r.rows[0];
+        const refShort = id.slice(0, 8).toUpperCase();
+        const target = c.target_member_name || 'your card';
+
+        let title, msg, smsMsg;
+        if (status === 'fulfilled') {
+          title = 'Card Ready for Pickup';
+          msg = `Your reprinted Sanlam medical card for ${target} is ready / has been delivered. Ref ${refShort}.`;
+          smsMsg = `Sanlam: ${msg}`;
+        } else if (status === 'processing') {
+          title = 'Card Reprint In Progress';
+          msg = `Your card reprint for ${target} is now being processed. Ref ${refShort}.`;
+          smsMsg = null;
+        } else if (status === 'paid') {
+          title = 'Card Reprint Payment Received';
+          msg = `Payment received for your card reprint (${target}). Ref ${refShort}.`;
+          smsMsg = null;
+        } else if (status === 'cancelled') {
+          title = 'Card Reprint Cancelled';
+          msg = `Your card reprint request for ${target} has been cancelled. ${adminNotes || 'Please contact membership@ug.sanlamallianz.com if needed.'} Ref ${refShort}.`;
+          smsMsg = `Sanlam: ${msg}`;
+        } else {
+          title = 'Card Reprint Update';
+          msg = `Status of your card reprint for ${target} is now: ${status}. Ref ${refShort}.`;
+          smsMsg = null;
+        }
+
+        const logNotif = async (channel, st) => {
+          try {
+            await pool.query(
+              `INSERT INTO notifications (member_id, type, channel, title, message, status, sent_at)
+               VALUES ($1,$2,$3,$4,$5,$6, NOW())`,
+              [c.member_id, 'card_reprint', channel, title, msg, st]
+            );
+          } catch (e) { console.error('reprint notif log:', e.message); }
+        };
+
+        await logNotif('in_app', 'sent');
+
+        if (c.fcm_token) {
+          try { await sendPush(c.fcm_token, title, msg); await logNotif('push', 'sent'); }
+          catch (e) { console.error('reprint push:', e.message); await logNotif('push', 'failed'); }
+        }
+
+        // SMS+Email on fulfilled or cancelled
+        if (status === 'fulfilled' || status === 'cancelled') {
+          if (c.phone && smsMsg) {
+            try { await sendSMS(c.phone, smsMsg); await logNotif('sms', 'sent'); }
+            catch (e) { console.error('reprint sms:', e.message); await logNotif('sms', 'failed'); }
+          }
+          if (c.email) {
+            try {
+              await sendEmail(c.email, title,
+                `<p>Hi ${c.first_name || 'Member'},</p><p>${msg}</p>${adminNotes ? `<p><em>${adminNotes}</em></p>` : ''}<p>Sanlam Allianz Health</p>`);
+              await logNotif('email', 'sent');
+            } catch (e) { console.error('reprint email:', e.message); await logNotif('email', 'failed'); }
+          }
+        }
+      } catch (e) {
+        console.error('reprint status notify bg:', e.message);
+      }
+    });
+    return;
+  } catch (err) {
+    console.error('cardReprints.updateStatus error:', err);
+    return res.status(500).json({ message: 'Failed to update status' });
+  }
+};
+
+module.exports = {
+  create,
+  listMine,
+  listAll,
+  updateStatus,
+  fulfilCardReprintPayment,
+  REPRINT_FEE_UGX,
+};

@@ -54,6 +54,75 @@ const create = async (req, res) => {
       (req.files && req.files.invoice && req.files.invoice[0]) || null;
     const reportFile =
       (req.files && req.files.report && req.files.report[0]) || null;
+    const approvalEmailFile =
+      (req.files && req.files.approvalEmail && req.files.approvalEmail[0]) ||
+      null;
+
+    // --- Sancare authorization gate ----------------------------------------
+    // Every reimbursement must reference a prior Sancare authorization,
+    // either linked in-app (approved authorization_requests row) OR by
+    // uploading the approval email/letter the member received from Sancare.
+    let approvalPath = sanitize(req.body.approvalPath);
+    if (!['in_app', 'email'].includes(approvalPath)) {
+      // Try to infer for backward compatibility with older clients.
+      if (sanitize(req.body.authorizationId)) approvalPath = 'in_app';
+      else if (approvalEmailFile) approvalPath = 'email';
+    }
+    let authorizationId = null;
+    let approvalReference = null;
+
+    if (approvalPath === 'in_app') {
+      authorizationId = sanitize(req.body.authorizationId) || null;
+      if (!authorizationId) {
+        return res.status(400).json({
+          message:
+            'Please select the approved authorization this reimbursement relates to.',
+        });
+      }
+      const authRow = await pool.query(
+        `SELECT id, status, member_id, provider_name
+           FROM authorization_requests
+          WHERE id = $1`,
+        [authorizationId]
+      );
+      if (!authRow.rows.length) {
+        return res
+          .status(400)
+          .json({ message: 'Selected authorization not found.' });
+      }
+      const auth = authRow.rows[0];
+      if (auth.member_id !== memberId) {
+        return res
+          .status(403)
+          .json({ message: 'That authorization does not belong to you.' });
+      }
+      if (auth.status !== 'approved') {
+        return res.status(400).json({
+          message:
+            'Only approved authorizations can be used for a reimbursement.',
+        });
+      }
+    } else if (approvalPath === 'email') {
+      approvalReference = sanitize(req.body.approvalReference);
+      if (!approvalEmailFile) {
+        return res.status(400).json({
+          message:
+            'Please attach the Sancare approval email or letter you received.',
+        });
+      }
+      if (!approvalReference) {
+        return res.status(400).json({
+          message:
+            'Please provide a Sancare approval reference (officer name or email subject/date).',
+        });
+      }
+    } else {
+      return res.status(400).json({
+        message:
+          'Reimbursement requires prior Sancare authorization. Choose an approved authorization or attach the Sancare approval email.',
+      });
+    }
+    // -----------------------------------------------------------------------
 
     if (!hospitalName) {
       return res.status(400).json({ message: 'hospitalName is required' });
@@ -96,6 +165,7 @@ const create = async (req, res) => {
 
     const invoiceUrl = fileToPublicUrl(req, invoiceFile);
     const reportUrl = fileToPublicUrl(req, reportFile);
+    const approvalEmailUrl = fileToPublicUrl(req, approvalEmailFile);
 
     const insert = await pool.query(
       `INSERT INTO reimbursement_claims
@@ -103,8 +173,11 @@ const create = async (req, res) => {
           invoice_url, invoice_filename, report_url, report_filename,
           payout_method, payout_account_name, payout_phone,
           payout_bank_name, payout_account_number, payout_branch,
-          status)
-       VALUES ($1,$2,$3,$4,'UGX',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'pending')
+          status,
+          approval_path, authorization_id,
+          approval_email_url, approval_email_filename, approval_reference)
+       VALUES ($1,$2,$3,$4,'UGX',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'pending',
+               $15,$16,$17,$18,$19)
        RETURNING id, created_at`,
       [
         memberId,
@@ -121,6 +194,11 @@ const create = async (req, res) => {
         payoutMethod === 'bank' ? payoutBankName : null,
         payoutMethod === 'bank' ? payoutAccountNumber : null,
         payoutMethod === 'bank' ? payoutBranch || null : null,
+        approvalPath,
+        authorizationId,
+        approvalEmailUrl,
+        approvalEmailFile ? approvalEmailFile.originalname : null,
+        approvalReference,
       ]
     );
     const created = insert.rows[0];
@@ -134,6 +212,11 @@ const create = async (req, res) => {
         ? `Mobile Money — ${payoutAccountName} (${payoutPhone})`
         : `Bank — ${payoutBankName}, A/C ${payoutAccountNumber} (${payoutAccountName})${payoutBranch ? `, ${payoutBranch}` : ''}`;
 
+    const approvalLine =
+      approvalPath === 'in_app'
+        ? `In-app authorization #${authorizationId}`
+        : `Email approval — ${approvalReference}`;
+
     // Email to sancare team
     const teamHtml = `
       <h3>New Reimbursement Request</h3>
@@ -145,6 +228,7 @@ const create = async (req, res) => {
         <tr><td><strong>Hospital</strong></td><td>${hospitalName}</td></tr>
         <tr><td><strong>Reason</strong></td><td>${reason}</td></tr>
         <tr><td><strong>Amount claimed</strong></td><td>${amountLine}</td></tr>
+        <tr><td><strong>Sancare authorization</strong></td><td>${approvalLine}</td></tr>
         <tr><td><strong>Payout</strong></td><td>${payoutLines}</td></tr>
         <tr><td><strong>Submitted at</strong></td><td>${created.created_at}</td></tr>
       </table>
@@ -154,6 +238,11 @@ const create = async (req, res) => {
         ${
           reportUrl
             ? `<li>Medical report: <a href="${absoluteUrl(req, reportUrl)}">${reportFile.originalname}</a></li>`
+            : ''
+        }
+        ${
+          approvalEmailUrl
+            ? `<li>Sancare approval email: <a href="${absoluteUrl(req, approvalEmailUrl)}">${approvalEmailFile.originalname}</a></li>`
             : ''
         }
       </ul>
@@ -260,6 +349,7 @@ const create = async (req, res) => {
       const files = [
         ...((req.files && req.files.invoice) || []),
         ...((req.files && req.files.report) || []),
+        ...((req.files && req.files.approvalEmail) || []),
       ];
       for (const f of files) fs.existsSync(f.path) && fs.unlinkSync(f.path);
     } catch (_) {}
@@ -278,6 +368,8 @@ const listMine = async (req, res) => {
               payout_method, payout_account_name, payout_phone,
               payout_bank_name, payout_account_number, payout_branch,
               status, paid_at, paid_amount, payment_reference, admin_notes,
+              approval_path, authorization_id,
+              approval_email_url, approval_email_filename, approval_reference,
               created_at, updated_at
          FROM reimbursement_claims
         WHERE member_id = $1
@@ -321,53 +413,106 @@ const updateStatus = async (req, res) => {
     }
     const claim = claimRes.rows[0];
 
-    const isPaid = status === 'paid';
     const update = await pool.query(
       `UPDATE reimbursement_claims
-          SET status = $1,
-              admin_notes = COALESCE($2, admin_notes),
-              paid_amount = COALESCE($3, paid_amount),
-              payment_reference = COALESCE($4, payment_reference),
-              paid_at = CASE WHEN $1 = 'paid' THEN NOW() ELSE paid_at END,
-              paid_by = CASE WHEN $1 = 'paid' THEN $5 ELSE paid_by END,
+          SET status = $1::text,
+              admin_notes = COALESCE($2::text, admin_notes),
+              paid_amount = COALESCE($3::numeric, paid_amount),
+              payment_reference = COALESCE($4::text, payment_reference),
+              paid_at = CASE WHEN $1::text = 'paid' THEN NOW() ELSE paid_at END,
+              paid_by = CASE WHEN $1::text = 'paid' THEN $5::uuid ELSE paid_by END,
               updated_at = NOW()
-        WHERE id = $6
+        WHERE id = $6::uuid
         RETURNING *`,
       [status, adminNotes, paidAmount, paymentReference, req.user.id, id]
     );
 
-    // Notify member on status change (paid or rejected most important)
-    if (status === 'paid' || status === 'rejected') {
-      const amountTxt =
-        paidAmount || claim.amount
-          ? `UGX ${Number(paidAmount || claim.amount).toLocaleString()}`
-          : '';
-      const sms =
-        status === 'paid'
-          ? `Sanlam: Your reimbursement for ${claim.hospital_name} has been PAID${amountTxt ? ` (${amountTxt})` : ''}. Ref ${id.slice(0, 8).toUpperCase()}.`
-          : `Sanlam: Your reimbursement for ${claim.hospital_name} could not be approved. Please contact sancare@ug.sanlamallianz.com for details.`;
-      try {
-        if (claim.phone) await sendSMS(claim.phone, sms);
-        if (claim.email)
-          await sendEmail(
-            claim.email,
-            status === 'paid'
-              ? 'Reimbursement Paid'
-              : 'Reimbursement Update',
-            `<p>Hi ${claim.first_name || 'Member'},</p><p>${sms}</p>${adminNotes ? `<p><em>${adminNotes}</em></p>` : ''}`
-          );
-        if (claim.fcm_token)
-          await sendPush(
-            claim.fcm_token,
-            status === 'paid' ? 'Reimbursement Paid' : 'Reimbursement Update',
-            sms
-          );
-      } catch (e) {
-        console.error('status notify failed:', e.message);
-      }
+    // Build a member-friendly message for every status change
+    const refShort = id.slice(0, 8).toUpperCase();
+    const amountTxt =
+      paidAmount || claim.amount
+        ? `UGX ${Number(paidAmount || claim.amount).toLocaleString()}`
+        : '';
+    let title, memberMsg, sms;
+    if (status === 'paid') {
+      title = 'Reimbursement Paid';
+      memberMsg = `Your reimbursement for ${claim.hospital_name} has been PAID${amountTxt ? ` (${amountTxt})` : ''}. Ref ${refShort}.`;
+      sms = `Sanlam: ${memberMsg}`;
+    } else if (status === 'rejected') {
+      title = 'Reimbursement Update';
+      memberMsg = `Your reimbursement for ${claim.hospital_name} could not be approved. Please contact sancare@ug.sanlamallianz.com for details. Ref ${refShort}.`;
+      sms = `Sanlam: ${memberMsg}`;
+    } else if (status === 'under_review') {
+      title = 'Reimbursement Under Review';
+      memberMsg = `Your reimbursement for ${claim.hospital_name} is now under review. Ref ${refShort}.`;
+      sms = null;
+    } else {
+      title = 'Reimbursement Update';
+      memberMsg = `Status of your reimbursement for ${claim.hospital_name} is now: ${status}. Ref ${refShort}.`;
+      sms = null;
     }
 
-    return res.json(update.rows[0]);
+    const logNotif = async (channel, st) => {
+      try {
+        await pool.query(
+          `INSERT INTO notifications (member_id, type, channel, title, message, status, sent_at)
+           VALUES ($1,$2,$3,$4,$5,$6, NOW())`,
+          [claim.member_id, 'reimbursement', channel, title, memberMsg, st]
+        );
+      } catch (e) {
+        console.error('notification log insert failed:', e.message);
+      }
+    };
+
+    // Respond IMMEDIATELY to avoid the portal freezing while SMTP/SMS run
+    res.json(update.rows[0]);
+
+    setImmediate(async () => {
+      try {
+        // Always: in-app inbox entry so member sees it inside the app
+        await logNotif('in_app', 'sent');
+
+        // Push to device on every status change (best-effort)
+        if (claim.fcm_token) {
+          try {
+            await sendPush(claim.fcm_token, title, memberMsg);
+            await logNotif('push', 'sent');
+          } catch (e) {
+            console.error('push notify failed:', e.message);
+            await logNotif('push', 'failed');
+          }
+        }
+
+        // SMS + email only for paid / rejected
+        if (status === 'paid' || status === 'rejected') {
+          if (claim.phone && sms) {
+            try {
+              await sendSMS(claim.phone, sms);
+              await logNotif('sms', 'sent');
+            } catch (e) {
+              console.error('sms notify failed:', e.message);
+              await logNotif('sms', 'failed');
+            }
+          }
+          if (claim.email) {
+            try {
+              await sendEmail(
+                claim.email,
+                title,
+                `<p>Hi ${claim.first_name || 'Member'},</p><p>${memberMsg}</p>${adminNotes ? `<p><em>${adminNotes}</em></p>` : ''}<p>Sanlam Allianz Health</p>`
+              );
+              await logNotif('email', 'sent');
+            } catch (e) {
+              console.error('email notify failed:', e.message);
+              await logNotif('email', 'failed');
+            }
+          }
+        }
+      } catch (e) {
+        console.error('reimbursement notify bg:', e.message);
+      }
+    });
+    return;
   } catch (err) {
     console.error('reimbursements.updateStatus error:', err);
     return res.status(500).json({ message: 'Failed to update status' });

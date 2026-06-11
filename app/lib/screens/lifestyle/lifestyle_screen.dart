@@ -11,6 +11,7 @@ import '../../providers/member_type_provider.dart';
 import '../../providers/step_tracking_provider.dart';
 import '../../services/notification_service.dart';
 import 'fitness_tracker_screen.dart';
+import '../../core/app_colors.dart';
 
 class LifestyleScreen extends ConsumerStatefulWidget {
   const LifestyleScreen({super.key});
@@ -70,7 +71,7 @@ class _LifestyleScreenState extends ConsumerState<LifestyleScreen>
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Lifestyle & Wellness',
+        title: Text('Lifestyle & Wellness',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
         iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
@@ -275,7 +276,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                           color: Color(0xFF16A34A), size: 16),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       'Need to talk to someone?',
                       style: TextStyle(
                           fontWeight: FontWeight.w700,
@@ -315,12 +316,12 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'How are you feeling today?',
                   style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      color: kText),
+                      color: context.c.text),
                 ),
                 const SizedBox(height: 14),
                 Row(
@@ -361,7 +362,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                               m['label']!,
                               style: TextStyle(
                                 fontSize: 10,
-                                color: selected ? kPrimary : kSubtext,
+                                color: selected ? kPrimary : context.c.subtext,
                                 fontWeight: selected
                                     ? FontWeight.w700
                                     : FontWeight.w400,
@@ -418,12 +419,12 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Check-in',
                   style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      color: kText),
+                      color: context.c.text),
                 ),
                 const SizedBox(height: 16),
                 _levelSlider(
@@ -479,19 +480,19 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                               Icon(Icons.self_improvement_rounded,
                                   color: kWarning, size: 18),
                               const SizedBox(width: 8),
-                              const Text(
+                              Text(
                                 'High Stress Detected',
                                 style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
-                                    color: kText),
+                                    color: context.c.text),
                               ),
                               const Spacer(),
                               GestureDetector(
                                 onTap: () => setState(
                                     () => _showStressAlert = false),
-                                child: const Icon(Icons.close,
-                                    size: 16, color: kSubtext),
+                                child: Icon(Icons.close,
+                                    size: 16, color: context.c.subtext),
                               ),
                             ],
                           ),
@@ -501,14 +502,14 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('🌿', style: TextStyle(fontSize: 13)),
+                                Text('🌿', style: TextStyle(fontSize: 13)),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     rec,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 12,
-                                        color: kSubtext,
+                                        color: context.c.subtext,
                                         height: 1.5),
                                   ),
                                 ),
@@ -744,7 +745,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
           const SizedBox(height: 18),
           // ── Mood & Stress History ──────────────────────────────────
           if (state.psychosocialHistory.isNotEmpty)
-            _buildMoodStressHistory(state.psychosocialHistory),
+            _buildMoodStressHistory(context, state.psychosocialHistory),
           const SizedBox(height: 18),
           // ── Find Counselor button ──────────────────────────────────
           SizedBox(
@@ -752,7 +753,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
             child: OutlinedButton.icon(
               onPressed: () => context.push('$routePartners?type=counsellor'),
               icon: const Icon(Icons.location_on_outlined),
-              label: const Text('Find Counselor'),
+              label: Text('Find Counselor'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -781,10 +782,10 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
             const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: kSubtext),
+                  color: context.c.subtext),
             ),
             const Spacer(),
             Container(
@@ -860,7 +861,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 11, color: kSubtext),
+                    style: TextStyle(fontSize: 11, color: context.c.subtext),
                   ),
                 ],
               ),
@@ -878,7 +879,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
     return kError;
   }
 
-  Widget _buildMoodStressHistory(List<PsychosocialCheckin> history) {
+  Widget _buildMoodStressHistory(BuildContext context, List<PsychosocialCheckin> history) {
     // Sort chronologically (oldest first) for chart
     final sorted = [...history]
       ..sort((a, b) => a.checkinDate.compareTo(b.checkinDate));
@@ -941,7 +942,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                     color: kPrimary, size: 16),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -949,9 +950,9 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                         style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
-                            color: kText)),
+                            color: context.c.text)),
                     Text('Your check-in trends over time',
-                        style: TextStyle(fontSize: 11, color: kSubtext)),
+                        style: TextStyle(fontSize: 11, color: context.c.subtext)),
                   ],
                 ),
               ),
@@ -979,7 +980,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                   show: true,
                   drawVerticalLine: false,
                   getDrawingHorizontalLine: (_) => FlLine(
-                      color: kBorder.withValues(alpha: 0.5), strokeWidth: 1),
+                      color: context.c.border.withValues(alpha: 0.5), strokeWidth: 1),
                 ),
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
@@ -989,8 +990,8 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                       interval: 2,
                       getTitlesWidget: (v, _) => Text(
                         v.toInt().toString(),
-                        style: const TextStyle(
-                            fontSize: 10, color: kSubtext),
+                        style: TextStyle(
+                            fontSize: 10, color: context.c.subtext),
                       ),
                     ),
                   ),
@@ -1006,8 +1007,8 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                         final d = limited[idx].checkinDate;
                         return Text(
                           '${d.day}/${d.month}',
-                          style: const TextStyle(
-                              fontSize: 9, color: kSubtext),
+                          style: TextStyle(
+                              fontSize: 9, color: context.c.subtext),
                         );
                       },
                     ),
@@ -1059,11 +1060,11 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('😢 1', style: TextStyle(fontSize: 10, color: kSubtext)),
-                const Text('😔 2', style: TextStyle(fontSize: 10, color: kSubtext)),
-                const Text('😐 3', style: TextStyle(fontSize: 10, color: kSubtext)),
-                const Text('🙂 4', style: TextStyle(fontSize: 10, color: kSubtext)),
-                const Text('😄 5', style: TextStyle(fontSize: 10, color: kSubtext)),
+                Text('😢 1', style: TextStyle(fontSize: 10, color: context.c.subtext)),
+                Text('😔 2', style: TextStyle(fontSize: 10, color: context.c.subtext)),
+                Text('😐 3', style: TextStyle(fontSize: 10, color: context.c.subtext)),
+                Text('🙂 4', style: TextStyle(fontSize: 10, color: context.c.subtext)),
+                Text('😄 5', style: TextStyle(fontSize: 10, color: context.c.subtext)),
               ],
             ),
           ],
@@ -1158,7 +1159,7 @@ class _NutritionTab extends ConsumerWidget {
                         child: CircularProgressIndicator(
                           value: progress,
                           strokeWidth: 10,
-                          backgroundColor: kBorder,
+                          backgroundColor: context.c.border,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             overGoal ? kError : kAccent,
                           ),
@@ -1174,15 +1175,15 @@ class _NutritionTab extends ConsumerWidget {
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
-                              color: overGoal ? kError : kText,
+                              color: overGoal ? kError : context.c.text,
                               height: 1,
                               letterSpacing: -0.5,
                             ),
                           ),
                           Text(
                             overGoal ? 'over' : 'remaining',
-                            style: const TextStyle(
-                                fontSize: 9, color: kSubtext),
+                            style: TextStyle(
+                                fontSize: 9, color: context.c.subtext),
                           ),
                         ],
                       ),
@@ -1194,12 +1195,12 @@ class _NutritionTab extends ConsumerWidget {
                 Expanded(
                   child: Column(
                     children: [
-                      _calRow('Goal', '$calorieGoal', 'kcal',
+                      _calRow(context, 'Goal', '$calorieGoal', 'kcal',
                           const Color(0xFF94A3B8)),
                       const SizedBox(height: 12),
-                      _calRow('Consumed', '$consumed', 'kcal', kAccent),
+                      _calRow(context, 'Consumed', '$consumed', 'kcal', kAccent),
                       const SizedBox(height: 12),
-                      _calRow(
+                      _calRow(context, 
                         overGoal ? 'Over' : 'Remaining',
                         overGoal
                             ? '${consumed - calorieGoal}'
@@ -1230,12 +1231,12 @@ class _NutritionTab extends ConsumerWidget {
                     const Icon(Icons.water_drop_rounded,
                         color: Color(0xFF3B82F6), size: 16),
                     const SizedBox(width: 6),
-                    const Text(
+                    Text(
                       'Water Intake',
                       style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
-                          color: kText),
+                          color: context.c.text),
                     ),
                     const Spacer(),
                     Text(
@@ -1291,7 +1292,7 @@ class _NutritionTab extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: state.waterCups / 8,
-                    backgroundColor: kBorder,
+                    backgroundColor: context.c.border,
                     valueColor: const AlwaysStoppedAnimation(
                         Color(0xFF3B82F6)),
                     minHeight: 4,
@@ -1307,7 +1308,7 @@ class _NutritionTab extends ConsumerWidget {
             child: ElevatedButton.icon(
               onPressed: () => context.push(routeLogMeal),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Log Meal'),
+              label: Text('Log Meal'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
@@ -1320,7 +1321,7 @@ class _NutritionTab extends ConsumerWidget {
             child: OutlinedButton.icon(
               onPressed: () => context.push('$routePartners?type=nutritionist'),
               icon: const Icon(Icons.location_on_outlined),
-              label: const Text('Find Nutritionist'),
+              label: Text('Find Nutritionist'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -1397,12 +1398,12 @@ class _NutritionTab extends ConsumerWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('🌿', style: TextStyle(fontSize: 14)),
+                        Text('🌿', style: TextStyle(fontSize: 14)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             tip,
-                            style: const TextStyle(fontSize: 12, color: kText, height: 1.5),
+                            style: TextStyle(fontSize: 12, color: context.c.text, height: 1.5),
                           ),
                         ),
                       ],
@@ -1414,10 +1415,10 @@ class _NutritionTab extends ConsumerWidget {
           }),
           const SizedBox(height: 14),
           // ── Today's Meals ──────────────────────────────────────────
-          const Text(
+          Text(
             "Today's Meals",
             style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w700, color: kText),
+                fontSize: 16, fontWeight: FontWeight.w700, color: context.c.text),
           ),
           const SizedBox(height: 12),
           ...['breakfast', 'lunch', 'dinner', 'snack'].map((type) {
@@ -1446,7 +1447,7 @@ class _NutritionTab extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(kRadiusMd),
                 border: Border(
                   left: BorderSide(
-                    color: meals.isNotEmpty ? kAccent : kBorder,
+                    color: meals.isNotEmpty ? kAccent : context.c.border,
                     width: 3,
                   ),
                 ),
@@ -1459,10 +1460,10 @@ class _NutritionTab extends ConsumerWidget {
                     style: const TextStyle(fontSize: 22)),
                 title: Text(
                   type[0].toUpperCase() + type.substring(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: kText),
+                      color: context.c.text),
                 ),
                 subtitle: Text(
                   meals.isEmpty
@@ -1470,7 +1471,7 @@ class _NutritionTab extends ConsumerWidget {
                       : meals.map((m) => m.description).join(', '),
                   style: TextStyle(
                     fontSize: 11,
-                    color: meals.isEmpty ? kTextLight : kSubtext,
+                    color: meals.isEmpty ? context.c.textLight : context.c.subtext,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1517,7 +1518,7 @@ class _NutritionTab extends ConsumerWidget {
                     children: [
                       const Icon(Icons.tips_and_updates_rounded, color: kAccent, size: 15),
                       const SizedBox(width: 6),
-                      const Text('Diet Tip',
+                      Text('Diet Tip',
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: kAccent)),
                       const Spacer(),
                       if (condLabel.isNotEmpty)
@@ -1533,7 +1534,7 @@ class _NutritionTab extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(tip, style: const TextStyle(fontSize: 12, color: kText, height: 1.5)),
+                  Text(tip, style: TextStyle(fontSize: 12, color: context.c.text, height: 1.5)),
                 ],
               ),
             );
@@ -1544,7 +1545,7 @@ class _NutritionTab extends ConsumerWidget {
   }
 
   Widget _calRow(
-      String label, String value, String unit, Color color) {
+      BuildContext context, String label, String value, String unit, Color color) {
     return Row(
       children: [
         Container(
@@ -1558,7 +1559,7 @@ class _NutritionTab extends ConsumerWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(label,
-              style: const TextStyle(fontSize: 11, color: kSubtext)),
+              style: TextStyle(fontSize: 11, color: context.c.subtext)),
         ),
         RichText(
           text: TextSpan(
@@ -1572,7 +1573,7 @@ class _NutritionTab extends ConsumerWidget {
               ),
               TextSpan(
                 text: ' $unit',
-                style: const TextStyle(fontSize: 10, color: kSubtext),
+                style: TextStyle(fontSize: 10, color: context.c.subtext),
               ),
             ],
           ),
@@ -1632,7 +1633,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                 children: [
                   const Icon(Icons.sensors_rounded, color: Color(0xFF16A34A), size: 15),
                   const SizedBox(width: 8),
-                  const Text('Live step tracking active',
+                  Text('Live step tracking active',
                       style: TextStyle(fontSize: 12, color: Color(0xFF15803D), fontWeight: FontWeight.w600)),
                   const Spacer(),
                   Container(
@@ -1641,7 +1642,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                       color: const Color(0xFF16A34A).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(kRadiusFull),
                     ),
-                    child: const Text('Auto', style: TextStyle(fontSize: 10, color: Color(0xFF16A34A), fontWeight: FontWeight.w700)),
+                    child: Text('Auto', style: TextStyle(fontSize: 10, color: Color(0xFF16A34A), fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -1671,7 +1672,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                             child: CircularProgressIndicator(
                               value: progress,
                               strokeWidth: 10,
-                              backgroundColor: kBorder,
+                              backgroundColor: context.c.border,
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 steps >= stepGoal ? kAccent : kPrimary,
                               ),
@@ -1682,18 +1683,18 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                             children: [
                               Text(
                                 _formatSteps(steps),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
-                                  color: kText,
+                                  color: context.c.text,
                                   height: 1,
                                   letterSpacing: -0.5,
                                 ),
                               ),
-                              const Text(
+                              Text(
                                 'steps',
                                 style:
-                                    TextStyle(fontSize: 10, color: kSubtext),
+                                    TextStyle(fontSize: 10, color: context.c.subtext),
                               ),
                             ],
                           ),
@@ -1731,11 +1732,11 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Daily Step Goal',
                           style: TextStyle(
                               fontSize: 11,
-                              color: kSubtext,
+                              color: context.c.subtext,
                               fontWeight: FontWeight.w500),
                         ),
                         Text(
@@ -1753,7 +1754,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: progress,
-                        backgroundColor: kBorder,
+                        backgroundColor: context.c.border,
                         valueColor: AlwaysStoppedAnimation<Color>(
                           steps >= stepGoal ? kAccent : kPrimary,
                         ),
@@ -1815,7 +1816,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                 child: OutlinedButton.icon(
                   onPressed: () => context.push(routePartners),
                   icon: const Icon(Icons.location_on_outlined),
-                  label: const Text('Find Gym'),
+                  label: Text('Find Gym'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
@@ -1825,19 +1826,19 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
           ),
           const SizedBox(height: 22),
           // ── Weekly chart ───────────────────────────────────────────
-          const Text(
+          Text(
             'Weekly Activity',
             style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w700, color: kText),
+                fontSize: 16, fontWeight: FontWeight.w700, color: context.c.text),
           ),
           const SizedBox(height: 12),
-          _buildWeeklyChart(state, stepGoal),
+          _buildWeeklyChart(context, state, stepGoal),
           const SizedBox(height: 22),
           // ── Today's Activities ──────────────────────────────────────
-          const Text(
+          Text(
             "Today's Activities",
             style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w700, color: kText),
+                fontSize: 16, fontWeight: FontWeight.w700, color: context.c.text),
           ),
           const SizedBox(height: 12),
           ..._buildTodayActivities(state),
@@ -1845,7 +1846,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
           // ── Leaderboard ────────────────────────────────────────────
           _buildRankTierCard(state),
           const SizedBox(height: 12),
-          _buildLeaderboardCard(state),
+          _buildLeaderboardCard(context, state),
           const SizedBox(height: 14),
           // ── Condition-aware fitness tip ────────────────────────────
           Container(
@@ -1883,7 +1884,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                   isChronic
                       ? fitnessTip
                       : 'A daily 30-minute brisk walk improves cardiovascular health, boosts mood, and helps maintain a healthy weight. Try increasing your daily steps by 500 each week.',
-                  style: const TextStyle(fontSize: 12, color: kText, height: 1.5),
+                  style: TextStyle(fontSize: 12, color: context.c.text, height: 1.5),
                 ),
               ],
             ),
@@ -1909,15 +1910,15 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
             borderRadius: BorderRadius.circular(kRadiusMd),
             boxShadow: kCardShadow,
           ),
-          child: const Column(
+          child: Column(
             children: [
               Text('🏃', style: TextStyle(fontSize: 32)),
               SizedBox(height: 8),
               Text('No activities logged today',
-                  style: TextStyle(fontSize: 13, color: kSubtext)),
+                  style: TextStyle(fontSize: 13, color: context.c.subtext)),
               SizedBox(height: 4),
               Text('Track an activity to see it here!',
-                  style: TextStyle(fontSize: 11, color: kTextLight)),
+                  style: TextStyle(fontSize: 11, color: context.c.textLight)),
             ],
           ),
         ),
@@ -1942,8 +1943,8 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
               style: const TextStyle(fontSize: 22)),
           title: Text(
             log.activityLabel,
-            style: const TextStyle(
-                fontWeight: FontWeight.w600, fontSize: 13, color: kText),
+            style: TextStyle(
+                fontWeight: FontWeight.w600, fontSize: 13, color: context.c.text),
           ),
           subtitle: Text(
             [
@@ -1951,7 +1952,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
               if (log.steps != null && log.steps! > 0) '${log.steps} steps',
               if (log.notes != null && log.notes!.isNotEmpty) log.notes!,
             ].join(' • '),
-            style: const TextStyle(fontSize: 11, color: kSubtext),
+            style: TextStyle(fontSize: 11, color: context.c.subtext),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -2161,7 +2162,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
     return 'Platinum';
   }
 
-  Widget _buildLeaderboardCard(LifestyleState state) {
+  Widget _buildLeaderboardCard(BuildContext context, LifestyleState state) {
     final entries = state.leaderboard;
     final myRank = state.myRank;
 
@@ -2180,12 +2181,12 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
               const Icon(Icons.leaderboard_rounded,
                   color: Color(0xFFEAB308), size: 18),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Weekly Leaderboard',
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: kText),
+                    color: context.c.text),
               ),
               const Spacer(),
               if (myRank != null)
@@ -2210,19 +2211,19 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Earn points from fitness, workouts, meals & hydration',
-            style: TextStyle(fontSize: 10, color: kSubtext),
+            style: TextStyle(fontSize: 10, color: context.c.subtext),
           ),
           const SizedBox(height: 12),
           if (entries.isEmpty)
-            const Center(
+            Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Text(
                   'No activity yet this week.\nLog a workout, meal or water to earn points!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: kSubtext),
+                  style: TextStyle(fontSize: 12, color: context.c.subtext),
                 ),
               ),
             )
@@ -2235,7 +2236,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                       ? const Color(0xFF94A3B8)
                       : entry.rank == 3
                           ? const Color(0xFFCD7F32)
-                          : kSubtext;
+                          : context.c.subtext;
               final rankIcon = entry.rank <= 3
                   ? ['🥇', '🥈', '🥉'][entry.rank - 1]
                   : null;
@@ -2311,13 +2312,13 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                               fontSize: 13,
                               fontWeight:
                                   isMe ? FontWeight.w700 : FontWeight.w500,
-                              color: kText,
+                              color: context.c.text,
                             ),
                           ),
                           Text(
                             subtitle,
-                            style: const TextStyle(
-                                fontSize: 10, color: kSubtext),
+                            style: TextStyle(
+                                fontSize: 10, color: context.c.subtext),
                           ),
                         ],
                       ),
@@ -2334,10 +2335,10 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                             color: kPrimary,
                           ),
                         ),
-                        const Text(
+                        Text(
                           'pts',
                           style:
-                              TextStyle(fontSize: 9, color: kSubtext),
+                              TextStyle(fontSize: 9, color: context.c.subtext),
                         ),
                       ],
                     ),
@@ -2391,7 +2392,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
             ),
             Text(
               label,
-              style: const TextStyle(fontSize: 10, color: kSubtext),
+              style: TextStyle(fontSize: 10, color: context.c.subtext),
             ),
           ],
         ),
@@ -2399,7 +2400,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
     );
   }
 
-  Widget _buildWeeklyChart(LifestyleState state, int stepGoal) {
+  Widget _buildWeeklyChart(BuildContext context, LifestyleState state, int stepGoal) {
     final now = DateTime.now();
     final days = List.generate(
         7, (i) => now.subtract(Duration(days: 6 - i)));
@@ -2457,7 +2458,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
             show: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) =>
-                const FlLine(color: kBorder, strokeWidth: 1),
+                FlLine(color: context.c.border, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
@@ -2470,7 +2471,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                   return Text(
                     idx < labels.length ? labels[idx] : '',
                     style:
-                        const TextStyle(fontSize: 10, color: kSubtext),
+                        TextStyle(fontSize: 10, color: context.c.subtext),
                   );
                 },
               ),

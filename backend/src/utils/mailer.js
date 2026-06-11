@@ -14,20 +14,23 @@ const transporter = nodemailer.createTransport({
 /**
  * Send an email via the corporate SMTP account.
  * @param {object} opts
- * @param {string}   opts.to      - Recipient email address
- * @param {string}   opts.subject - Email subject
- * @param {string}   opts.html    - HTML body
- * @param {string}  [opts.cc]     - Optional CC address
- * @param {string}  [opts.replyTo]- Optional reply-to address
+ * @param {string}   opts.to          - Recipient email address
+ * @param {string}   opts.subject     - Email subject
+ * @param {string}   opts.html        - HTML body
+ * @param {string}  [opts.cc]         - Optional CC address
+ * @param {string}  [opts.replyTo]    - Optional reply-to address
+ * @param {Array}   [opts.attachments]- Optional nodemailer attachments array
+ *   Each entry: { filename, path } or { filename, content, contentType }
  */
-async function sendMail({ to, subject, html, cc, replyTo }) {
+async function sendMail({ to, subject, html, cc, replyTo, attachments }) {
   const info = await transporter.sendMail({
-    from:    `"Sanlam Chronic Care" <${process.env.SMTP_USER}>`,
+    from:        `"SanCare+" <${process.env.SMTP_USER}>`,
     to,
-    cc:      cc  || undefined,
-    replyTo: replyTo || undefined,
+    cc:          cc          || undefined,
+    replyTo:     replyTo     || undefined,
     subject,
     html,
+    attachments: attachments || undefined,
   });
   return info;
 }

@@ -4,6 +4,7 @@ import '../../core/constants.dart';
 import '../../core/money.dart';
 import '../../models/visit.dart';
 import 'claim_status_chip.dart';
+import '../../core/app_colors.dart';
 
 class VisitTile extends StatelessWidget {
   final Visit visit;
@@ -25,7 +26,7 @@ class VisitTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: kSurface,
+          color: context.c.surface,
           borderRadius: BorderRadius.circular(kRadiusMd),
           boxShadow: kCardShadow,
         ),
@@ -37,10 +38,10 @@ class VisitTile extends StatelessWidget {
                 Expanded(
                   child: Text(
                     visit.institution,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: kText,
+                      color: context.c.text,
                     ),
                   ),
                 ),
@@ -50,12 +51,12 @@ class VisitTile extends StatelessWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.calendar_today_outlined,
-                    size: 13, color: kSubtext),
+                Icon(Icons.calendar_today_outlined,
+                    size: 13, color: context.c.subtext),
                 const SizedBox(width: 4),
                 Text(
                   _formatDate(visit.treatmentDate),
-                  style: const TextStyle(fontSize: 12, color: kSubtext),
+                  style: TextStyle(fontSize: 12, color: context.c.subtext),
                 ),
                 const SizedBox(width: 12),
                 Container(
@@ -78,7 +79,7 @@ class VisitTile extends StatelessWidget {
               children: [
                 Text(
                   'Claim: ${visit.claimNo}',
-                  style: const TextStyle(fontSize: 11, color: kSubtext),
+                  style: TextStyle(fontSize: 11, color: context.c.subtext),
                 ),
                 Money(
                   amount: visit.totalAmount,

@@ -195,15 +195,18 @@ const getProfile = async (req, res) => {
   try {
     const memberId = req.user.id;
     const result = await pool.query(
-      `SELECT m.*, 
+      `SELECT m.*,
+              s.name AS scheme_name,
+              m.is_chronic,
               json_agg(DISTINCT jsonb_build_object(
                 'id', c.id, 'name', c.name, 'diagnosed_date', mc.diagnosed_date
               )) FILTER (WHERE c.id IS NOT NULL) AS conditions
        FROM members m
+       LEFT JOIN schemes s ON s.id = m.scheme_id
        LEFT JOIN member_conditions mc ON mc.member_id = m.id
        LEFT JOIN conditions c ON c.id = mc.condition_id
        WHERE m.id = $1
-       GROUP BY m.id`,
+       GROUP BY m.id, s.name`,
       [memberId]
     );
     const member = result.rows[0];
@@ -234,15 +237,18 @@ const updateProfile = async (req, res) => {
     );
 
     const result = await pool.query(
-      `SELECT m.*, 
+      `SELECT m.*,
+              s.name AS scheme_name,
+              m.is_chronic,
               json_agg(DISTINCT jsonb_build_object(
                 'id', c.id, 'name', c.name, 'diagnosed_date', mc.diagnosed_date
               )) FILTER (WHERE c.id IS NOT NULL) AS conditions
        FROM members m
+       LEFT JOIN schemes s ON s.id = m.scheme_id
        LEFT JOIN member_conditions mc ON mc.member_id = m.id
        LEFT JOIN conditions c ON c.id = mc.condition_id
        WHERE m.id = $1
-       GROUP BY m.id`,
+       GROUP BY m.id, s.name`,
       [memberId]
     );
     const member = result.rows[0];
@@ -321,6 +327,7 @@ const listMembers = async (req, res) => {
               s.name AS scheme_name,
               m.is_active,
               m.is_password_set,
+              m.is_chronic,
               m.created_at,
               COALESCE(array_remove(array_agg(DISTINCT c.name), NULL), ARRAY[]::VARCHAR[]) AS conditions
        FROM members m
@@ -352,6 +359,7 @@ const getMemberById = async (req, res) => {
     const memberResult = await pool.query(
       `SELECT m.*,
               s.name AS scheme_name,
+              m.is_chronic,
               json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'diagnosed_date', mc.diagnosed_date))
                 FILTER (WHERE c.id IS NOT NULL) AS conditions
        FROM members m
@@ -839,7 +847,7 @@ const adminUpdateMember = async (req, res) => {
         ]
       );
 
-      // Update conditions if provided
+      // Update conditions if provided, and set is_chronic accordingly
       if (conditions !== undefined) {
         await client.query('DELETE FROM member_conditions WHERE member_id = $1', [memberId]);
         const conditionIds = await resolveConditionIds(client, Array.isArray(conditions) ? conditions : [conditions]);
@@ -850,6 +858,11 @@ const adminUpdateMember = async (req, res) => {
             [memberId, conditionId]
           );
         }
+        // is_chronic is true only when admin has assigned at least one condition
+        await client.query(
+          `UPDATE members SET is_chronic = $1 WHERE id = $2`,
+          [conditionIds.length > 0, memberId]
+        );
       }
 
       // Audit log
@@ -892,6 +905,65 @@ const adminUpdateMember = async (req, res) => {
   }
 };
 
+// Admin: hard-delete a member. Restricted to the designated super-admin.
+// FK relationships use ON DELETE CASCADE, so all dependent rows
+// (conditions, medications, vitals, audit_logs, etc.) are removed too.
+const SUPERADMIN_DELETE_EMAIL = 'eddyregan4@gmail.com';
+
+const deleteMember = async (req, res) => {
+  try {
+    const callerEmail = (req.user && req.user.email ? req.user.email : '')
+      .toString().toLowerCase();
+    if (callerEmail !== SUPERADMIN_DELETE_EMAIL) {
+      return res.status(403).json({ message: 'Only the super admin can delete members' });
+    }
+
+    const memberId = req.params.id;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const existing = await client.query(
+        'SELECT id, member_number, first_name, last_name FROM members WHERE id = $1',
+        [memberId]
+      );
+      if (!existing.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ message: 'Member not found' });
+      }
+      const member = existing.rows[0];
+
+      await client.query('DELETE FROM members WHERE id = $1', [memberId]);
+
+      await client.query(
+        `INSERT INTO audit_logs (actor_id, actor_type, action, entity, entity_id, details, ip_address)
+         VALUES ($1, 'admin', 'delete_member', 'member', $2, $3, $4)`,
+        [
+          req.user.id,
+          memberId,
+          JSON.stringify({
+            member_number: member.member_number,
+            name: `${member.first_name || ''} ${member.last_name || ''}`.trim(),
+            admin_name: req.user.name || req.user.email,
+          }),
+          req.ip,
+        ]
+      );
+
+      await client.query('COMMIT');
+      return res.json({ message: 'Member deleted', id: memberId });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('deleteMember error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -903,4 +975,5 @@ module.exports = {
   exportMembers,
   registerMember,
   adminUpdateMember,
+  deleteMember,
 };

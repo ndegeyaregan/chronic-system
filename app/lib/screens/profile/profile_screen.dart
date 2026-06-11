@@ -17,6 +17,7 @@ import '../../services/pdf_service.dart';
 import '../../widgets/common/app_input.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../services/biometric_service.dart';
+import '../../core/app_colors.dart';
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -49,7 +50,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               SizedBox(width: 10),
               Text('No Fingerprint Enrolled'),
             ]),
-            content: const Text(
+            content: Text(
               'Your phone has no fingerprint enrolled.\n\n'
               'To use biometric login, please go to:\n'
               'Settings → Security → Fingerprint\n\n'
@@ -60,7 +61,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: kPrimary),
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('OK', style: TextStyle(color: Colors.white)),
+                child: Text('OK', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -104,7 +105,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Enter your password once to enroll biometric login.', style: TextStyle(fontSize: 13, color: kSubtext)),
+              Text('Enter your password once to enroll biometric login.', style: TextStyle(fontSize: 13, color: context.c.subtext)),
               const SizedBox(height: 16),
               TextField(
                 controller: passwordCtrl,
@@ -121,11 +122,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: kPrimary),
               onPressed: () => Navigator.pop(ctx, passwordCtrl.text),
-              child: const Text('Enable', style: TextStyle(color: Colors.white)),
+              child: Text('Enable', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -203,7 +204,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (memberState.isLoading && memberState.member == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('My Profile')),
+        appBar: AppBar(title: Text('My Profile')),
         body: const Padding(
           padding: EdgeInsets.all(16),
           child: LoadingListCard(count: 4),
@@ -212,7 +213,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Profile')),
+      appBar: AppBar(title: Text('My Profile')),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -335,7 +336,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _infoCard(member),
+                  _infoCard(context, member),
                   const SizedBox(height: 16),
                   _menuCard(context, member),
                 ],
@@ -373,24 +374,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_rounded, color: kPrimary),
-              title: const Text('Take a photo'),
+              title: Text('Take a photo'),
               onTap: () => Navigator.pop(ctx, 'camera'),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_rounded, color: kPrimary),
-              title: const Text('Choose from gallery'),
+              title: Text('Choose from gallery'),
               onTap: () => Navigator.pop(ctx, 'gallery'),
             ),
             if (hasPic)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Remove photo',
+                title: Text('Remove photo',
                     style: TextStyle(color: Colors.red)),
                 onTap: () => Navigator.pop(ctx, 'remove'),
               ),
             ListTile(
               leading: const Icon(Icons.close),
-              title: const Text('Cancel'),
+              title: Text('Cancel'),
               onTap: () => Navigator.pop(ctx),
             ),
           ],
@@ -418,6 +419,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
     if (file == null || !mounted) return;
 
+    // Enforce 10 KB maximum file size.
+    final bytes = await file.length();
+    const maxBytes = 10 * 1024; // 10 KB
+    if (bytes > maxBytes) {
+      if (!mounted) return;
+      final sizeKb = (bytes / 1024).toStringAsFixed(1);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+            'Photo is $sizeKb KB — maximum allowed size is 10 KB. '
+            'Please choose a smaller image.'),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 4),
+      ));
+      return;
+    }
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Uploading photo…')),
     );
@@ -431,7 +448,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     ));
   }
 
-  Widget _infoCard(Member? member) {
+  Widget _infoCard(BuildContext context, Member? member) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -445,13 +462,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       child: Column(
         children: [
-          _infoRow(Icons.badge_outlined, 'Member Number',
+          _infoRow(context, Icons.badge_outlined, 'Member Number',
               member?.memberNumber ?? '—'),
           const Divider(height: 1),
-          _infoRow(Icons.email_outlined, 'Email',
+          _infoRow(context, Icons.email_outlined, 'Email',
               member?.email ?? 'Not set'),
           const Divider(height: 1),
-          _infoRow(Icons.phone_outlined, 'Phone',
+          _infoRow(context, Icons.phone_outlined, 'Phone',
               member?.phone ?? 'Not set'),
           const Divider(height: 1),
           // Conditions row — always visible, tappable to edit
@@ -469,8 +486,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Conditions',
-                            style: TextStyle(fontSize: 11, color: kSubtext)),
+                        Text('Conditions',
+                            style: TextStyle(fontSize: 11, color: context.c.subtext)),
                         const SizedBox(height: 6),
                         if (member?.conditions.isNotEmpty == true)
                           Wrap(
@@ -487,12 +504,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ],
                           )
                         else
-                          const Text('Tap to add your conditions',
-                              style: TextStyle(fontSize: 13, color: kSubtext)),
+                          Text('Tap to add your conditions',
+                              style: TextStyle(fontSize: 13, color: context.c.subtext)),
                       ],
                     ),
                   ),
-                  const Icon(Icons.edit_outlined, size: 16, color: kSubtext),
+                  Icon(Icons.edit_outlined, size: 16, color: context.c.subtext),
                 ],
               ),
             ),
@@ -502,7 +519,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
+  Widget _infoRow(BuildContext context, IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.all(14),
       child: Row(
@@ -513,12 +530,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style: const TextStyle(fontSize: 11, color: kSubtext)),
+                  style: TextStyle(fontSize: 11, color: context.c.subtext)),
               Text(value,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: kText)),
+                      color: context.c.text)),
             ],
           ),
         ],
@@ -533,7 +550,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       children: [
         // ── Care Management (chronic members only) ────────────────
         if (isChronic) ...[
-          _sectionLabel('Care Management'),
+          _sectionLabel(context, 'Care Management'),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -577,7 +594,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: 20),
         ],
         // ── Account ────────────────────────────────────────────────
-        _sectionLabel('Account'),
+        _sectionLabel(context, 'Account'),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -596,9 +613,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _menuItem(context, Icons.lock_outline, 'Change Password',
                   onTap: () => context.push(routeChangePassword)),
               const Divider(height: 1),
-              _biometricToggleItem(),
+              _biometricToggleItem(context),
               const Divider(height: 1),
-              _cycleTrackerToggleItem(),
+              _cycleTrackerToggleItem(context),
               const Divider(height: 1),
               _menuItem(context, Icons.notifications_outlined,
                   'Notification Preferences',
@@ -608,7 +625,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         const SizedBox(height: 20),
         // ── Legal & Info ───────────────────────────────────────────
-        _sectionLabel('Legal & Info'),
+        _sectionLabel(context, 'Legal & Info'),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -661,19 +678,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (dialogContext) => AlertDialog(
-                  title: const Text('Sign Out'),
+                  title: Text('Sign Out'),
                   content:
-                      const Text('Are you sure you want to sign out?'),
+                      Text('Are you sure you want to sign out?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(dialogContext, false),
-                      child: const Text('Cancel'),
+                      child: Text('Cancel'),
                     ),
                     ElevatedButton(
                       onPressed: () => Navigator.pop(dialogContext, true),
                       style:
                           ElevatedButton.styleFrom(backgroundColor: kError),
-                      child: const Text('Sign Out'),
+                      child: Text('Sign Out'),
                     ),
                   ],
                 ),
@@ -688,7 +705,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _biometricToggleItem() {
+  Widget _biometricToggleItem(BuildContext context) {
     final unavailable = !_biometricAvailable;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -705,7 +722,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: unavailable ? Colors.grey : kText)),
+                        color: unavailable ? Colors.grey : context.c.text)),
                 Text(
                   unavailable
                       ? 'No fingerprint enrolled on this device'
@@ -714,7 +731,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           : 'Enable fingerprint / Face ID login',
                   style: TextStyle(
                       fontSize: 11,
-                      color: unavailable ? Colors.grey : kSubtext),
+                      color: unavailable ? Colors.grey : context.c.subtext),
                 ),
               ],
             ),
@@ -729,7 +746,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _cycleTrackerToggleItem() {
+  Widget _cycleTrackerToggleItem(BuildContext context) {
     final visible = ref.watch(cycleTrackerProvider).visible;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -742,16 +759,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Show Cycle Tracker',
+                Text('Show Cycle Tracker',
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: kText)),
+                        color: context.c.text)),
                 Text(
                   visible
                       ? 'Period tracker visible in Vitals'
                       : 'Track periods, fertile window & ovulation',
-                  style: const TextStyle(fontSize: 11, color: kSubtext),
+                  style: TextStyle(fontSize: 11, color: context.c.subtext),
                 ),
               ],
             ),
@@ -767,15 +784,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _sectionLabel(String label) {
+  Widget _sectionLabel(BuildContext context, String label) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: kSubtext,
+          color: context.c.subtext,
           letterSpacing: 0.8,
         ),
       ),
@@ -809,14 +826,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: color ?? kText,
+                      color: color ?? context.c.text,
                     ),
                   ),
                   if (subtitle != null)
                     Text(
                       subtitle,
                       style:
-                          const TextStyle(fontSize: 11, color: kSubtext),
+                          TextStyle(fontSize: 11, color: context.c.subtext),
                     ),
                 ],
               ),
@@ -829,7 +846,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               )
             else
               Icon(Icons.chevron_right,
-                  color: color ?? kSubtext, size: 18),
+                  color: color ?? context.c.subtext, size: 18),
           ],
         ),
       ),
@@ -859,7 +876,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Privacy & Consent'),
+        title: Text('Privacy & Consent'),
         content: const SingleChildScrollView(
           child: Text(
             'Sanlam collects and processes your health data to provide personalised chronic care management services. '
@@ -873,7 +890,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
+            child: Text('Close'),
           ),
         ],
       ),
@@ -947,7 +964,7 @@ class _EditContactDialogState extends ConsumerState<_EditContactDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Edit Contact Info'),
+      title: Text('Edit Contact Info'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -955,7 +972,7 @@ class _EditContactDialogState extends ConsumerState<_EditContactDialog> {
             label: 'Phone',
             controller: _phoneCtrl,
             keyboardType: TextInputType.phone,
-            prefixIcon: const Icon(Icons.phone_outlined, color: kSubtext),
+            prefixIcon: Icon(Icons.phone_outlined, color: context.c.subtext),
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 12),
@@ -963,7 +980,7 @@ class _EditContactDialogState extends ConsumerState<_EditContactDialog> {
             label: 'Email',
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
-            prefixIcon: const Icon(Icons.email_outlined, color: kSubtext),
+            prefixIcon: Icon(Icons.email_outlined, color: context.c.subtext),
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _save(),
           ),
@@ -980,7 +997,7 @@ class _EditContactDialogState extends ConsumerState<_EditContactDialog> {
       actions: [
         TextButton(
           onPressed: _loading ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text('Cancel'),
         ),
         ElevatedButton(
           onPressed: _loading ? null : _save,
@@ -990,7 +1007,7 @@ class _EditContactDialogState extends ConsumerState<_EditContactDialog> {
                   height: 18,
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: Colors.white))
-              : const Text('Save'),
+              : Text('Save'),
         ),
       ],
     );
@@ -1140,10 +1157,10 @@ class _EditConditionsSheetState extends State<_EditConditionsSheet> {
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text('Manage Conditions',
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold, color: kText)),
+                            fontSize: 18, fontWeight: FontWeight.bold, color: context.c.text)),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -1160,8 +1177,8 @@ class _EditConditionsSheetState extends State<_EditConditionsSheet> {
                 children: [
                   // Selected conditions chips
                   if (_selected.isNotEmpty) ...[
-                    const Text('Your conditions',
-                        style: TextStyle(fontSize: 12, color: kSubtext, fontWeight: FontWeight.w600)),
+                    Text('Your conditions',
+                        style: TextStyle(fontSize: 12, color: context.c.subtext, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
@@ -1182,8 +1199,8 @@ class _EditConditionsSheetState extends State<_EditConditionsSheet> {
                     const SizedBox(height: 20),
                   ],
                   // Search field
-                  const Text('Search or add condition',
-                      style: TextStyle(fontSize: 12, color: kSubtext, fontWeight: FontWeight.w600)),
+                  Text('Search or add condition',
+                      style: TextStyle(fontSize: 12, color: context.c.subtext, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _searchCtrl,
@@ -1191,7 +1208,7 @@ class _EditConditionsSheetState extends State<_EditConditionsSheet> {
                       hintText: _loadingCatalog
                           ? 'Loading catalog…'
                           : 'Type to search (e.g. Diabetes)',
-                      prefixIcon: const Icon(Icons.search, color: kSubtext, size: 20),
+                      prefixIcon: Icon(Icons.search, color: context.c.subtext, size: 20),
                       suffixIcon: query.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear, size: 18),
@@ -1203,7 +1220,7 @@ class _EditConditionsSheetState extends State<_EditConditionsSheet> {
                           : null,
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: kBorder)),
+                          borderSide: BorderSide(color: context.c.border)),
                       focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: const BorderSide(color: kPrimary, width: 1.5)),
@@ -1216,7 +1233,7 @@ class _EditConditionsSheetState extends State<_EditConditionsSheet> {
                     const SizedBox(height: 4),
                     Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: kBorder),
+                        border: Border.all(color: context.c.border),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Column(
@@ -1297,7 +1314,7 @@ class _EditConditionsSheetState extends State<_EditConditionsSheet> {
                           height: 20,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                      : const Text('Save Conditions',
+                      : Text('Save Conditions',
                           style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,

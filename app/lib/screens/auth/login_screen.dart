@@ -9,9 +9,15 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/biometric_service.dart';
+import '../../services/product_links_service.dart';
+import 'complaint_dialog.dart';
+import '../../core/app_colors.dart';
 
-const String _kProductsUrl =
-    'https://ug.sanlamallianz.com/life-insurance/individuals';
+// Keys returned by `/api/product-links`. Kept in sync with the backend seed
+// in `048_product_links.sql` and the admin portal page.
+const String _kKeyMicroInsurance = 'microinsurance';
+const String _kKeyExistingCustomer = 'existing_customer';
+const String _kKeyOtherLifeProducts = 'other_life_products';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -96,11 +102,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _openProducts() async {
-    final uri = Uri.parse(_kProductsUrl);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    // Pull the latest URLs from the backend so admins can change them at any
+    // time without shipping a new app build. The service falls back to the
+    // built-in defaults if the network is unavailable.
+    final links = await ProductLinksService.instance.fetch();
+    if (!mounted) return;
+
+    final selected = await showModalBottomSheet<ProductLink>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _ProductLinksSheet(links: links),
+    );
+
+    if (selected == null) return;
+    final uri = Uri.tryParse(selected.url);
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open the products page')),
+          SnackBar(content: Text('Could not open ${selected.label}')),
         );
       }
     }
@@ -118,7 +139,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         statusBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: kBg,
+        backgroundColor: context.c.bg,
         body: Stack(
           children: [
             // ── Animated mesh-gradient header with curved bottom ────────────
@@ -184,7 +205,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     _StaggeredEntry(
                       controller: _entryCtrl,
                       delay: 0.42,
-                      child: _buildSectionDivider('EXPLORE MORE'),
+                      child: _buildSectionDivider(context, 'EXPLORE MORE'),
                     ),
                     const SizedBox(height: 12),
                     _StaggeredEntry(
@@ -199,7 +220,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     _StaggeredEntry(
                       controller: _entryCtrl,
                       delay: 0.60,
-                      child: _buildFooter(),
+                      child: _buildFooter(context),
                     ),
                   ],
                 ),
@@ -304,8 +325,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 ),
               ),
               child: _modeIndex == 0
-                  ? _buildMemberPanel(authState)
-                  : _buildBiometricPanel(authState),
+                  ? _buildMemberPanel(context, authState)
+                  : _buildBiometricPanel(context, authState),
             ),
           ],
         ),
@@ -314,7 +335,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   // ── Member Number panel ──────────────────────────────────────────────────
-  Widget _buildMemberPanel(AuthState authState) {
+  Widget _buildMemberPanel(BuildContext context, AuthState authState) {
     return Form(
       key: _memberFormKey,
       child: Column(
@@ -344,7 +365,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 _obscurePassword
                     ? Icons.visibility_outlined
                     : Icons.visibility_off_outlined,
-                color: kSubtext,
+                color: context.c.subtext,
                 size: 20,
               ),
               onPressed: () =>
@@ -368,19 +389,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 fontWeight: FontWeight.w600,
               ),
             ),
-            child: const Text('Forgot password?'),
+            child: Text('Forgot password?'),
           ),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
+              Text(
                 "Don't have an account? ",
-                style: TextStyle(fontSize: 13, color: kSubtext),
+                style: TextStyle(fontSize: 13, color: context.c.subtext),
               ),
               GestureDetector(
                 onTap: () => context.push(routeRegisterSearch),
-                child: const Text(
+                child: Text(
                   'Create one',
                   style: TextStyle(
                     fontSize: 13,
@@ -391,13 +412,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          // Facing issues? — opens complaint / feedback dialog
+          GestureDetector(
+            onTap: () => showComplaintDialog(context),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.support_agent,
+                      size: 16, color: kPrimary.withValues(alpha: 0.85)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Facing issues? ',
+                    style: TextStyle(fontSize: 13, color: context.c.subtext),
+                  ),
+                  Text(
+                    'Register a complaint',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: kPrimary,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   // ── Biometric panel ──────────────────────────────────────────────────────
-  Widget _buildBiometricPanel(AuthState authState) {
+  Widget _buildBiometricPanel(BuildContext context, AuthState authState) {
     final typeLabel = _biometricTypes.contains(BiometricType.face)
         ? 'Face ID'
         : _biometricTypes.contains(BiometricType.fingerprint)
@@ -414,19 +465,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         children: [
           if (!_biometricAvailable) ...[
             const SizedBox(height: 18),
-            const Icon(Icons.fingerprint, size: 64, color: kBorder),
+            Icon(Icons.fingerprint, size: 64, color: context.c.border),
             const SizedBox(height: 12),
-            const Text('Biometrics not available',
+            Text('Biometrics not available',
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: kText)),
+                    color: context.c.text)),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Your device does not support fingerprint or Face ID,\n'
               'or no biometrics are enrolled.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12.5, color: kSubtext, height: 1.5),
+              style: TextStyle(fontSize: 12.5, color: context.c.subtext, height: 1.5),
             ),
             const SizedBox(height: 16),
             _OutlinedAction(
@@ -436,20 +487,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ),
           ] else if (!_biometricEnabled) ...[
             const SizedBox(height: 18),
-            Icon(iconData, size: 64, color: kBorder),
+            Icon(iconData, size: 64, color: context.c.border),
             const SizedBox(height: 12),
             Text('$typeLabel not set up',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: kText)),
+                    color: context.c.text)),
             const SizedBox(height: 6),
             Text(
               'Sign in with your member number first, then enable\n'
               '$typeLabel for faster access.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 12.5, color: kSubtext, height: 1.5),
+              style: TextStyle(
+                  fontSize: 12.5, color: context.c.subtext, height: 1.5),
             ),
             const SizedBox(height: 16),
             _OutlinedAction(
@@ -462,11 +513,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             _PulsingBiometricBadge(icon: iconData),
             const SizedBox(height: 14),
             Text('Sign in with $typeLabel',
-                style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w700, color: kText)),
+                style: TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w700, color: context.c.text)),
             const SizedBox(height: 4),
-            const Text('Tap below to authenticate',
-                style: TextStyle(fontSize: 12.5, color: kSubtext)),
+            Text('Tap below to authenticate',
+                style: TextStyle(fontSize: 12.5, color: context.c.subtext)),
             const SizedBox(height: 18),
             _GradientButton(
               label: 'Use $typeLabel',
@@ -480,11 +531,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 await _checkBiometrics();
               },
               style: TextButton.styleFrom(
-                foregroundColor: kSubtext,
+                foregroundColor: context.c.subtext,
                 textStyle: const TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w500),
               ),
-              child: const Text('Remove biometric login'),
+              child: Text('Remove biometric login'),
             ),
           ],
         ],
@@ -519,7 +570,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   // ── Section divider ──────────────────────────────────────────────────────
-  Widget _buildSectionDivider(String label) {
+  Widget _buildSectionDivider(BuildContext context, String label) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Row(
@@ -528,11 +579,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           const SizedBox(width: 10),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.6,
-              color: kSubtext,
+              color: context.c.subtext,
             ),
           ),
           const SizedBox(width: 10),
@@ -543,21 +594,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   // ── Footer trust + version ───────────────────────────────────────────────
-  Widget _buildFooter() {
+  Widget _buildFooter(BuildContext context) {
     return Column(
       children: [
         const SizedBox(height: 6),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.lock_rounded, size: 13, color: kSubtext.withValues(alpha: 0.85)),
+            Icon(Icons.lock_rounded, size: 13, color: context.c.subtext.withValues(alpha: 0.85)),
             const SizedBox(width: 6),
             Text(
               'Secured with 256-bit encryption',
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w500,
-                color: kSubtext.withValues(alpha: 0.85),
+                color: context.c.subtext.withValues(alpha: 0.85),
                 letterSpacing: 0.2,
               ),
             ),
@@ -568,7 +619,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           '© Sanlam Allianz · v1.0.0',
           style: TextStyle(
             fontSize: 10.5,
-            color: kSubtext.withValues(alpha: 0.7),
+            color: context.c.subtext.withValues(alpha: 0.7),
             letterSpacing: 0.3,
           ),
         ),
@@ -763,7 +814,7 @@ class _SegmentedTabs extends StatelessWidget {
                           children: [
                             Icon(icons[i],
                                 size: 16,
-                                color: isOn ? kPrimary : kSubtext),
+                                color: isOn ? kPrimary : context.c.subtext),
                             const SizedBox(width: 6),
                             Text(
                               labels[i],
@@ -771,7 +822,7 @@ class _SegmentedTabs extends StatelessWidget {
                                 fontSize: 13,
                                 fontWeight:
                                     isOn ? FontWeight.w700 : FontWeight.w500,
-                                color: isOn ? kPrimary : kSubtext,
+                                color: isOn ? kPrimary : context.c.subtext,
                               ),
                             ),
                           ],
@@ -844,10 +895,10 @@ class _PremiumFieldState extends State<_PremiumField> {
           padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
             widget.label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: kText,
+              color: context.c.text,
               letterSpacing: 0.1,
             ),
           ),
@@ -879,10 +930,10 @@ class _PremiumFieldState extends State<_PremiumField> {
             keyboardType: widget.keyboardType,
             onFieldSubmitted: widget.onSubmitted,
             validator: widget.validator,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w500,
-                color: kText),
+                color: context.c.text),
             decoration: InputDecoration(
               border: InputBorder.none,
               focusedBorder: InputBorder.none,
@@ -891,8 +942,8 @@ class _PremiumFieldState extends State<_PremiumField> {
               focusedErrorBorder: InputBorder.none,
               isDense: true,
               hintText: widget.hint,
-              hintStyle: const TextStyle(
-                color: kTextLight,
+              hintStyle: TextStyle(
+                color: context.c.textLight,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
@@ -900,7 +951,7 @@ class _PremiumFieldState extends State<_PremiumField> {
                 padding: const EdgeInsets.only(left: 12, right: 8),
                 child: Icon(widget.icon,
                     size: 20,
-                    color: _focused ? kPrimary : kSubtext),
+                    color: _focused ? kPrimary : context.c.subtext),
               ),
               prefixIconConstraints:
                   const BoxConstraints(minWidth: 0, minHeight: 0),
@@ -1237,13 +1288,20 @@ class _OtherProductsCardState extends State<_OtherProductsCard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'Sanlam Other Products',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.1,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Other Sanlam Allianz Products',
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.visible,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.1,
+                              ),
                             ),
                           ),
                           SizedBox(height: 4),
@@ -1294,6 +1352,167 @@ class _OtherProductsCardState extends State<_OtherProductsCard>
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bottom-sheet shown from the "View" button on the Other Products card ─────
+class _ProductLinksSheet extends StatelessWidget {
+  final Map<String, ProductLink> links;
+  const _ProductLinksSheet({required this.links});
+
+  static const _keysInOrder = [
+    _kKeyMicroInsurance,
+    _kKeyExistingCustomer,
+    _kKeyOtherLifeProducts,
+  ];
+
+  IconData _iconFor(String key) {
+    switch (key) {
+      case _kKeyMicroInsurance:
+        return Icons.shield_moon_rounded;
+      case _kKeyExistingCustomer:
+        return Icons.account_circle_rounded;
+      case _kKeyOtherLifeProducts:
+        return Icons.workspace_premium_rounded;
+      default:
+        return Icons.link_rounded;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show the three options in the business-defined order; defensively
+    // include any extra link the backend may add later at the end.
+    final ordered = <ProductLink>[];
+    for (final k in _keysInOrder) {
+      final l = links[k];
+      if (l != null) ordered.add(l);
+    }
+    for (final entry in links.entries) {
+      if (!_keysInOrder.contains(entry.key)) ordered.add(entry.value);
+    }
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Text(
+              'Sanlam Allianz Products',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0B2447),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Choose what you would like to explore.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 14),
+            for (final l in ordered)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _ProductLinkTile(
+                  link: l,
+                  icon: _iconFor(l.key),
+                  onTap: () => Navigator.of(context).pop(l),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductLinkTile extends StatelessWidget {
+  final ProductLink link;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _ProductLinkTile({
+    required this.link,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0A4D8C).withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, color: const Color(0xFF0A4D8C), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      link.label,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0B2447),
+                      ),
+                    ),
+                    if (link.description.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        link.description,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded,
+                  color: Color(0xFF94A3B8)),
+            ],
           ),
         ),
       ),

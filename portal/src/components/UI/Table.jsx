@@ -8,15 +8,16 @@ export default function Table({
   selectedIds = [],
   onSelectionChange,
 }) {
-  const allSelected = data && data.length > 0 && data.every((r) => selectedIds.includes(r.id));
-  const someSelected = data && data.some((r) => selectedIds.includes(r.id));
+  const rows = Array.isArray(data) ? data.filter((row) => row && typeof row === 'object') : [];
+  const allSelected = rows.length > 0 && rows.every((r) => selectedIds.includes(r.id));
+  const someSelected = rows.some((r) => selectedIds.includes(r.id));
 
   const toggleAll = () => {
     if (!onSelectionChange) return;
     if (allSelected) {
       onSelectionChange([]);
     } else {
-      onSelectionChange(data.map((r) => r.id));
+      onSelectionChange(rows.map((r) => r.id).filter((id) => id != null));
     }
   };
 
@@ -65,8 +66,8 @@ export default function Table({
           </tr>
         </thead>
         <tbody>
-          {data && data.length > 0 ? (
-            data.map((row, i) => {
+          {rows.length > 0 ? (
+            rows.map((row, i) => {
               const isSelected = selectable && selectedIds.includes(row.id);
               return (
                 <tr

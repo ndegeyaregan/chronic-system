@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/authorization_request.dart';
 import '../services/api_service.dart';
 
@@ -61,10 +62,11 @@ class AuthorizationsNotifier extends StateNotifier<AuthorizationsState> {
     String? notes,
     String? memberMedicationId,
     String? treatmentPlanId,
+    PlatformFile? attachment,
   }) async {
     state = state.copyWith(isSubmitting: true, clearError: true);
     try {
-      final resp = await dio.post('/authorizations', data: {
+      final fields = <String, dynamic>{
         'request_type': requestType,
         'provider_type': providerType,
         if (providerId != null) 'provider_id': providerId,
@@ -75,7 +77,31 @@ class AuthorizationsNotifier extends StateNotifier<AuthorizationsState> {
         if (memberMedicationId != null)
           'member_medication_id': memberMedicationId,
         if (treatmentPlanId != null) 'treatment_plan_id': treatmentPlanId,
-      });
+      };
+
+      Response resp;
+      if (attachment != null) {
+        MultipartFile mpf;
+        if (attachment.bytes != null) {
+          mpf = MultipartFile.fromBytes(
+            attachment.bytes!,
+            filename: attachment.name,
+          );
+        } else {
+          mpf = await MultipartFile.fromFile(
+            attachment.path!,
+            filename: attachment.name,
+          );
+        }
+        final formData = FormData.fromMap({...fields, 'attachment': mpf});
+        resp = await dio.post(
+          '/authorizations',
+          data: formData,
+          options: Options(contentType: 'multipart/form-data'),
+        );
+      } else {
+        resp = await dio.post('/authorizations', data: fields);
+      }
       final newReq = AuthorizationRequest.fromJson(
           resp.data as Map<String, dynamic>);
       state = state.copyWith(

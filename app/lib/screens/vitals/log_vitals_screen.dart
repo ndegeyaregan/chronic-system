@@ -11,6 +11,7 @@ import '../../services/api_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
+import '../../core/app_colors.dart';
 
 class _VitalWarning {
   final String message;
@@ -39,6 +40,11 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
 
   double _painLevel = 0;
   String _mood = 'okay';
+  String? _footSensitivity;
+  String? _eyesight;
+
+  static const _footSensitivityOptions = ['Normal', 'Reduced', 'Absent'];
+  static const _eyesightOptions = ['Clear', 'Blurred', 'Poor'];
 
   final _moodOptions = ['great', 'good', 'okay', 'bad', 'terrible'];
   final _moodEmojis = {
@@ -382,6 +388,12 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
     if (_notesCtrl.text.isNotEmpty) {
       data['notes'] = _notesCtrl.text.trim();
     }
+    if (_footSensitivity != null) {
+      data['foot_sensitivity'] = _footSensitivity;
+    }
+    if (_eyesight != null) {
+      data['eyesight'] = _eyesight;
+    }
 
     final success = await ref.read(vitalsProvider.notifier).logVitals(data);
     if (!mounted) return;
@@ -421,14 +433,14 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
-            title: const Text('🚨 Critical Pain Level'),
+            title: Text('🚨 Critical Pain Level'),
             content: Text(
               'Your pain level is critical ($painLevel/10). Do you need emergency medical assistance?',
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('No, I\'m okay'),
+                child: Text('No, I\'m okay'),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -436,7 +448,7 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
                   await _requestAmbulance(painLevel);
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: kError),
-                child: const Text('Send Ambulance',
+                child: Text('Send Ambulance',
                     style: TextStyle(color: Colors.white)),
               ),
             ],
@@ -526,7 +538,7 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go(routeDashboard),
         ),
-        title: const Text('Log Vitals'),
+        title: Text('Log Vitals'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -702,7 +714,7 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('No Pain', style: TextStyle(fontSize: 12, color: kSubtext)),
+                        Text('No Pain', style: TextStyle(fontSize: 12, color: context.c.subtext)),
                         Text(
                           '${_painLevel.toInt()}/10',
                           style: TextStyle(
@@ -714,7 +726,7 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
                                     : kError,
                           ),
                         ),
-                        const Text('Severe', style: TextStyle(fontSize: 12, color: kSubtext)),
+                        Text('Severe', style: TextStyle(fontSize: 12, color: context.c.subtext)),
                       ],
                     ),
                     Slider(
@@ -742,7 +754,7 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
                                   fontSize: 10,
                                   color: i == _painLevel.toInt()
                                       ? kPrimary
-                                      : kSubtext,
+                                      : context.c.subtext,
                                   fontWeight: i == _painLevel.toInt()
                                       ? FontWeight.bold
                                       : FontWeight.normal,
@@ -778,25 +790,25 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
                               maxLines: 2,
                               decoration: InputDecoration(
                                 hintText: 'Please describe how you are feeling…',
-                                hintStyle: TextStyle(color: kSubtext, fontSize: 13),
+                                hintStyle: TextStyle(color: context.c.subtext, fontSize: 13),
                                 filled: true,
                                 fillColor: Colors.white,
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: kBorder),
+                                  borderSide: BorderSide(color: context.c.border),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: kBorder),
+                                  borderSide: BorderSide(color: context.c.border),
                                 ),
                               ),
                               style: const TextStyle(fontSize: 13),
                             ),
                             const SizedBox(height: 12),
-                            const Text(
+                            Text(
                               '🚨 Emergency Contacts',
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: kText),
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: context.c.text),
                             ),
                             const SizedBox(height: 12),
                             Row(
@@ -864,8 +876,42 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
             // Mood activity recommendations for bad/terrible
             if (_mood == 'bad' || _mood == 'terrible') ...[
               const SizedBox(height: 12),
-              _moodRecommendationsCard(_mood),
+              _moodRecommendationsCard(context, _mood),
             ],
+            const SizedBox(height: 16),
+            _sectionCard('Foot & Eye Self-Check', [
+              Text(
+                'Foot Sensitivity',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: context.c.subtext,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _OptionChips(
+                options: _footSensitivityOptions,
+                selected: _footSensitivity,
+                color: const Color(0xFF0EA5E9),
+                onChanged: (v) => setState(() => _footSensitivity = v),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Eyesight',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: context.c.subtext,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _OptionChips(
+                options: _eyesightOptions,
+                selected: _eyesight,
+                color: const Color(0xFF8B5CF6),
+                onChanged: (v) => setState(() => _eyesight = v),
+              ),
+            ], icon: Icons.health_and_safety_outlined, iconColor: const Color(0xFF0EA5E9)),
             const SizedBox(height: 16),
             AppInput(
               label: 'Notes (optional)',
@@ -1010,7 +1056,7 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
     );
   }
 
-  Widget _moodRecommendationsCard(String mood) {
+  Widget _moodRecommendationsCard(BuildContext context, String mood) {
     final isTerrible = mood == 'terrible';
     final activities = isTerrible
         ? [
@@ -1068,13 +1114,13 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(a.$2,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
-                                  color: kText)),
+                                  color: context.c.text)),
                           Text(a.$3,
-                              style: const TextStyle(
-                                  fontSize: 12, color: kSubtext)),
+                              style: TextStyle(
+                                  fontSize: 12, color: context.c.subtext)),
                         ],
                       ),
                     ),
@@ -1120,10 +1166,10 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
               ],
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: kText,
+                  color: context.c.text,
                 ),
               ),
             ],
@@ -1132,6 +1178,54 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
           ...children,
         ],
       ),
+    );
+  }
+}
+
+class _OptionChips extends StatelessWidget {
+  final List<String> options;
+  final String? selected;
+  final Color color;
+  final ValueChanged<String?> onChanged;
+
+  const _OptionChips({
+    required this.options,
+    required this.selected,
+    required this.color,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((opt) {
+        final isSelected = selected == opt;
+        return GestureDetector(
+          onTap: () => onChanged(isSelected ? null : opt),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? color : color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected ? color : color.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Text(
+              opt,
+              style: TextStyle(
+                color: isSelected ? Colors.white : color,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

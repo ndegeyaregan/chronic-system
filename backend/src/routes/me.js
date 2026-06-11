@@ -32,16 +32,16 @@ const profilePicUpload = multer({
 });
 
 // GET /api/me/chronic-status
-// Returns { isChronic: boolean } — true if the authenticated member has at
-// least one entry in member_conditions.
+// Returns { isChronic: boolean } — true only if an admin has explicitly
+// marked this member as chronic via the portal (is_chronic column).
 router.get('/chronic-status', authenticate, async (req, res) => {
   try {
     const memberId = req.user.id;
     const result = await pool.query(
-      'SELECT 1 FROM member_conditions WHERE member_id = $1 LIMIT 1',
+      'SELECT is_chronic FROM members WHERE id = $1 LIMIT 1',
       [memberId],
     );
-    return res.json({ isChronic: result.rows.length > 0 });
+    return res.json({ isChronic: result.rows[0]?.is_chronic ?? false });
   } catch (err) {
     console.error('chronic-status error:', err);
     return res.json({ isChronic: false });

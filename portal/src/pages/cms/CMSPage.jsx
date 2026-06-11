@@ -4,12 +4,13 @@ import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import {
   PlusIcon, PencilIcon, TrashIcon, GlobeAltIcon, EyeIcon,
-  DocumentTextIcon, LightBulbIcon, VideoCameraIcon,
+  DocumentTextIcon, LightBulbIcon, VideoCameraIcon, NewspaperIcon,
   ChartBarIcon, CheckCircleIcon, ClockIcon, ArrowDownTrayIcon,
   FunnelIcon, XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { getContent, createContent, updateContent, deleteContent, publishContent } from '../../api/cms';
 import { getConditions } from '../../api/conditions';
+import { getSchemes } from '../../api/schemes';
 import Table from '../../components/UI/Table';
 import Badge from '../../components/UI/Badge';
 import Button from '../../components/UI/Button';
@@ -26,12 +27,14 @@ const TYPE_META = {
   article: { label: 'Article', color: '#3b82f6', bg: '#eff6ff', Icon: DocumentTextIcon },
   tip:     { label: 'Tip',     color: '#10b981', bg: '#ecfdf5', Icon: LightBulbIcon },
   video:   { label: 'Video',   color: '#f59e0b', bg: '#fffbeb', Icon: VideoCameraIcon },
+  news:    { label: 'News',    color: '#dc2626', bg: '#fef2f2', Icon: NewspaperIcon },
 };
 
 const TYPE_OPTIONS = [
   { value: 'article', label: 'Article' },
   { value: 'tip',     label: 'Tip' },
   { value: 'video',   label: 'Video' },
+  { value: 'news',    label: 'News' },
 ];
 
 const card = {
@@ -149,6 +152,12 @@ export default function CMSPage() {
     retry: false,
   });
 
+  const { data: schemes = [] } = useQuery({
+    queryKey: ['schemes-active'],
+    queryFn: () => getSchemes().then((r) => (Array.isArray(r.data) ? r.data : [])),
+    retry: false,
+  });
+
   /* ── Derived stats ── */
   const stats = useMemo(() => {
     const published = allItems.filter((i) => i.published).length;
@@ -180,7 +189,7 @@ export default function CMSPage() {
   const clearFilters = () => { setSearch(''); setFilterType(''); setFilterCond(''); setFilterPub(''); setPage(1); };
 
   /* ── Form ── */
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
       type: 'article',
       published: false,
@@ -188,14 +197,61 @@ export default function CMSPage() {
     mode: 'onBlur',
   });
   const watchType = watch('type');
+  const watchImageUrl = watch('image_url');
+  const watchSchemeId = watch('scheme_id');
+  const [schemeSearch, setSchemeSearch] = useState('');
+  const filteredSchemes = useMemo(() => {
+    const q = schemeSearch.trim().toLowerCase();
+    const active = (schemes || []).filter((s) => s.is_active !== false);
+    if (!q) return active.slice(0, 50);
+    return active
+      .filter((s) =>
+        s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q)
+      )
+      .slice(0, 50);
+  }, [schemes, schemeSearch]);
+  const selectedScheme = useMemo(
+    () => (schemes || []).find((s) => s.id === watchSchemeId) || null,
+    [schemes, watchSchemeId]
+  );
+  const [uploadingFlyer, setUploadingFlyer] = useState(false);
 
-  const openCreate = () => { setEditing(null); reset({ type: 'article', published: false }); setShowModal(true); };
+  const handleFlyerUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Flyer must be 10MB or smaller');
+      return;
+    }
+    setUploadingFlyer(true);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await fetch(
+        (import.meta.env.VITE_API_URL || '/api') + '/upload/upload-design',
+        { method: 'POST', body: fd, headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } }
+      );
+      const data = await res.json();
+      if (!res.ok || !data?.path) throw new Error(data?.error || 'Upload failed');
+      setValue('image_url', data.path, { shouldDirty: true });
+      toast.success('Flyer uploaded');
+    } catch (err) {
+      toast.error(err.message || 'Flyer upload failed');
+    } finally {
+      setUploadingFlyer(false);
+      e.target.value = '';
+    }
+  };
+
+  const openCreate = () => { setEditing(null); reset({ type: 'article', published: false, image_url: '', scheme_id: '' }); setShowModal(true); };
   const openEdit   = (c) => {
     setEditing(c);
     const tags = Array.isArray(c.tags) ? c.tags.join(', ') : (c.tags || '');
     reset({
       title: c.title, type: c.type, body: c.body || '',
-      video_url: c.video_url || '', condition_id: c.condition_id || '',
+      video_url: c.video_url || '', image_url: c.image_url || '',
+      condition_id: c.condition_id || '',
+      scheme_id: c.scheme_id || '',
       category: c.category || '',
       tags, published: c.published,
       scheduled_at: c.scheduled_at?.split('T')[0] || '',
@@ -210,16 +266,25 @@ export default function CMSPage() {
     mutationFn: (raw) => {
       if (!raw.title?.trim()) throw new Error('Title is required');
       if (!raw.type)          throw new Error('Content type is required');
+      if (raw.type === 'video' && !raw.video_url?.trim()) {
+        throw new Error('Video URL is required for video content');
+      }
       const tagArray = raw.tags ? raw.tags.split(',').map((t) => t.trim()).filter(Boolean) : [];
       const payload = {
-        ...raw,
         title:        raw.title.trim(),
+        type:         raw.type,
+        body:         raw.body || null,
+        category:     raw.category || null,
         tags:         tagArray,
-        condition_id: raw.condition_id || null,
-        video_url:    raw.video_url    || null,
-        scheduled_at: raw.scheduled_at || null,
+        image_url:    raw.image_url || null,
         published:    !!raw.published,
       };
+      // Only include optional URL/UUID/date fields when they have a real value,
+      // otherwise omit so backend validators (isURL/isUUID/isISO8601) don't fire.
+      if (raw.video_url && raw.video_url.trim())       payload.video_url    = raw.video_url.trim();
+      if (raw.condition_id)                            payload.condition_id = raw.condition_id;
+      payload.scheme_id = raw.scheme_id || null;
+      if (raw.scheduled_at)                            payload.scheduled_at = raw.scheduled_at;
       console.log('📤 CMS PAYLOAD SENDING:', JSON.stringify(payload, null, 2));
       return editing ? updateContent(editing.id, payload) : createContent(payload);
     },
@@ -278,6 +343,9 @@ export default function CMSPage() {
     },
     { key: 'type', header: 'Type', render: (v) => <TypeChip type={v} /> },
     { key: 'condition_name', header: 'Condition', render: (v) => v || <span style={{ color: '#cbd5e1' }}>—</span> },
+    { key: 'scheme_name', header: 'Scheme', render: (v) => v ? (
+      <span style={{ fontSize: '12px', background: '#f0f9ff', color: '#0c4a6e', padding: '2px 8px', borderRadius: '10px', fontWeight: 500 }}>{v}</span>
+    ) : <span style={{ color: '#cbd5e1' }}>All</span> },
     {
       key: 'published', header: 'Status',
       render: (v, row) => (
@@ -475,6 +543,84 @@ export default function CMSPage() {
                 placeholder="All conditions (general)" />
             </div>
 
+            {/* Scheme (corporate) targeting — searchable picker */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>
+                Scheme / Corporate (optional)
+              </label>
+              <input type="hidden" {...register('scheme_id')} />
+              {selectedScheme ? (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1',
+                  background: '#f0f9ff',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#0c4a6e' }}>
+                      Targeting: {selectedScheme.name}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                      Only members of this scheme will see and be notified about this content.
+                    </div>
+                  </div>
+                  <Button
+                    type="button" variant="ghost"
+                    onClick={() => { setValue('scheme_id', '', { shouldDirty: true }); setSchemeSearch(''); }}
+                    style={{ padding: '4px 10px', fontSize: '12px' }}
+                  >
+                    <XMarkIcon style={{ width: 13, height: 13 }} /> Clear
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={schemeSearch}
+                    onChange={(e) => setSchemeSearch(e.target.value)}
+                    placeholder="Search schemes by name or code (leave empty for all members)…"
+                    style={{
+                      padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0',
+                      fontSize: '14px', fontFamily: 'inherit',
+                    }}
+                  />
+                  {schemeSearch && (
+                    <div style={{
+                      maxHeight: '180px', overflowY: 'auto', border: '1px solid #e2e8f0',
+                      borderRadius: '6px', background: '#fff',
+                    }}>
+                      {filteredSchemes.length === 0 ? (
+                        <div style={{ padding: '10px 12px', fontSize: '13px', color: '#94a3b8' }}>
+                          No schemes match "{schemeSearch}"
+                        </div>
+                      ) : filteredSchemes.map((s) => (
+                        <div
+                          key={s.id}
+                          onClick={() => {
+                            setValue('scheme_id', s.id, { shouldDirty: true });
+                            setSchemeSearch('');
+                          }}
+                          style={{
+                            padding: '8px 12px', cursor: 'pointer', fontSize: '13px',
+                            borderBottom: '1px solid #f1f5f9',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                        >
+                          <div style={{ fontWeight: 500, color: '#0f172a' }}>{s.name}</div>
+                          {s.code && s.code !== s.name && (
+                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>{s.code}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    Leave empty to publish to all members. Select a scheme to push only to members of that corporate.
+                  </span>
+                </>
+              )}
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <Input label="Category" name="category" register={register}
                 placeholder="e.g. Nutrition, Exercise, Mental Health" />
@@ -485,7 +631,7 @@ export default function CMSPage() {
             {/* Body */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>
-                Body / Article Content {watchType !== 'video' ? '*' : ''}
+                Body / Article Content {(watchType === 'article' || watchType === 'tip' || watchType === 'guide') ? '*' : ''}
               </label>
               <textarea
                 {...register('body')}
@@ -502,7 +648,7 @@ export default function CMSPage() {
                 Video / Embed URL {watchType === 'video' && <span style={{ color: '#ef4444' }}>*</span>}
               </label>
               <input
-                {...register('video_url', watchType === 'video' ? { required: 'Video URL required for video type' } : {})}
+                {...register('video_url')}
                 placeholder="https://www.youtube.com/embed/... or video URL"
                 style={{ padding: '8px 12px', borderRadius: '6px', border: `1px solid ${errors.video_url ? '#ef4444' : '#e2e8f0'}`,
                   fontSize: '14px', fontFamily: 'inherit' }}
@@ -511,6 +657,38 @@ export default function CMSPage() {
               <span style={{ fontSize: '11px', color: '#94a3b8' }}>
                 For YouTube, use the embed URL (youtube.com/embed/VIDEO_ID)
               </span>
+            </div>
+
+            {/* Flyer / Cover Image upload */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>
+                Flyer / Cover Image {watchType === 'news' && <span style={{ color: '#94a3b8', fontWeight: 400 }}>(recommended for News)</span>}
+              </label>
+              <input type="hidden" {...register('image_url')} />
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px',
+                  background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: uploadingFlyer ? 'wait' : 'pointer',
+                  fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                  <ArrowDownTrayIcon style={{ width: 14, height: 14, transform: 'rotate(180deg)' }} />
+                  {uploadingFlyer ? 'Uploading…' : (watchImageUrl ? 'Replace flyer' : 'Upload flyer (PNG/JPG, max 10MB)')}
+                  <input type="file" accept="image/*" onChange={handleFlyerUpload}
+                    disabled={uploadingFlyer} style={{ display: 'none' }} />
+                </label>
+                {watchImageUrl && (
+                  <button type="button" onClick={() => setValue('image_url', '', { shouldDirty: true })}
+                    style={{ padding: '6px 10px', background: '#fee2e2', color: '#b91c1c',
+                      border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                    Remove
+                  </button>
+                )}
+              </div>
+              {watchImageUrl && (
+                <img src={watchImageUrl.startsWith('http') ? watchImageUrl
+                  : (window.location.origin + watchImageUrl)}
+                  alt="Flyer preview"
+                  style={{ marginTop: 6, maxWidth: 280, maxHeight: 200, borderRadius: 8,
+                    border: '1px solid #e2e8f0', objectFit: 'cover' }} />
+              )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>

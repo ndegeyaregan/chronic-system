@@ -7,19 +7,22 @@ const logVitals = async (req, res) => {
     const {
       blood_sugar_mmol, systolic_bp, diastolic_bp, heart_rate,
       weight_kg, height_cm, o2_saturation, pain_level, temperature_c, notes, mood,
+      foot_sensitivity, eyesight,
     } = req.body;
 
     const result = await pool.query(
       `INSERT INTO vitals
          (member_id, blood_sugar_mmol, systolic_bp, diastolic_bp, heart_rate,
-          weight_kg, height_cm, o2_saturation, pain_level, temperature_c, notes, mood, recorded_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW()) RETURNING *`,
+          weight_kg, height_cm, o2_saturation, pain_level, temperature_c, notes, mood,
+          foot_sensitivity, eyesight, recorded_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW()) RETURNING *`,
       [
         memberId,
         blood_sugar_mmol || null, systolic_bp || null, diastolic_bp || null,
         heart_rate || null, weight_kg || null, height_cm || null,
         o2_saturation || null, pain_level || null, temperature_c || null,
         notes || null, mood || null,
+        foot_sensitivity || null, eyesight || null,
       ]
     );
     const vitals = result.rows[0];

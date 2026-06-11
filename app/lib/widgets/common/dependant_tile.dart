@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../core/constants.dart';
 import '../../models/dependant.dart';
+import '../../core/app_colors.dart';
 
 class DependantTile extends StatelessWidget {
   final Dependant dependant;
   final VoidCallback? onTap;
+  final bool isPrivate;
 
-  const DependantTile({super.key, required this.dependant, this.onTap});
+  const DependantTile({
+    super.key,
+    required this.dependant,
+    this.onTap,
+    this.isPrivate = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +32,7 @@ class DependantTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: kSurface,
+          color: context.c.surface,
           borderRadius: BorderRadius.circular(kRadiusMd),
           boxShadow: kCardShadow,
         ),
@@ -50,16 +57,16 @@ class DependantTile extends StatelessWidget {
                 children: [
                   Text(
                     dependant.name.isNotEmpty ? dependant.name : 'Member',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: kText,
+                      color: context.c.text,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     dependant.memberNo,
-                    style: const TextStyle(fontSize: 12, color: kSubtext),
+                    style: TextStyle(fontSize: 12, color: context.c.subtext),
                   ),
                 ],
               ),
@@ -81,7 +88,11 @@ class DependantTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: kSubtext, size: 20),
+            Icon(
+              isPrivate ? Icons.lock_outline : Icons.chevron_right,
+              color: context.c.subtext,
+              size: 20,
+            ),
           ],
         ),
       ),

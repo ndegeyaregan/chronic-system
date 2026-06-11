@@ -562,67 +562,131 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
                 ),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.directions_walk_rounded,
-                        color: Colors.white, size: 26),
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.directions_walk_rounded,
+                            color: Colors.white, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  "Today's Steps",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                if (stepState.healthConnected)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.18),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'AUTO',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${stepState.dailySteps}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${stepState.distanceKm.toStringAsFixed(2)} km',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${stepState.caloriesBurned} kcal',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  if (stepState.healthConnected &&
+                      (stepState.walkingDistanceKm > 0 ||
+                          stepState.runningDistanceKm > 0)) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      height: 1,
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
                       children: [
-                        const Text(
-                          "Today's Steps",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
+                        Expanded(
+                          child: _StepBreakdownTile(
+                            icon: Icons.directions_walk_rounded,
+                            label: 'Walking',
+                            value:
+                                '${stepState.walkingDistanceKm.toStringAsFixed(2)} km',
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${stepState.dailySteps}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -1,
+                        Container(
+                          width: 1,
+                          height: 32,
+                          color: Colors.white.withValues(alpha: 0.18),
+                        ),
+                        Expanded(
+                          child: _StepBreakdownTile(
+                            icon: Icons.directions_run_rounded,
+                            label: 'Running',
+                            value:
+                                '${stepState.runningDistanceKm.toStringAsFixed(2)} km',
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${stepState.distanceKm.toStringAsFixed(2)} km',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${stepState.caloriesBurned} kcal',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -1275,6 +1339,52 @@ class _FitnessNav extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StepBreakdownTile extends StatelessWidget {
+  const _StepBreakdownTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: Colors.white, size: 18),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

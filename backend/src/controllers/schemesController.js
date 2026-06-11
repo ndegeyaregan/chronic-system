@@ -117,4 +117,81 @@ const getSchemePerformance = async (req, res) => {
   }
 };
 
-module.exports = { listSchemes, createScheme, updateScheme, deleteScheme, getSchemePerformance };
+const bulkImportSchemes = async (req, res) => {
+  try {
+    const { schemes } = req.body;
+    if (!Array.isArray(schemes) || schemes.length === 0) {
+      return res.status(400).json({ message: 'schemes array is required' });
+    }
+
+    const results = { created: 0, skipped: 0, invalid: 0, items: [] };
+
+    for (const raw of schemes) {
+      const name = (raw?.name || '').toString().trim();
+      const code = (raw?.code || '').toString().trim() || null;
+      const description = (raw?.description || '').toString().trim() || null;
+
+      if (!name) {
+        results.invalid += 1;
+        continue;
+      }
+
+      const r = await pool.query(
+        `INSERT INTO schemes (name, code, description, is_active)
+         VALUES ($1, $2, $3, TRUE)
+         ON CONFLICT (name) DO NOTHING
+         RETURNING id, name`,
+        [name, code, description]
+      );
+
+      if (r.rows.length) {
+        results.created += 1;
+        results.items.push({ name, status: 'created' });
+      } else {
+        results.skipped += 1;
+        results.items.push({ name, status: 'skipped' });
+      }
+    }
+
+    await pool.query(
+      `INSERT INTO audit_logs (actor_id, actor_type, action, entity, entity_id, details, ip_address)
+       VALUES ($1, 'admin', 'bulk_import', 'scheme', NULL, $2, $3)`,
+      [req.user.id, JSON.stringify({ created: results.created, skipped: results.skipped, invalid: results.invalid }), req.ip]
+    );
+
+    return res.json(results);
+  } catch (err) {
+    console.error('bulkImportSchemes error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+const hardDeleteScheme = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await pool.query('SELECT name FROM schemes WHERE id = $1', [id]);
+    if (!existing.rows.length) return res.status(404).json({ message: 'Scheme not found' });
+
+    const linked = await pool.query('SELECT COUNT(*)::int AS c FROM members WHERE scheme_id = $1', [id]);
+    if (linked.rows[0].c > 0) {
+      return res.status(409).json({
+        message: `Cannot delete — ${linked.rows[0].c} member(s) are linked to this scheme. Reassign or remove them first.`,
+      });
+    }
+
+    await pool.query('DELETE FROM schemes WHERE id = $1', [id]);
+
+    await pool.query(
+      `INSERT INTO audit_logs (actor_id, actor_type, action, entity, entity_id, details, ip_address)
+       VALUES ($1, 'admin', 'hard_delete', 'scheme', $2, $3, $4)`,
+      [req.user.id, id, JSON.stringify({ name: existing.rows[0].name }), req.ip]
+    );
+
+    return res.json({ message: 'Scheme deleted permanently' });
+  } catch (err) {
+    console.error('hardDeleteScheme error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { listSchemes, createScheme, updateScheme, deleteScheme, getSchemePerformance, bulkImportSchemes, hardDeleteScheme };

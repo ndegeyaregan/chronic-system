@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants.dart';
 import '../../services/api_service.dart';
+import '../../core/app_colors.dart';
 
 final cardReprintHistoryProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
@@ -19,7 +20,7 @@ class CardReprintHistoryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(cardReprintHistoryProvider);
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),

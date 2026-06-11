@@ -7,9 +7,42 @@ class ClaimStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCheckedOut = status.toLowerCase() == 'checkedout';
-    final color = isCheckedOut ? kSuccess : kAccentAmber;
-    final label = isCheckedOut ? 'Checked Out' : 'Pending';
+    final s = status.toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
+    late final String label;
+    late final Color color;
+    switch (s) {
+      case 'paid':
+        label = 'Settled';
+        color = kSuccess;
+        break;
+      case 'reconciled':
+        label = 'Reconciled';
+        color = kSuccess;
+        break;
+      case 'processed':
+        label = 'Processed';
+        color = kSuccess;
+        break;
+      case 'checkedout':
+        label = 'Checked Out';
+        color = kSuccess;
+        break;
+      case 'rejected':
+      case 'declined':
+        label = 'Rejected';
+        color = kError;
+        break;
+      case 'open':
+      case 'pending':
+      case 'uncheckedout':
+      case '':
+        label = 'Pending';
+        color = kAccentAmber;
+        break;
+      default:
+        label = 'Pending';
+        color = kAccentAmber;
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(

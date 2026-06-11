@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../core/constants.dart';
 import '../../models/authorization_request.dart';
 import '../../models/pharmacy.dart';
 import '../../providers/authorizations_provider.dart';
 import '../../providers/pharmacies_provider.dart';
 import '../../widgets/common/app_button.dart';
+import '../../core/app_colors.dart';
 
 class RequestAuthorizationScreen extends ConsumerStatefulWidget {
   final String? medicationId;
@@ -33,6 +35,27 @@ class _RequestAuthorizationScreenState
   final _notesCtrl = TextEditingController();
   final _hospitalCtrl = TextEditingController();
   bool _submitting = false;
+  PlatformFile? _attachment;
+
+  Future<void> _pickAttachment() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        withData: true,
+        type: FileType.custom,
+        allowedExtensions: const [
+          'pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'doc', 'docx'
+        ],
+      );
+      if (result != null && result.files.isNotEmpty) {
+        setState(() => _attachment = result.files.first);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not pick file: $e')),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -99,6 +122,7 @@ class _RequestAuthorizationScreenState
                   ? null
                   : _notesCtrl.text.trim(),
               memberMedicationId: widget.medicationId,
+              attachment: _attachment,
             );
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -293,12 +317,12 @@ class _RequestAuthorizationScreenState
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: kBorder),
+                  border: Border.all(color: context.c.border),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_today_outlined,
-                        size: 18, color: kSubtext),
+                    Icon(Icons.calendar_today_outlined,
+                        size: 18, color: context.c.subtext),
                     const SizedBox(width: 10),
                     Text(
                       _scheduledDate == null
@@ -308,7 +332,7 @@ class _RequestAuthorizationScreenState
                       style: TextStyle(
                         fontSize: 14,
                         color:
-                            _scheduledDate == null ? kSubtext : kText,
+                            _scheduledDate == null ? context.c.subtext : context.c.text,
                       ),
                     ),
                   ],
@@ -330,11 +354,79 @@ class _RequestAuthorizationScreenState
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: kBorder)),
+                    borderSide: BorderSide(color: context.c.border)),
                 enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: kBorder)),
+                    borderSide: BorderSide(color: context.c.border)),
                 contentPadding: const EdgeInsets.all(14),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Optional attachment
+            _Label('Attachment (optional)'),
+            const SizedBox(height: 4),
+            Text(
+              'Attach a prescription or supporting document (PDF, image or DOC).',
+              style: TextStyle(color: context.c.subtext, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: _pickAttachment,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: _attachment == null
+                          ? context.c.border
+                          : kPrimary.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _attachment == null
+                          ? Icons.attach_file_outlined
+                          : Icons.insert_drive_file_outlined,
+                      color: _attachment == null ? context.c.subtext : kPrimary,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _attachment?.name ?? 'Choose file',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: _attachment == null
+                                  ? context.c.subtext
+                                  : context.c.text,
+                            ),
+                          ),
+                          if (_attachment != null)
+                            Text(
+                              '${(_attachment!.size / 1024).toStringAsFixed(0)} KB',
+                              style: TextStyle(
+                                  fontSize: 11, color: context.c.subtext),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (_attachment != null)
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () => setState(() => _attachment = null),
+                      ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -353,15 +445,15 @@ class _RequestAuthorizationScreenState
   }
 
   InputDecoration _deco(IconData icon) => InputDecoration(
-        prefixIcon: Icon(icon, color: kSubtext, size: 20),
+        prefixIcon: Icon(icon, color: context.c.subtext, size: 20),
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: kBorder)),
+            borderSide: BorderSide(color: context.c.border)),
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: kBorder)),
+            borderSide: BorderSide(color: context.c.border)),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       );
@@ -372,8 +464,8 @@ class _Label extends StatelessWidget {
   const _Label(this.text);
   @override
   Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(
-          fontSize: 13, fontWeight: FontWeight.w600, color: kText));
+      style: TextStyle(
+          fontSize: 13, fontWeight: FontWeight.w600, color: context.c.text));
 }
 
 class _TypeChip extends StatelessWidget {
@@ -396,12 +488,12 @@ class _TypeChip extends StatelessWidget {
             color: selected ? kPrimary.withValues(alpha: 0.1) : Colors.white,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-                color: selected ? kPrimary : kBorder,
+                color: selected ? kPrimary : context.c.border,
                 width: selected ? 1.5 : 1),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 16, color: selected ? kPrimary : kSubtext),
+              Icon(icon, size: 16, color: selected ? kPrimary : context.c.subtext),
               const SizedBox(width: 6),
               Text(
                 label,
@@ -409,7 +501,7 @@ class _TypeChip extends StatelessWidget {
                   fontSize: 13,
                   fontWeight:
                       selected ? FontWeight.w600 : FontWeight.normal,
-                  color: selected ? kPrimary : kText,
+                  color: selected ? kPrimary : context.c.text,
                 ),
               ),
             ],

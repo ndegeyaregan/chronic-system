@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -32,16 +34,17 @@ class _ReprintCardSheetState extends ConsumerState<_ReprintCardSheet> {
   int _step = 0;
   String? _reason; // 'lost' | 'damaged' | 'stolen' | 'other'
   final _reasonNotesCtrl = TextEditingController();
+  final _txIdCtrl = TextEditingController();
   bool _isForDependant = false;
   Dependant? _selectedDependant;
-  final _phoneCtrl = TextEditingController();
+  PlatformFile? _proofFile;
   bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
     _reasonNotesCtrl.addListener(_refresh);
-    _phoneCtrl.addListener(_refresh);
+    _txIdCtrl.addListener(_refresh);
   }
 
   void _refresh() {
@@ -51,9 +54,9 @@ class _ReprintCardSheetState extends ConsumerState<_ReprintCardSheet> {
   @override
   void dispose() {
     _reasonNotesCtrl.removeListener(_refresh);
-    _phoneCtrl.removeListener(_refresh);
     _reasonNotesCtrl.dispose();
-    _phoneCtrl.dispose();
+    _txIdCtrl.removeListener(_refresh);
+    _txIdCtrl.dispose();
     super.dispose();
   }
 
@@ -69,8 +72,8 @@ class _ReprintCardSheetState extends ConsumerState<_ReprintCardSheet> {
   }
 
   bool get _step2Valid {
-    final p = _phoneCtrl.text.replaceAll(RegExp(r'\D'), '');
-    return p.length >= 9;
+    // Member must provide a screenshot OR a transaction id as proof.
+    return _proofFile != null || _txIdCtrl.text.trim().isNotEmpty;
   }
 
   void _next() {
@@ -82,9 +85,41 @@ class _ReprintCardSheetState extends ConsumerState<_ReprintCardSheet> {
 
   void _back() => setState(() => _step = (_step - 1).clamp(0, 3));
 
+  Future<void> _pickProofFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'pdf'],
+        withData: true,
+      );
+      if (result == null || result.files.isEmpty) return;
+      final f = result.files.first;
+      if (f.size > 10 * 1024 * 1024) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('File is too large. Maximum size is 10 MB.'),
+            backgroundColor: kError,
+          ),
+        );
+        return;
+      }
+      setState(() => _proofFile = f);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not pick file: $e'),
+          backgroundColor: kError,
+        ),
+      );
+    }
+  }
+
   Future<void> _submit() async {
     final member = ref.read(authProvider).member;
     if (member == null) return;
+    if (!_step2Valid) return;
     setState(() => _submitting = true);
     try {
       final targetMemberNo =
@@ -98,19 +133,54 @@ class _ReprintCardSheetState extends ConsumerState<_ReprintCardSheet> {
               : 'Dependant')
           : 'Principal';
 
-      await dio.post('/card-reprints', data: {
+      final fields = <String, dynamic>{
         'targetMemberNo': targetMemberNo,
         'targetMemberName': targetMemberName,
         'targetRelation': targetRelation,
-        'isForDependant': _isForDependant,
+        'isForDependant': _isForDependant.toString(),
         'reason': _reason,
         'reasonNotes': _reasonNotesCtrl.text.trim(),
-        'paymentMethod': 'mobile_money',
-        'paymentPhone': _phoneCtrl.text.trim(),
-      });
+        'paymentMethod': 'ussd_mobile_money',
+        if (_txIdCtrl.text.trim().isNotEmpty)
+          'paymentReference': _txIdCtrl.text.trim(),
+      };
+
+      Response res;
+      if (_proofFile != null) {
+        MultipartFile mpf;
+        if (_proofFile!.bytes != null) {
+          mpf = MultipartFile.fromBytes(
+            _proofFile!.bytes!,
+            filename: _proofFile!.name,
+          );
+        } else {
+          mpf = await MultipartFile.fromFile(
+            _proofFile!.path!,
+            filename: _proofFile!.name,
+          );
+        }
+        final formData =
+            FormData.fromMap({...fields, 'paymentProof': mpf});
+        res = await dio.post(
+          '/card-reprints',
+          data: formData,
+        );
+      } else {
+        res = await dio.post('/card-reprints', data: fields);
+      }
       if (!mounted) return;
       ref.invalidate(cardReprintHistoryProvider);
-      setState(() => _step = 3);
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        setState(() => _step = 3);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not submit request. Please try again.'),
+            backgroundColor: kError,
+          ),
+        );
+      }
     } on DioException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -180,7 +250,16 @@ class _ReprintCardSheetState extends ConsumerState<_ReprintCardSheet> {
                           onDependantSelected: (d) =>
                               setState(() => _selectedDependant = d),
                         ),
-                      2 => _StepPayment(phoneCtrl: _phoneCtrl),
+                      2 => _StepPayment(
+                          memberNumber: _isForDependant
+                              ? (_selectedDependant?.memberNo ?? '')
+                              : (ref.read(authProvider).member?.memberNumber ?? ''),
+                          txIdCtrl: _txIdCtrl,
+                          proofFile: _proofFile,
+                          onPickProof: _pickProofFile,
+                          onClearProof: () =>
+                              setState(() => _proofFile = null),
+                        ),
                       _ => _StepSuccess(
                           isForDependant: _isForDependant,
                           selectedDependant: _selectedDependant,
@@ -220,7 +299,7 @@ class _Header extends StatelessWidget {
     final titles = const [
       'Reason for Reprint',
       'Who is the card for?',
-      'Mobile Money Payment',
+      'Payment Instructions',
       'Request Submitted',
     ];
     return Padding(
@@ -367,6 +446,7 @@ class _StepWho extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final member = ref.watch(authProvider).member;
+    final canViewDependants = ref.watch(canViewDependantsProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -383,20 +463,22 @@ class _StepWho extends ConsumerWidget {
                 onTap: () => onScopeChanged(false),
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ScopeTile(
-                selected: isForDependant,
-                icon: Icons.family_restroom,
-                label: 'Dependant',
-                subtitle: 'Spouse / Child',
-                onTap: () => onScopeChanged(true),
+            if (canViewDependants) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ScopeTile(
+                  selected: isForDependant,
+                  icon: Icons.family_restroom,
+                  label: 'Dependant',
+                  subtitle: 'Spouse / Child',
+                  onTap: () => onScopeChanged(true),
+                ),
               ),
-            ),
+            ],
           ],
         ),
         const SizedBox(height: 16),
-        if (isForDependant)
+        if (isForDependant && canViewDependants)
           ref.watch(dependantsProvider).when(
                 loading: () => const Padding(
                   padding: EdgeInsets.all(24),
@@ -550,8 +632,18 @@ class _DependantTile extends StatelessWidget {
 }
 
 class _StepPayment extends StatelessWidget {
-  final TextEditingController phoneCtrl;
-  const _StepPayment({required this.phoneCtrl});
+  final String memberNumber;
+  final TextEditingController txIdCtrl;
+  final PlatformFile? proofFile;
+  final VoidCallback onPickProof;
+  final VoidCallback onClearProof;
+  const _StepPayment({
+    required this.memberNumber,
+    required this.txIdCtrl,
+    required this.proofFile,
+    required this.onPickProof,
+    required this.onClearProof,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -572,7 +664,7 @@ class _StepPayment extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Mobile Money',
+                    Text('Mobile Money Payment',
                         style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700)),
@@ -586,23 +678,334 @@ class _StepPayment extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: phoneCtrl,
-          keyboardType: TextInputType.phone,
-          decoration: InputDecoration(
-            labelText: 'Mobile Money Phone Number',
-            hintText: 'e.g. 0772 123 456',
-            prefixIcon: const Icon(Icons.phone_outlined),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(kRadiusMd),
-            ),
-          ),
+        _MemberRefBox(memberNumber: memberNumber),
+        const SizedBox(height: 16),
+        const _PaymentInstructionsCard(
+          title: 'Airtel Money',
+          color: Color(0xFFE60000),
+          icon: Icons.sim_card,
+          steps: [
+            'Dial *185# then press Yes',
+            'Select 4 — Pay Bill',
+            'Select 9 — Others',
+            'Enter Business Number: 456456',
+            'Enter Amount: 20000',
+            'Enter Reference: Your Member Number (shown above)',
+            'Enter your PIN to confirm',
+          ],
+        ),
+        const SizedBox(height: 12),
+        const _PaymentInstructionsCard(
+          title: 'MTN Mobile Money',
+          color: Color(0xFFFFCC00),
+          textColor: Color(0xFF1A1A1A),
+          icon: Icons.sim_card,
+          steps: [
+            'Dial *165*4*4#',
+            'Merchant Code: Sanlam',
+            'Payment Reference: Your Member Number (shown above)',
+            'Enter Amount: 20000',
+            'Enter your PIN to confirm',
+          ],
+        ),
+        const SizedBox(height: 16),
+        _ProofOfPaymentSection(
+          txIdCtrl: txIdCtrl,
+          proofFile: proofFile,
+          onPickProof: onPickProof,
+          onClearProof: onClearProof,
         ),
         const SizedBox(height: 12),
         const _Note(
-          'You will receive a Mobile Money prompt on this number to confirm payment of UGX 20,000.',
+          'After paying, attach a screenshot of the confirmation message OR enter the Mobile Money transaction ID, then tap Submit Request. We will verify your payment and process the card reprint.',
         ),
       ],
+    );
+  }
+}
+
+class _ProofOfPaymentSection extends StatelessWidget {
+  final TextEditingController txIdCtrl;
+  final PlatformFile? proofFile;
+  final VoidCallback onPickProof;
+  final VoidCallback onClearProof;
+  const _ProofOfPaymentSection({
+    required this.txIdCtrl,
+    required this.proofFile,
+    required this.onPickProof,
+    required this.onClearProof,
+  });
+
+  String _humanSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        border: Border.all(color: Colors.grey.shade300),
+        color: Colors.white,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.verified_outlined, color: kPrimary, size: 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Proof of Payment',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Provide at least one of the following so we can verify your payment.',
+            style: TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          const SizedBox(height: 12),
+          // Screenshot
+          if (proofFile == null)
+            OutlinedButton.icon(
+              onPressed: onPickProof,
+              icon: const Icon(Icons.attach_file),
+              label: const Text('Attach payment screenshot'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: kPrimary,
+                side: const BorderSide(color: kPrimary),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(kRadiusMd),
+                ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: kPrimary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(kRadiusMd),
+                border: Border.all(color: kPrimary.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.insert_drive_file, color: kPrimary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          proofFile!.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        Text(
+                          _humanSize(proofFile!.size),
+                          style: const TextStyle(
+                              color: Colors.black54, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Remove',
+                    onPressed: onClearProof,
+                    icon: const Icon(Icons.close, size: 20),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: Container(height: 1, color: Colors.grey.shade200)),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Text('OR',
+                    style: TextStyle(
+                        color: Colors.black45,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700)),
+              ),
+              Expanded(child: Container(height: 1, color: Colors.grey.shade200)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Transaction ID
+          TextField(
+            controller: txIdCtrl,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: 'Transaction ID',
+              hintText: 'e.g. CI250507.1430.A12345',
+              prefixIcon: const Icon(Icons.receipt_long_outlined),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(kRadiusMd),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MemberRefBox extends StatelessWidget {
+  final String memberNumber;
+  const _MemberRefBox({required this.memberNumber});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        border: Border.all(color: Colors.amber.shade400),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.confirmation_number_outlined, color: Color(0xFFB45309)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Your Payment Reference (Member Number)',
+                    style: TextStyle(fontSize: 12, color: Color(0xFFB45309))),
+                const SizedBox(height: 2),
+                Text(
+                  memberNumber.isEmpty ? '—' : memberNumber,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Copy',
+            icon: const Icon(Icons.copy_rounded, color: Color(0xFFB45309)),
+            onPressed: memberNumber.isEmpty
+                ? null
+                : () {
+                    Clipboard.setData(ClipboardData(text: memberNumber));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Member number copied'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentInstructionsCard extends StatelessWidget {
+  final String title;
+  final Color color;
+  final Color textColor;
+  final IconData icon;
+  final List<String> steps;
+  const _PaymentInstructionsCard({
+    required this.title,
+    required this.color,
+    required this.icon,
+    required this.steps,
+    this.textColor = Colors.white,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        border: Border.all(color: Colors.grey.shade200),
+        color: Colors.white,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(kRadiusMd)),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: textColor, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (int i = 0; i < steps.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          margin: const EdgeInsets.only(top: 2, right: 8),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${i + 1}',
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            steps[i],
+                            style: const TextStyle(fontSize: 13.5, height: 1.35),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -649,8 +1052,9 @@ class _StepSuccess extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             'Your card reprint request for $name ($no) has been received. '
-            'You will receive an SMS and email confirmation, and the membership '
-            'team has been notified.',
+            'Once your Mobile Money payment is verified by the membership '
+            'team, your card will be processed. You will receive an SMS '
+            'and email confirmation.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.black54, height: 1.4),
           ),
@@ -756,7 +1160,7 @@ class _Footer extends StatelessWidget {
 
     String label;
     if (step == 2) {
-      label = submitting ? 'Submitting…' : 'Pay UGX 20,000 & Submit';
+      label = submitting ? 'Submitting…' : 'Submit Request';
     } else {
       label = 'Continue';
     }

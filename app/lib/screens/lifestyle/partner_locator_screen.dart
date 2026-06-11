@@ -7,6 +7,7 @@ import '../../core/constants.dart';
 import '../../providers/lifestyle_provider.dart';
 import '../../models/lifestyle_partner.dart';
 import 'partner_detail_screen.dart';
+import '../../core/app_colors.dart';
 
 class PartnerLocatorScreen extends ConsumerStatefulWidget {
   const PartnerLocatorScreen({super.key, this.initialType});
@@ -200,7 +201,7 @@ class _PartnerLocatorScreenState extends ConsumerState<PartnerLocatorScreen>
                       const SizedBox(height: 16),
                       Text(error,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: kSubtext, fontSize: 15)),
+                          style: TextStyle(color: context.c.subtext, fontSize: 15)),
                       const SizedBox(height: 16),
                       TextButton.icon(
                         onPressed: () =>
@@ -219,7 +220,7 @@ class _PartnerLocatorScreenState extends ConsumerState<PartnerLocatorScreen>
               ),
             )
           else if (gyms.isEmpty)
-            const SliverFillRemaining(
+            SliverFillRemaining(
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -229,7 +230,7 @@ class _PartnerLocatorScreenState extends ConsumerState<PartnerLocatorScreen>
                     SizedBox(height: 16),
                     Text('No gyms found in your area',
                         style:
-                            TextStyle(color: kSubtext, fontSize: 15)),
+                            TextStyle(color: context.c.subtext, fontSize: 15)),
                   ],
                 ),
               ),
@@ -417,7 +418,7 @@ class _PartnerList extends StatelessWidget {
               const SizedBox(height: 16),
               Text(error!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: kSubtext, fontSize: 15)),
+                  style: TextStyle(color: context.c.subtext, fontSize: 15)),
               if (onRetry != null) ...[
                 const SizedBox(height: 16),
                 TextButton.icon(
@@ -434,7 +435,7 @@ class _PartnerList extends StatelessWidget {
     }
 
     if (partners.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -443,12 +444,12 @@ class _PartnerList extends StatelessWidget {
             SizedBox(height: 16),
             Text(
               'No partners found in your area',
-              style: TextStyle(color: kSubtext, fontSize: 15),
+              style: TextStyle(color: context.c.subtext, fontSize: 15),
             ),
             SizedBox(height: 8),
             Text(
               'Try switching to map view or check back later.',
-              style: TextStyle(color: kSubtext, fontSize: 12),
+              style: TextStyle(color: context.c.subtext, fontSize: 12),
               textAlign: TextAlign.center,
             ),
           ],
@@ -537,22 +538,22 @@ class _PartnerList extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   p.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
-                    color: kText,
+                    color: context.c.text,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 13, color: kSubtext),
+                    Icon(Icons.location_on_outlined,
+                        size: 13, color: context.c.subtext),
                     const SizedBox(width: 4),
                     Text(
                       '${p.city}, ${p.province}',
                       style:
-                          const TextStyle(fontSize: 12, color: kSubtext),
+                          TextStyle(fontSize: 12, color: context.c.subtext),
                     ),
                   ],
                 ),
@@ -560,7 +561,7 @@ class _PartnerList extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     p.address!,
-                    style: const TextStyle(fontSize: 12, color: kSubtext),
+                    style: TextStyle(fontSize: 12, color: context.c.subtext),
                   ),
                 ],
                 if (p.phone != null) ...[

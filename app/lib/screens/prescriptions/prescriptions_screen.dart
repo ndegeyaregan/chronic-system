@@ -6,6 +6,7 @@ import '../../models/prescription.dart';
 import '../../providers/prescriptions_provider.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../core/app_colors.dart';
 
 /// Filter chips for the prescriptions list.
 enum _StatusFilter { all, pending, partial, issued }
@@ -60,12 +61,12 @@ class _PrescriptionsScreenState extends ConsumerState<PrescriptionsScreen> {
     final async = ref.watch(prescriptionsProvider(claimFilter));
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),
         ),
-        title: const Text(
+        title: Text(
           'My Prescriptions',
           style: TextStyle(
               color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
@@ -178,15 +179,15 @@ class _ClaimSearchBar extends StatelessWidget {
         controller: controller,
         textInputAction: TextInputAction.search,
         onSubmitted: onSubmit,
-        style: const TextStyle(fontSize: 14, color: kText),
+        style: TextStyle(fontSize: 14, color: context.c.text),
         decoration: InputDecoration(
           hintText: 'Filter by claim no. (e.g. PRHE-260428-347)',
-          hintStyle: const TextStyle(fontSize: 13, color: kTextLight),
-          prefixIcon: const Icon(Icons.search, color: kSubtext, size: 20),
+          hintStyle: TextStyle(fontSize: 13, color: context.c.textLight),
+          prefixIcon: Icon(Icons.search, color: context.c.subtext, size: 20),
           suffixIcon: controller.text.isEmpty
               ? null
               : IconButton(
-                  icon: const Icon(Icons.close, size: 18, color: kSubtext),
+                  icon: Icon(Icons.close, size: 18, color: context.c.subtext),
                   onPressed: onClear,
                 ),
           filled: true,
@@ -234,7 +235,7 @@ class _StatusChips extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(kRadiusFull),
                 side: BorderSide(
-                    color: isSel ? kPrimary : kBorder, width: 1),
+                    color: isSel ? kPrimary : context.c.border, width: 1),
               ),
             ),
           );
@@ -256,7 +257,7 @@ class _PrescriptionCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: kCardBg,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
       ),
@@ -282,10 +283,10 @@ class _PrescriptionCard extends StatelessWidget {
                   children: [
                     Text(
                       p.medication.isEmpty ? '—' : p.medication,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: kText,
+                        color: context.c.text,
                       ),
                     ),
                     if (p.code.isNotEmpty)
@@ -294,7 +295,7 @@ class _PrescriptionCard extends StatelessWidget {
                         child: Text(
                           p.code,
                           style:
-                              const TextStyle(fontSize: 11, color: kSubtext),
+                              TextStyle(fontSize: 11, color: context.c.subtext),
                         ),
                       ),
                   ],
@@ -319,37 +320,37 @@ class _PrescriptionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          if (p.dosage.isNotEmpty) _row(Icons.schedule, 'Dosage', p.dosage),
-          _row(Icons.confirmation_number_outlined, 'Quantity',
+          if (p.dosage.isNotEmpty) _row(context, Icons.schedule, 'Dosage', p.dosage),
+          _row(context, Icons.confirmation_number_outlined, 'Quantity',
               '${p.issuedQty} / ${p.qty} issued'),
           if (p.prescribedBy.isNotEmpty)
-            _row(Icons.person_outline, 'Prescribed by', p.prescribedBy),
+            _row(context, Icons.person_outline, 'Prescribed by', p.prescribedBy),
           _claimRow(context, p),
           if (p.issuedClaimNo.isNotEmpty)
-            _row(Icons.receipt_outlined, 'Issued claim', p.issuedClaimNo),
+            _row(context, Icons.receipt_outlined, 'Issued claim', p.issuedClaimNo),
           if (p.category.isNotEmpty)
-            _row(Icons.category_outlined, 'Category', p.category),
+            _row(context, Icons.category_outlined, 'Category', p.category),
         ],
       ),
     );
   }
 
-  static Widget _row(IconData icon, String label, String value) {
+  Widget _row(BuildContext context, IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: kSubtext),
+          Icon(icon, size: 16, color: context.c.subtext),
           const SizedBox(width: 8),
           Text('$label: ',
-              style: const TextStyle(
-                  fontSize: 12, color: kSubtext, fontWeight: FontWeight.w500)),
+              style: TextStyle(
+                  fontSize: 12, color: context.c.subtext, fontWeight: FontWeight.w500)),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                  fontSize: 12, color: kText, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  fontSize: 12, color: context.c.text, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -364,16 +365,16 @@ class _PrescriptionCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.tag, size: 16, color: kSubtext),
+          Icon(Icons.tag, size: 16, color: context.c.subtext),
           const SizedBox(width: 8),
-          const Text('Claim: ',
+          Text('Claim: ',
               style: TextStyle(
-                  fontSize: 12, color: kSubtext, fontWeight: FontWeight.w500)),
+                  fontSize: 12, color: context.c.subtext, fontWeight: FontWeight.w500)),
           Expanded(
             child: Text(
               p.claimNo,
-              style: const TextStyle(
-                  fontSize: 12, color: kText, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  fontSize: 12, color: context.c.text, fontWeight: FontWeight.w600),
             ),
           ),
           InkWell(
@@ -388,9 +389,9 @@ class _PrescriptionCard extends StatelessWidget {
                 );
               }
             },
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 4),
-              child: Icon(Icons.copy, size: 14, color: kSubtext),
+              child: Icon(Icons.copy, size: 14, color: context.c.subtext),
             ),
           ),
         ],

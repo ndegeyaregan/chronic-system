@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/sanlam_api_service.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
+import '../../core/app_colors.dart';
 
 /// Step 1 of registration: confirm the member exists in Sanlam's records.
 /// Calls `SearchForReg` which requires MemberNo + LastName + DOB.
@@ -83,12 +84,12 @@ class _RegisterSearchScreenState extends State<RegisterSearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: kText, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: context.c.text, size: 20),
           onPressed: () => context.pop(),
         ),
       ),
@@ -108,15 +109,15 @@ class _RegisterSearchScreenState extends State<RegisterSearchScreen> {
                 child: const Icon(Icons.person_search_outlined, color: kPrimary, size: 36),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Create Account',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: kText),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: context.c.text),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'First, let\'s confirm your Sanlam membership. Enter the details exactly as they appear on your medical card.',
-                style: TextStyle(fontSize: 14, color: kSubtext, height: 1.5),
+                style: TextStyle(fontSize: 14, color: context.c.subtext, height: 1.5),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -136,7 +137,7 @@ class _RegisterSearchScreenState extends State<RegisterSearchScreen> {
                         label: 'Member Number',
                         hint: 'e.g. 333307-00',
                         controller: _memberCtrl,
-                        prefixIcon: const Icon(Icons.badge_outlined, color: kSubtext),
+                        prefixIcon: Icon(Icons.badge_outlined, color: context.c.subtext),
                         textInputAction: TextInputAction.next,
                         validator: (v) =>
                             v == null || v.trim().isEmpty ? 'Enter your member number' : null,
@@ -146,29 +147,48 @@ class _RegisterSearchScreenState extends State<RegisterSearchScreen> {
                         label: 'Last Name',
                         hint: 'Surname',
                         controller: _lastNameCtrl,
-                        prefixIcon: const Icon(Icons.person_outline, color: kSubtext),
+                        prefixIcon: Icon(Icons.person_outline, color: context.c.subtext),
                         textInputAction: TextInputAction.next,
                         validator: (v) =>
                             v == null || v.trim().isEmpty ? 'Enter your last name' : null,
                       ),
                       const SizedBox(height: 16),
+                      Text(
+                        'Date of Birth',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: context.c.text,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
                       InkWell(
                         onTap: _pickDob,
                         borderRadius: BorderRadius.circular(kRadiusMd),
                         child: InputDecorator(
                           decoration: InputDecoration(
-                            labelText: 'Date of Birth',
-                            prefixIcon: const Icon(Icons.calendar_today_outlined,
-                                color: kSubtext, size: 18),
+                            hintText: 'Tap to choose',
+                            prefixIcon: Icon(Icons.calendar_today_outlined,
+                                color: context.c.subtext, size: 20),
+                            filled: true,
+                            fillColor: context.c.surfaceAlt,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(kRadiusMd),
+                              borderSide: BorderSide(color: context.c.border),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(kRadiusMd),
+                              borderSide: BorderSide(color: context.c.border, width: 1),
                             ),
                           ),
                           child: Text(
                             _dob == null ? 'Tap to choose' : _fmtDob(_dob!),
                             style: TextStyle(
-                              color: _dob == null ? kSubtext : kText,
-                              fontSize: 14,
+                              color: _dob == null ? context.c.subtext : context.c.text,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ),
@@ -207,7 +227,7 @@ class _RegisterSearchScreenState extends State<RegisterSearchScreen> {
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => context.go(routeLogin),
-                child: const Text(
+                child: Text(
                   'Already have an account? Sign in',
                   style: TextStyle(color: kPrimary, fontSize: 13, fontWeight: FontWeight.w600),
                 ),

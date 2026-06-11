@@ -9,7 +9,6 @@ import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/onboarding_provider.dart';
 import 'providers/step_tracking_provider.dart';
-import 'providers/theme_provider.dart';
 import 'services/auth_service.dart';
 import 'services/api_service.dart';
 import 'services/cache_service.dart';
@@ -107,13 +106,15 @@ class _SanlamMemberAppState extends ConsumerState<SanlamMemberApp>
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
-    final themeMode = ref.watch(themeModeProvider);
+    // Force light mode app-wide. The screens use hard-coded light surface
+    // colours and dark text; following system dark mode produced unreadable
+    // cards, so dark mode is intentionally disabled until a full themed
+    // refactor is done.
     return MaterialApp.router(
       title: 'SanCare+',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      darkTheme: buildDarkTheme(),
-      themeMode: themeMode,
+      themeMode: ThemeMode.light,
       routerConfig: router,
     );
   }

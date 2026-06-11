@@ -20,12 +20,9 @@ String _principalNumber(String memberNo) {
 final visitsProvider = FutureProvider<List<Visit>>((ref) async {
   final member = ref.watch(authProvider).member;
   if (member == null) throw Exception('Not authenticated');
-  final principalNo = _principalNumber(member.memberNumber);
-  final isPrincipal = member.memberNumber == principalNo;
-  final list = await sanlamApi.getVisitList(
-    principalNo,
-    dependantNo: isPrincipal ? null : member.memberNumber,
-  );
+  // Always call with the signed-in member as MemberNo so the request
+  // matches the JWT subject (Sanlam rejects mismatches).
+  final list = await sanlamApi.getVisitList(member.memberNumber);
   return list.map(Visit.fromJson).toList();
 });
 
@@ -40,6 +37,13 @@ final visitLinesProvider =
   final (memberNo, visitId) = args;
   final auth = ref.watch(authProvider);
   final loggedIn = auth.member;
+  // Sanlam rejects requests whose MemberNo doesn't match the signed-in
+  // JWT subject. When a dependant views their own claim we must call
+  // with the dependant's own number as MemberNo (no DependantNo).
+  if (loggedIn != null && loggedIn.memberNumber == memberNo) {
+    final list = await sanlamApi.getVisitSummary(memberNo, visitId);
+    return list.map(VisitLine.fromJson).toList();
+  }
   final principalNo = loggedIn != null
       ? _principalNumber(loggedIn.memberNumber)
       : _principalNumber(memberNo);
@@ -68,12 +72,24 @@ final familyVisitsProvider = FutureProvider<List<Visit>>((ref) async {
   final isPrincipal = member.memberNumber == principalNo;
 
   if (!isPrincipal) {
-    // Dependants only see their own visits.
-    final list = await sanlamApi.getVisitList(
-      principalNo,
-      dependantNo: member.memberNumber,
-    );
-    return list.map(Visit.fromJson).toList();
+    // Dependants only see their own visits. The Sanlam JWT is signed
+    // for the dependant, so we must call with their own number as
+    // `MemberNo` (server rejects mismatched principal numbers with
+    // "member number is not matching with signed member no").
+    try {
+      final list = await sanlamApi.getVisitList(member.memberNumber);
+      return list.map(Visit.fromJson).toList();
+    } on SanlamApiException catch (e) {
+      // Treat "no records" / "not matching" as empty so the UI shows a
+      // friendly empty state instead of a scary error.
+      final d = e.description.toLowerCase();
+      if (d.contains('not matching') ||
+          d.contains('no record') ||
+          d.contains('not found')) {
+        return const <Visit>[];
+      }
+      rethrow;
+    }
   }
 
   // Principal: pull principal visits + every dependant's visits in parallel.
@@ -104,17 +120,61 @@ final familyVisitsProvider = FutureProvider<List<Visit>>((ref) async {
 /// The Sanlam endpoint expects the principal's `MemberNo` together with
 /// the dependant's number in `DependantNo`. When [memberNo] is the
 /// principal itself we omit `DependantNo`.
+///
+/// The Sanlam API sometimes returns the principal's claims as a fallback
+/// when a dependant has no visits (instead of an empty list). To guard
+/// against this, the dependant result is cross-checked against the
+/// principal's claim IDs and any matching visits are stripped out, so the
+/// dependant detail screen only ever shows that dependant's own claims.
 final visitsByMemberProvider =
     FutureProvider.family<List<Visit>, String>((ref, memberNo) async {
   final auth = ref.watch(authProvider);
   final loggedIn = auth.member;
+  // When the requested member IS the signed-in user, call directly with
+  // their number (Sanlam rejects requests whose MemberNo doesn't match the
+  // JWT subject). No cross-check needed — it's their own claims.
+  if (loggedIn != null && loggedIn.memberNumber == memberNo) {
+    final list = await sanlamApi.getVisitList(memberNo);
+    return list.map(Visit.fromJson).toList();
+  }
   final principalNo = loggedIn != null
       ? _principalNumber(loggedIn.memberNumber)
       : _principalNumber(memberNo);
   final isPrincipal = memberNo == principalNo;
-  final list = await sanlamApi.getVisitList(
-    principalNo,
-    dependantNo: isPrincipal ? null : memberNo,
-  );
-  return list.map(Visit.fromJson).toList();
+  List<Map<String, dynamic>> list;
+  try {
+    list = await sanlamApi.getVisitList(
+      principalNo,
+      dependantNo: isPrincipal ? null : memberNo,
+    );
+  } on SanlamApiException catch (e) {
+    final d = e.description.toLowerCase();
+    if (d.contains('no record') ||
+        d.contains('not found') ||
+        d.contains('not matching')) {
+      return const <Visit>[];
+    }
+    rethrow;
+  }
+  final visits = list.map(Visit.fromJson).toList();
+
+  // For a principal query there is nothing to filter against.
+  if (isPrincipal) return visits;
+
+  // Fetch the principal's own claim IDs and remove any that leaked into the
+  // dependant result. If the dependant truly has no claims this will produce
+  // an empty list so the UI shows "No claims" rather than the principal's.
+  try {
+    final principalRaw = await sanlamApi.getVisitList(principalNo);
+    final principalIds = {
+      for (final j in principalRaw)
+        (j['visitId'] ?? j['VisitId'] ?? '').toString()
+    };
+    return visits
+        .where((v) => v.visitId.isNotEmpty && !principalIds.contains(v.visitId))
+        .toList();
+  } catch (_) {
+    // If the cross-check itself fails, return whatever the API gave us.
+    return visits;
+  }
 });

@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Play Store flavor: strip the side-load self-update permission.
+         Google Play handles app updates; REQUEST_INSTALL_PACKAGES is treated
+         as a sensitive permission and triggers manual review. -->
+    <uses-permission
+        android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+        tools:node="remove" />
+</manifest>

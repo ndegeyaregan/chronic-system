@@ -81,7 +81,7 @@ const reportPainAlert = async (req, res) => {
             <p style="color:#6b7280;font-size:12px">Reported at ${new Date().toLocaleString('en-UG', { timeZone: 'Africa/Kampala' })}</p>
           </div>
           <div style="background:#f3f4f6;padding:12px 24px;text-align:center">
-            <p style="margin:0;color:#6b7280;font-size:12px">Sanlam Allianz Chronic Care · Automated Alert System</p>
+            <p style="margin:0;color:#6b7280;font-size:12px">SanCare+ · Automated Alert System</p>
           </div>
         </div>
       `

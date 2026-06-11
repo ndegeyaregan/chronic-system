@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants.dart';
-import '../../providers/theme_provider.dart';
+import '../../core/app_colors.dart';
+import '../../services/notification_service.dart';
 
 final _settingsProvider =
     StateNotifierProvider<_SettingsNotifier, _SettingsState>(
@@ -93,55 +94,14 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(_settingsProvider);
-    final themeMode = ref.watch(themeModeProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _section('Appearance', [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Row(
-                children: [
-                  Icon(isDark ? Icons.dark_mode : Icons.light_mode,
-                      color: kPrimary, size: 20),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Dark Mode',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                                color: Theme.of(context).textTheme.bodyMedium?.color)),
-                        Text(
-                            themeMode == ThemeMode.system
-                                ? 'Follow system setting'
-                                : themeMode == ThemeMode.dark
-                                    ? 'Always dark'
-                                    : 'Always light',
-                            style: const TextStyle(fontSize: 11, color: kSubtext)),
-                      ],
-                    ),
-                  ),
-                  Switch.adaptive(
-                    value: themeMode == ThemeMode.dark,
-                    activeColor: kPrimary,
-                    onChanged: (v) => ref
-                        .read(themeModeProvider.notifier)
-                        .setThemeMode(v ? ThemeMode.dark : ThemeMode.light),
-                  ),
-                ],
-              ),
-            ),
-          ]),
-          const SizedBox(height: 16),
-          _section('Channels', [
-            _toggle(
+          _section(context, 'Channels', [
+            _toggle(context, 
               ref,
               icon: Icons.notifications_outlined,
               label: 'Push Notifications',
@@ -149,7 +109,7 @@ class SettingsScreen extends ConsumerWidget {
               value: settings.pushEnabled,
               key: 'push_enabled',
             ),
-            _toggle(
+            _toggle(context, 
               ref,
               icon: Icons.email_outlined,
               label: 'Email Notifications',
@@ -157,7 +117,7 @@ class SettingsScreen extends ConsumerWidget {
               value: settings.emailEnabled,
               key: 'email_enabled',
             ),
-            _toggle(
+            _toggle(context, 
               ref,
               icon: Icons.sms_outlined,
               label: 'SMS Notifications',
@@ -167,8 +127,8 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ]),
           const SizedBox(height: 16),
-          _section('Reminder Types', [
-            _toggle(
+          _section(context, 'Reminder Types', [
+            _toggle(context, 
               ref,
               icon: Icons.medication_outlined,
               label: 'Medication Reminders',
@@ -176,7 +136,7 @@ class SettingsScreen extends ConsumerWidget {
               value: settings.medicationReminders,
               key: 'medication_reminders',
             ),
-            _toggle(
+            _toggle(context, 
               ref,
               icon: Icons.calendar_today_outlined,
               label: 'Appointment Reminders',
@@ -184,7 +144,7 @@ class SettingsScreen extends ConsumerWidget {
               value: settings.appointmentReminders,
               key: 'appointment_reminders',
             ),
-            _toggle(
+            _toggle(context, 
               ref,
               icon: Icons.monitor_heart_outlined,
               label: 'Vitals Check-in Reminders',
@@ -193,22 +153,65 @@ class SettingsScreen extends ConsumerWidget {
               key: 'vitals_reminders',
             ),
           ]),
+          const SizedBox(height: 24),
+          _section(context, 'Diagnostics', [
+            ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: const Icon(Icons.notifications_active_outlined,
+                  color: kPrimary),
+              title: const Text('Send test notification',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text(
+                  'Verifies your phone can show SanCare+ system notifications'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                try {
+                  await NotificationService.show(
+                    id: 999001,
+                    title: '🔔 SanCare+ test notification',
+                    body:
+                        'If you can see this, push notifications are working on this device.',
+                    payload: 'test',
+                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Test notification sent — check your notification shade.'),
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to show notification: $e'),
+                        backgroundColor: kError,
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+          ]),
         ],
       ),
     );
   }
 
-  Widget _section(String title, List<Widget> children) {
+  Widget _section(BuildContext context, String title, List<Widget> children) {
     return Builder(builder: (context) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: kSubtext,
+              color: context.c.subtext,
               letterSpacing: 0.5,
             ),
           ),
@@ -244,6 +247,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _toggle(
+    BuildContext context,
     WidgetRef ref, {
     required IconData icon,
     required String label,
@@ -262,10 +266,10 @@ class SettingsScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w500, fontSize: 14, color: kText)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w500, fontSize: 14, color: context.c.text)),
                 Text(subtitle,
-                    style: const TextStyle(fontSize: 11, color: kSubtext)),
+                    style: TextStyle(fontSize: 11, color: context.c.subtext)),
               ],
             ),
           ),

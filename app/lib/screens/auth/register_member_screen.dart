@@ -7,6 +7,7 @@ import '../../services/sanlam_api_service.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
 import 'terms_screen.dart';
+import '../../core/app_colors.dart';
 
 /// Step 2 of registration: choose a password & accept T&Cs, then call
 /// `RegMember` to create the account on the Sanlam server.
@@ -123,12 +124,12 @@ class _RegisterMemberScreenState extends State<RegisterMemberScreen> {
               child: const Icon(Icons.check, color: Colors.white, size: 36),
             ),
             const SizedBox(height: 16),
-            const Text('Account Created!',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kText)),
+            Text('Account Created!',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.c.text)),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Your account has been created successfully. Please log in with your member number and new password.',
-              style: TextStyle(fontSize: 14, color: kSubtext, height: 1.5),
+              style: TextStyle(fontSize: 14, color: context.c.subtext, height: 1.5),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -145,7 +146,7 @@ class _RegisterMemberScreenState extends State<RegisterMemberScreen> {
                       borderRadius: BorderRadius.circular(kRadiusMd)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('Log In Now',
+                child: Text('Log In Now',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
               ),
             ),
@@ -159,12 +160,12 @@ class _RegisterMemberScreenState extends State<RegisterMemberScreen> {
   Widget build(BuildContext context) {
     final greetingName = widget.memberName.isEmpty ? 'there' : widget.memberName;
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: kText, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: context.c.text, size: 20),
           onPressed: () => context.pop(),
         ),
       ),
@@ -185,17 +186,17 @@ class _RegisterMemberScreenState extends State<RegisterMemberScreen> {
               ),
               const SizedBox(height: 16),
               Text('Hi $greetingName 👋',
-                  style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.bold, color: kText),
+                  style: TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.bold, color: context.c.text),
                   textAlign: TextAlign.center),
               const SizedBox(height: 4),
               Text('Member ${widget.memberNumber}',
-                  style: const TextStyle(fontSize: 13, color: kSubtext),
+                  style: TextStyle(fontSize: 13, color: context.c.subtext),
                   textAlign: TextAlign.center),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Set a password for your app account.',
-                style: TextStyle(fontSize: 14, color: kSubtext),
+                style: TextStyle(fontSize: 14, color: context.c.subtext),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -217,7 +218,7 @@ class _RegisterMemberScreenState extends State<RegisterMemberScreen> {
                         controller: _passwordCtrl,
                         obscureText: true,
                         showPasswordToggle: true,
-                        prefixIcon: const Icon(Icons.lock_outline, color: kSubtext),
+                        prefixIcon: Icon(Icons.lock_outline, color: context.c.subtext),
                         onChanged: _checkStrength,
                         textInputAction: TextInputAction.next,
                         validator: (v) {
@@ -235,7 +236,7 @@ class _RegisterMemberScreenState extends State<RegisterMemberScreen> {
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
                                   value: _strength,
-                                  backgroundColor: kBorder,
+                                  backgroundColor: context.c.border,
                                   valueColor: AlwaysStoppedAnimation<Color>(_strengthColor),
                                   minHeight: 6,
                                 ),
@@ -257,7 +258,7 @@ class _RegisterMemberScreenState extends State<RegisterMemberScreen> {
                         controller: _confirmCtrl,
                         obscureText: true,
                         showPasswordToggle: true,
-                        prefixIcon: const Icon(Icons.lock_outline, color: kSubtext),
+                        prefixIcon: Icon(Icons.lock_outline, color: context.c.subtext),
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _submit(),
                         validator: (v) {
@@ -277,7 +278,7 @@ class _RegisterMemberScreenState extends State<RegisterMemberScreen> {
                             onPressed: _openTerms,
                             icon: const Icon(Icons.description_outlined,
                                 color: kPrimary, size: 18),
-                            label: const Text(
+                            label: Text(
                               'Read Terms & Conditions',
                               style: TextStyle(
                                   color: kPrimary,
@@ -308,18 +309,18 @@ class _RegisterMemberScreenState extends State<RegisterMemberScreen> {
                               const Icon(Icons.check_circle,
                                   color: kSuccess, size: 20),
                               const SizedBox(width: 10),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
                                   'You agreed to the Terms & Conditions',
                                   style: TextStyle(
                                       fontSize: 13,
-                                      color: kText,
+                                      color: context.c.text,
                                       fontWeight: FontWeight.w600),
                                 ),
                               ),
                               GestureDetector(
                                 onTap: _openTerms,
-                                child: const Text(
+                                child: Text(
                                   'View',
                                   style: TextStyle(
                                     fontSize: 12,

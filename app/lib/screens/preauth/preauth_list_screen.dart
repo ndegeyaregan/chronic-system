@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,7 @@ import '../../models/preauth.dart';
 import '../../providers/preauth_provider.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../core/app_colors.dart';
 
 /// Tracks which status filter is selected. `null` == All.
 final preauthStatusFilterProvider =
@@ -21,11 +24,21 @@ class PreauthListScreen extends ConsumerWidget {
     final filter = ref.watch(preauthStatusFilterProvider);
     final preauthsAsync = ref.watch(preauthsProvider(filter));
 
-    return Scaffold(
-      backgroundColor: kBg,
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/home/chronic');
+      },
+      child: Scaffold(
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/home/chronic'),
         ),
         title: const Text(
           'Pre-Authorisations',
@@ -76,6 +89,7 @@ class PreauthListScreen extends ConsumerWidget {
               : _PreauthSections(items: preauths),
         ),
       ),
+    ),
     );
   }
 }
@@ -218,8 +232,8 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: kText,
+            style: TextStyle(
+              color: context.c.text,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -227,7 +241,7 @@ class _SectionHeader extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             sub,
-            style: const TextStyle(color: kSubtext, fontSize: 11.5),
+            style: TextStyle(color: context.c.subtext, fontSize: 11.5),
           ),
         ],
       ),
@@ -246,7 +260,7 @@ class _PreauthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = preauthStatusColor(preauth.status);
+    final color = preauthStatusColor(context, preauth.status);
     final hasService = preauth.description.isNotEmpty;
     final title = hasService
         ? preauth.description
@@ -263,7 +277,7 @@ class _PreauthCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: kSurface,
+          color: context.c.surface,
           borderRadius: BorderRadius.circular(kRadiusMd),
           boxShadow: kCardShadow,
           border: highlight
@@ -280,10 +294,10 @@ class _PreauthCard extends StatelessWidget {
                     title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: kText,
+                      color: context.c.text,
                     ),
                   ),
                 ),
@@ -293,9 +307,9 @@ class _PreauthCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               preauth.claimNo,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11.5,
-                color: kSubtext,
+                color: context.c.subtext,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
               ),
@@ -306,8 +320,12 @@ class _PreauthCard extends StatelessWidget {
                 preauth.diagnosis,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12.5, color: kSubtext),
+                style: TextStyle(fontSize: 12.5, color: context.c.subtext),
               ),
+            ],
+            if (preauth.createdAt != null) ...[
+              const SizedBox(height: 8),
+              _TurnaroundBadge(preauth: preauth),
             ],
             const SizedBox(height: 10),
             Row(
@@ -325,7 +343,7 @@ class _PreauthCard extends StatelessWidget {
                   _AmountBadge(
                     label: 'Requested',
                     amount: preauth.requestedAmount,
-                    color: kSubtext,
+                    color: context.c.subtext,
                   ),
                 const Spacer(),
                 if (preauth.requestDate != null)
@@ -336,7 +354,7 @@ class _PreauthCard extends StatelessWidget {
                         : DateFormat('dd MMM yyyy').format(preauth.requestDate!),
                     style: TextStyle(
                       fontSize: 11.5,
-                      color: highlight ? color : kTextLight,
+                      color: highlight ? color : context.c.textLight,
                       fontWeight:
                           highlight ? FontWeight.w700 : FontWeight.w500,
                     ),
@@ -357,7 +375,7 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = preauthStatusColor(status);
+    final color = preauthStatusColor(context, status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
@@ -442,14 +460,14 @@ class _AmountBadge extends StatelessWidget {
 // Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-Color preauthStatusColor(PreauthStatus s) {
+Color preauthStatusColor(BuildContext context, PreauthStatus s) {
   switch (s) {
     case PreauthStatus.approved:
       return kSuccess;
     case PreauthStatus.rejected:
       return kError;
     case PreauthStatus.cancelled:
-      return kSubtext;
+      return context.c.subtext;
     case PreauthStatus.open:
     case PreauthStatus.unknown:
       return kAccentAmber;
@@ -463,4 +481,122 @@ String _typeLabel(String raw) {
   if (u.contains('OUT')) return 'OUTPATIENT';
   if (u.contains('IN')) return 'INPATIENT';
   return u;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Turnaround-time badge
+//
+// Open  → live ticking stopwatch ("⏱ Pending • 23m") that updates every 30s.
+// Decided → static stamp showing how long it took ("✓ Decided in 12m").
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TurnaroundBadge extends StatefulWidget {
+  final Preauth preauth;
+  const _TurnaroundBadge({required this.preauth});
+
+  @override
+  State<_TurnaroundBadge> createState() => _TurnaroundBadgeState();
+}
+
+class _TurnaroundBadgeState extends State<_TurnaroundBadge> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.preauth.status == PreauthStatus.open) {
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _TurnaroundBadge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final wasOpen = oldWidget.preauth.status == PreauthStatus.open;
+    final isOpen = widget.preauth.status == PreauthStatus.open;
+    if (wasOpen != isOpen) {
+      _ticker?.cancel();
+      _ticker = isOpen
+          ? Timer.periodic(const Duration(seconds: 1),
+              (_) { if (mounted) setState(() {}); })
+          : null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.preauth;
+    final dur = p.turnaroundDuration();
+    if (dur == null) return const SizedBox.shrink();
+
+    final isOpen = p.status == PreauthStatus.open;
+    final color = isOpen ? kAccentAmber : kSuccess;
+    final icon = isOpen ? Icons.timer_outlined : Icons.check_circle_outline;
+    final label = isOpen
+        ? 'Pending • ${_fmtLiveDuration(dur)}'
+        : 'Responded to within ${_fmtDuration(dur)}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(kRadiusFull),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact human-readable duration: "45s", "23m", "2h 5m", "3d 4h".
+String _fmtDuration(Duration d) {
+  if (d.isNegative) d = Duration.zero;
+  final days = d.inDays;
+  final hours = d.inHours.remainder(24);
+  final mins = d.inMinutes.remainder(60);
+  final secs = d.inSeconds.remainder(60);
+
+  if (days > 0) return hours > 0 ? '${days}d ${hours}h' : '${days}d';
+  if (hours > 0) return mins > 0 ? '${hours}h ${mins}m' : '${hours}h';
+  if (mins > 0) return '${mins}m';
+  return '${secs}s';
+}
+
+/// Live ticker format for Open requests — always includes seconds so the
+/// clock visibly moves every second instead of jumping once a minute.
+/// Examples: "14s", "2m 03s", "1h 05m 12s", "3d 4h".
+String _fmtLiveDuration(Duration d) {
+  if (d.isNegative) d = Duration.zero;
+  final days = d.inDays;
+  final hours = d.inHours.remainder(24);
+  final mins = d.inMinutes.remainder(60);
+  final secs = d.inSeconds.remainder(60);
+  String two(int n) => n.toString().padLeft(2, '0');
+
+  if (days > 0) return hours > 0 ? '${days}d ${hours}h' : '${days}d';
+  if (hours > 0) return '${hours}h ${two(mins)}m ${two(secs)}s';
+  if (mins > 0) return '${mins}m ${two(secs)}s';
+  return '${secs}s';
 }

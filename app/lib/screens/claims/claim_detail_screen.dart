@@ -13,6 +13,7 @@ import '../../services/sanlam_api_service.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/claim_status_chip.dart';
+import '../../core/app_colors.dart';
 
 class ClaimDetailScreen extends ConsumerStatefulWidget {
   final String visitId;
@@ -58,7 +59,7 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -76,17 +77,28 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
     setState(() => _updatingStatus = true);
     try {
       final loggedIn = ref.read(authProvider).member;
-      final dash =
-          (loggedIn?.memberNumber ?? widget.memberNo).lastIndexOf('-');
-      final principalNo = dash == -1
-          ? (loggedIn?.memberNumber ?? widget.memberNo)
-          : '${(loggedIn?.memberNumber ?? widget.memberNo).substring(0, dash)}-00';
-      final isPrincipal = widget.memberNo == principalNo;
+      // Sanlam rejects requests whose MemberNo doesn't match the signed-in
+      // JWT subject. When a dependant updates their own claim we must
+      // call with the dependant's own number as MemberNo (no DependantNo).
+      final String reqMemberNo;
+      final String? reqDependantNo;
+      if (loggedIn != null && loggedIn.memberNumber == widget.memberNo) {
+        reqMemberNo = loggedIn.memberNumber;
+        reqDependantNo = null;
+      } else {
+        final src = loggedIn?.memberNumber ?? widget.memberNo;
+        final dash = src.lastIndexOf('-');
+        final principalNo =
+            dash == -1 ? src : '${src.substring(0, dash)}-00';
+        reqMemberNo = principalNo;
+        reqDependantNo =
+            widget.memberNo == principalNo ? null : widget.memberNo;
+      }
       await sanlamApi.updateVisitStatus(
-        memberNo: principalNo,
+        memberNo: reqMemberNo,
         visitId: widget.visitId,
         visitStatus: newStatus,
-        dependentNo: isPrincipal ? null : widget.memberNo,
+        dependentNo: reqDependantNo,
       );
       if (!mounted) return;
       setState(() => _visitStatus = newStatus);
@@ -116,16 +128,27 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
   Future<void> _downloadPdf() async {
     try {
       final loggedIn = ref.read(authProvider).member;
-      final dash =
-          (loggedIn?.memberNumber ?? widget.memberNo).lastIndexOf('-');
-      final principalNo = dash == -1
-          ? (loggedIn?.memberNumber ?? widget.memberNo)
-          : '${(loggedIn?.memberNumber ?? widget.memberNo).substring(0, dash)}-00';
-      final isPrincipal = widget.memberNo == principalNo;
+      // Sanlam rejects requests whose MemberNo doesn't match the signed-in
+      // JWT subject. When a dependant downloads their own claim we must
+      // call with the dependant's own number as MemberNo (no DependantNo).
+      final String reqMemberNo;
+      final String? reqDependantNo;
+      if (loggedIn != null && loggedIn.memberNumber == widget.memberNo) {
+        reqMemberNo = loggedIn.memberNumber;
+        reqDependantNo = null;
+      } else {
+        final src = loggedIn?.memberNumber ?? widget.memberNo;
+        final dash = src.lastIndexOf('-');
+        final principalNo =
+            dash == -1 ? src : '${src.substring(0, dash)}-00';
+        reqMemberNo = principalNo;
+        reqDependantNo =
+            widget.memberNo == principalNo ? null : widget.memberNo;
+      }
       final data = await sanlamApi.getVisitReport(
-        principalNo,
+        reqMemberNo,
         widget.visitId,
-        dependantNo: isPrincipal ? null : widget.memberNo,
+        dependantNo: reqDependantNo,
       );
       final fileData = data['filedata'] ?? data['FileData'] ?? '';
       if (fileData.toString().isEmpty) {
@@ -156,12 +179,12 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
     final linesAsync = ref.watch(visitLinesProvider((memberNo, visitId)));
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),
         ),
-        title: const Text('Claim Detail',
+        title: Text('Claim Detail',
             style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -173,7 +196,7 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _downloadPdf,
         icon: const Icon(Icons.download_outlined),
-        label: const Text('Download PDF'),
+        label: Text('Download PDF'),
         backgroundColor: kPrimary,
       ),
       body: ListView(
@@ -247,12 +270,12 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
             ),
           ],
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Line Items',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: kText,
+              color: context.c.text,
             ),
           ),
           const SizedBox(height: 12),
@@ -291,10 +314,10 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
                           entry.key.isNotEmpty
                               ? entry.key
                               : 'General',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: kSubtext,
+                            color: context.c.subtext,
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -323,7 +346,7 @@ class _LineItemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: kSurface,
+        color: context.c.surface,
         borderRadius: BorderRadius.circular(kRadiusMd),
         boxShadow: kShadowSm,
       ),
@@ -336,10 +359,10 @@ class _LineItemCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   line.serviceName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: kText,
+                    color: context.c.text,
                   ),
                 ),
               ),
@@ -372,8 +395,8 @@ class _LineItemCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 'Code: ${line.code}',
-                style: const TextStyle(
-                    fontSize: 10, color: kTextLight),
+                style: TextStyle(
+                    fontSize: 10, color: context.c.textLight),
               ),
             ),
         ],
@@ -393,13 +416,13 @@ class _SubDetail extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 10, color: kSubtext)),
+            style: TextStyle(fontSize: 10, color: context.c.subtext)),
         Money(
           amount: amount,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: kText),
+              color: context.c.text),
         ),
       ],
     );
@@ -438,11 +461,11 @@ class _ConfirmationCard extends StatelessWidget {
       headerIcon = Icons.report_gmailerrorred;
     } else if (closed) {
       header = 'Claim closed — confirmation no longer available';
-      headerColor = kSubtext;
+      headerColor = context.c.subtext;
       headerIcon = Icons.lock_outline;
     } else {
       header = 'Did you receive these services?';
-      headerColor = kText;
+      headerColor = context.c.text;
       headerIcon = Icons.help_outline;
     }
 
@@ -477,10 +500,10 @@ class _ConfirmationCard extends StatelessWidget {
           ),
           if (!closed) ...[
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Help us catch fraud — confirm if these services were '
               'rendered to you, or dispute the claim.',
-              style: TextStyle(fontSize: 12, color: kSubtext, height: 1.4),
+              style: TextStyle(fontSize: 12, color: context.c.subtext, height: 1.4),
             ),
             const SizedBox(height: 14),
             Row(
@@ -489,7 +512,7 @@ class _ConfirmationCard extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: loading || disagreed ? null : onDisagree,
                     icon: const Icon(Icons.thumb_down_alt_outlined, size: 18),
-                    label: const Text('Disagree'),
+                    label: Text('Disagree'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: kError,
                       side: BorderSide(

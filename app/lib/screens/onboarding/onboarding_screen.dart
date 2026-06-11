@@ -8,17 +8,7 @@ import '../../providers/member_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../services/api_service.dart';
-
-const _conditions = [
-  'Hypertension',
-  'Diabetes',
-  'Heart Disease',
-  'COPD',
-  'Kidney Disease',
-  'Asthma',
-  'HIV/AIDS',
-  'Arthritis',
-];
+import '../../core/app_colors.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -33,6 +23,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   // Condition page state
   Set<String> _selectedConditions = {};
+  List<String> _availableConditions = [];
+  bool _loadingConditions = true;
 
   // Buddy page state
   final _buddyNameCtrl = TextEditingController();
@@ -44,8 +36,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-select any conditions from existing member profile
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Pre-select conditions from existing member profile
       final member = ref.read(memberProvider).member ??
           ref.read(authProvider).member;
       if (member != null && member.conditions.isNotEmpty) {
@@ -53,7 +45,31 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           _selectedConditions = Set.from(member.conditions);
         });
       }
+      // Fetch conditions list from the API
+      await _fetchConditions();
     });
+  }
+
+  Future<void> _fetchConditions() async {
+    try {
+      final response = await dio.get('/conditions');
+      final data = response.data as List<dynamic>;
+      final names = data
+          .where((c) => c['is_active'] == true)
+          .map<String>((c) => c['name'].toString())
+          .toList()
+        ..sort();
+      if (mounted) setState(() { _availableConditions = names; _loadingConditions = false; });
+    } on DioException catch (_) {
+      // Fallback to a minimal hardcoded list if API is unreachable
+      if (mounted) setState(() {
+        _availableConditions = [
+          'Hypertension', 'Diabetes Type 1', 'Diabetes Type 2', 'Asthma',
+          'COPD', 'HIV/AIDS', 'Arthritis', 'Heart Failure',
+        ];
+        _loadingConditions = false;
+      });
+    }
   }
 
   @override
@@ -140,6 +156,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               _WelcomePage(onNext: _nextPage),
               _ConditionsPage(
                 selected: _selectedConditions,
+                conditions: _availableConditions,
+                loading: _loadingConditions,
                 onToggle: (c) => setState(() {
                   if (_selectedConditions.contains(c)) {
                     _selectedConditions.remove(c);
@@ -179,7 +197,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         style: TextStyle(
                           color: _currentPage == 0
                               ? Colors.white
-                              : kSubtext,
+                              : context.c.subtext,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -299,21 +317,52 @@ class _WelcomePage extends StatelessWidget {
 
 // ── Page 2: Conditions ────────────────────────────────────────────────────
 
-class _ConditionsPage extends StatelessWidget {
+class _ConditionsPage extends StatefulWidget {
   final Set<String> selected;
+  final List<String> conditions;
+  final bool loading;
   final void Function(String) onToggle;
   final VoidCallback onNext;
   final bool saving;
 
   const _ConditionsPage({
     required this.selected,
+    required this.conditions,
+    required this.loading,
     required this.onToggle,
     required this.onNext,
     required this.saving,
   });
 
   @override
+  State<_ConditionsPage> createState() => _ConditionsPageState();
+}
+
+class _ConditionsPageState extends State<_ConditionsPage> {
+  bool _showOtherField = false;
+  final _otherCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _otherCtrl.dispose();
+    super.dispose();
+  }
+
+  void _addOther() {
+    final name = _otherCtrl.text.trim();
+    if (name.isEmpty) return;
+    widget.onToggle(name);
+    _otherCtrl.clear();
+    setState(() => _showOtherField = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Custom conditions = selected items not in the DB list
+    final customSelected = widget.selected
+        .where((c) => !widget.conditions.contains(c))
+        .toList();
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -343,72 +392,192 @@ class _ConditionsPage extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Expanded(
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 2.8,
-                  ),
-                  itemCount: _conditions.length,
-                  itemBuilder: (_, i) {
-                    final c = _conditions[i];
-                    final isSelected = selected.contains(c);
-                    return GestureDetector(
-                      onTap: () => onToggle(c),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isSelected
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const SizedBox(width: 12),
-                            Icon(
-                              isSelected
-                                  ? Icons.check_circle
-                                  : Icons.radio_button_unchecked,
-                              color: isSelected ? kPrimary : Colors.white70,
-                              size: 18,
+                child: widget.loading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white54))
+                    : ListView(
+                        children: [
+                          // DB conditions grid
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 2.8,
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                c,
-                                style: TextStyle(
-                                  color: isSelected ? kPrimary : Colors.white,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
-                                  fontSize: 13,
+                            itemCount: widget.conditions.length,
+                            itemBuilder: (_, i) {
+                              final c = widget.conditions[i];
+                              final isSelected = widget.selected.contains(c);
+                              return _ConditionTile(
+                                label: c,
+                                isSelected: isSelected,
+                                onTap: () => widget.onToggle(c),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          // Custom conditions added by user
+                          if (customSelected.isNotEmpty) ...[
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: customSelected.map((c) => Chip(
+                                label: Text(c, style: const TextStyle(fontSize: 13, color: kPrimary, fontWeight: FontWeight.w600)),
+                                backgroundColor: Colors.white,
+                                deleteIcon: const Icon(Icons.close, size: 16, color: kPrimary),
+                                onDeleted: () => widget.onToggle(c),
+                                side: const BorderSide(color: Colors.white),
+                              )).toList(),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          // "Other" tile
+                          GestureDetector(
+                            onTap: () => setState(() => _showOtherField = !_showOtherField),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: _showOtherField
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _showOtherField
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.3),
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _showOtherField ? Icons.edit : Icons.add_circle_outline,
+                                    color: _showOtherField ? kPrimary : Colors.white70,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Other condition',
+                                    style: TextStyle(
+                                      color: _showOtherField ? kPrimary : Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                          ),
+                          // Expanded text input when "Other" is tapped
+                          if (_showOtherField) ...[
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _otherCtrl,
+                                    autofocus: true,
+                                    textCapitalization: TextCapitalization.words,
+                                    onSubmitted: (_) => _addOther(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                                    decoration: InputDecoration(
+                                      hintText: 'Type condition name…',
+                                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                                      filled: true,
+                                      fillColor: Colors.white.withValues(alpha: 0.12),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: const BorderSide(color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                GestureDetector(
+                                  onTap: _addOther,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(Icons.check, color: kPrimary, size: 20),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
-                        ),
+                          const SizedBox(height: 8),
+                        ],
                       ),
-                    );
-                  },
-                ),
               ),
               const SizedBox(height: 16),
               _OnboardingButton(
-                label: saving ? null : 'Next',
-                onTap: saving ? null : onNext,
+                label: widget.saving ? null : 'Next',
+                onTap: widget.saving ? null : widget.onNext,
                 white: true,
-                loading: saving,
+                loading: widget.saving,
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConditionTile extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  const _ConditionTile({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 12),
+            Icon(
+              isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+              color: isSelected ? kPrimary : Colors.white70,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? kPrimary : Colors.white,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: 13,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -524,7 +693,7 @@ class _WhiteField extends StatelessWidget {
         TextField(
           controller: controller,
           keyboardType: keyboardType,
-          style: const TextStyle(color: kText, fontSize: 15),
+          style: TextStyle(color: context.c.text, fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey[400]),

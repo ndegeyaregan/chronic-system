@@ -77,6 +77,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
             currentSanlamToken = member!.accessToken;
           }
           _fetchAndUpdateProfile();
+          // Always re-check chronic enrolment from local backend on startup
+          // so returning chronic members keep their chronic modules.
+          _fetchChronicStatus(member?.memberNumber ?? '');
           _registerFcmToken();
           _scheduleMedicationReminders();
           return;
@@ -256,6 +259,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       // Fetch full profile in background to load conditions
       _fetchAndUpdateProfile();
+      // Also resolve chronic enrolment from the local backend so the legacy
+      // login path lights up chronic modules for returning chronic members.
+      _fetchChronicStatus(member?.memberNumber ?? '');
       // Register FCM token with backend
       _registerFcmToken();
       // Schedule local medication reminders
@@ -288,9 +294,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final isChronic =
           (response.data as Map?)?['isChronic'] as bool? ?? false;
       if (state.member != null) {
-        state = state.copyWith(
-          member: state.member!.copyWith(isChronic: isChronic),
-        );
+        final updated = state.member!.copyWith(isChronic: isChronic);
+        state = state.copyWith(member: updated);
+        // Persist so cold-start sees the right value before the next call.
+        try {
+          await _service.saveMember(updated);
+        } catch (_) {}
       }
     } catch (_) {}
   }
@@ -300,8 +309,49 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final response = await dio.get('/members/me');
       final memberJson = Map<String, dynamic>.from(
           jsonDecode(jsonEncode(response.data)) as Map);
-      final updatedMember = Member.fromJson(memberJson);
+      // Preserve the locally-known chronic flag if the API response doesn't
+      // include one — protects against the value being clobbered to false
+      // by older endpoints.
+      // Never let /members/me downgrade the chronic flag we already know.
+      final prev = state.member;
+      if (prev != null && prev.isChronic) {
+        final raw = memberJson['is_chronic'] ?? memberJson['isChronic'];
+        final freshChronic = raw == true ||
+            raw == 1 ||
+            raw?.toString().toLowerCase() == 'true';
+        if (!freshChronic) memberJson['is_chronic'] = true;
+      } else if (!memberJson.containsKey('is_chronic') &&
+          !memberJson.containsKey('isChronic') &&
+          prev != null) {
+        memberJson['is_chronic'] = prev.isChronic;
+      }
+      final fresh = Member.fromJson(memberJson);
+      // Preserve Sanlam-sourced fields (schemeName/planCode/name/relation/
+      // tokens) that /members/me doesn't carry. Without this, the Profile
+      // screen loses scheme + plan + correct name on every cold start.
+      String? keep(String? n, String? o) =>
+          (n == null || n.trim().isEmpty) ? o : n;
+      final updatedMember = prev == null
+          ? fresh
+          : fresh.copyWith(
+              firstName:
+                  fresh.firstName.trim().isNotEmpty ? fresh.firstName : prev.firstName,
+              lastName:
+                  fresh.lastName.trim().isNotEmpty ? fresh.lastName : prev.lastName,
+              schemeName: keep(fresh.schemeName, prev.schemeName),
+              planCode: keep(fresh.planCode, prev.planCode),
+              planType: keep(fresh.planType, prev.planType),
+              relation: keep(fresh.relation, prev.relation),
+              email: keep(fresh.email, prev.email),
+              phone: keep(fresh.phone, prev.phone),
+              profileIcon: fresh.profileIcon ?? prev.profileIcon,
+              accessToken: fresh.accessToken ?? prev.accessToken,
+              tokenExp: fresh.tokenExp ?? prev.tokenExp,
+            );
       state = state.copyWith(member: updatedMember);
+      try {
+        await _service.saveMember(updatedMember);
+      } catch (_) {}
     } catch (_) {}
   }
 
@@ -415,7 +465,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void updateMember(Member member) {
-    state = state.copyWith(member: member);
+    // Defensive: never downgrade isChronic from true → false within a session.
+    // Some endpoints (e.g. partial profile updates) can return responses where
+    // the chronic flag isn't authoritative. Allowing them to flip the flag to
+    // false caused the Chronic Dashboard route to be redirected away (blank
+    // screen) after the user opened Profile, since Profile triggers async
+    // syncs that hit those endpoints.
+    final prev = state.member;
+    final next = (prev != null && prev.isChronic && !member.isChronic)
+        ? member.copyWith(isChronic: true)
+        : member;
+    state = state.copyWith(member: next);
   }
 
   void clearError() {

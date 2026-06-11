@@ -45,5 +45,6 @@ router.get('/admin/all', authenticate, requireAdmin, ctrl.getAllTreatmentPlans);
 router.get('/admin/:memberId', authenticate, requireAdmin, ctrl.getMemberTreatmentPlans);
 router.post('/admin', authenticate, requireAdmin, mediaFields, ctrl.adminCreateTreatmentPlan);
 router.put('/admin/:id', authenticate, requireAdmin, mediaFields, ctrl.adminUpdateTreatmentPlan);
+router.delete('/admin/:id/attachment/:kind', authenticate, requireAdmin, ctrl.adminDeleteAttachment);
 
 module.exports = router;

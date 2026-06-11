@@ -128,7 +128,7 @@ const sendEmail = async (to, subject, html) => {
   try {
     console.log(`📧 Email: Sending to ${to}...`);
     await transporter.sendMail({
-      from: `"Sanlam Chronic Care" <${process.env.SMTP_USER}>`,
+      from: `"SanCare+" <${process.env.SMTP_USER}>`,
       to,
       subject,
       html,
@@ -195,10 +195,10 @@ const sendWelcome = async (memberId) => {
   if (!res.rows.length) return;
   const member = res.rows[0];
 
-  const message = `Welcome to Sanlam Chronic Care! Your member number is ${member.member_number}. Please download the app and set your password to get started.`;
+  const message = `Welcome to SanCare+! Your member number is ${member.member_number}. Please download the app and set your password to get started.`;
   await sendToMember(memberId, {
     type: 'welcome',
-    title: 'Welcome to Sanlam Chronic Care 🎉',
+    title: 'Welcome to SanCare+ 🎉',
     message,
     channel: ['sms', 'email'],
   });

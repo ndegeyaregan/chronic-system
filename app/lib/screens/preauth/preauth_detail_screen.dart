@@ -4,6 +4,7 @@ import '../../core/constants.dart';
 import '../../core/money.dart';
 import '../../models/preauth.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../core/app_colors.dart';
 import 'preauth_list_screen.dart' show preauthStatusColor;
 
 class PreauthDetailScreen extends StatelessWidget {
@@ -16,7 +17,7 @@ class PreauthDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     if (preauth == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Pre-Authorisation')),
+        appBar: AppBar(title: Text('Pre-Authorisation')),
         body: const EmptyState(
           icon: Icons.assignment_outlined,
           title: 'Not found',
@@ -26,15 +27,15 @@ class PreauthDetailScreen extends StatelessWidget {
     }
 
     final p = preauth!;
-    final color = preauthStatusColor(p.status);
+    final color = preauthStatusColor(context, p.status);
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),
         ),
-        title: const Text(
+        title: Text(
           'Pre-Authorisation',
           style: TextStyle(
               color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
@@ -182,7 +183,7 @@ class _AmountCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: kSurface,
+        color: context.c.surface,
         borderRadius: BorderRadius.circular(kRadiusMd),
         boxShadow: kCardShadow,
       ),
@@ -195,19 +196,19 @@ class _AmountCard extends StatelessWidget {
                 child: _AmountTile(
                   label: 'Requested',
                   amount: requested,
-                  color: kSubtext,
+                  color: context.c.subtext,
                 ),
               ),
               Container(
                 width: 1,
                 height: 36,
-                color: kSubtext.withValues(alpha: 0.18),
+                color: context.c.subtext.withValues(alpha: 0.18),
               ),
               Expanded(
                 child: _AmountTile(
                   label: 'Approved',
                   amount: approved,
-                  color: approved > 0 ? kSuccess : kSubtext,
+                  color: approved > 0 ? kSuccess : context.c.subtext,
                 ),
               ),
             ],
@@ -263,8 +264,8 @@ class _AmountTile extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-              fontSize: 11.5, color: kSubtext, fontWeight: FontWeight.w600),
+          style: TextStyle(
+              fontSize: 11.5, color: context.c.subtext, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
         amount > 0
@@ -275,10 +276,10 @@ class _AmountTile extends StatelessWidget {
                     color: color,
                     fontWeight: FontWeight.w700),
               )
-            : const Text('—',
+            : Text('—',
                 style: TextStyle(
                     fontSize: 16,
-                    color: kSubtext,
+                    color: context.c.subtext,
                     fontWeight: FontWeight.w700)),
       ],
     );
@@ -331,8 +332,8 @@ class _NoteCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: const TextStyle(
-                      fontSize: 13, color: kText, height: 1.35),
+                  style: TextStyle(
+                      fontSize: 13, color: context.c.text, height: 1.35),
                 ),
               ],
             ),
@@ -356,7 +357,7 @@ class _DetailCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: kSurface,
+        color: context.c.surface,
         borderRadius: BorderRadius.circular(kRadiusMd),
         boxShadow: kCardShadow,
       ),
@@ -382,16 +383,16 @@ class _DetailRow extends StatelessWidget {
             width: 110,
             child: Text(
               label,
-              style: const TextStyle(fontSize: 12.5, color: kSubtext),
+              style: TextStyle(fontSize: 12.5, color: context.c.subtext),
             ),
           ),
           Expanded(
             child: Text(
               value ?? '—',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
-                color: kText,
+                color: context.c.text,
               ),
               textAlign: TextAlign.end,
             ),

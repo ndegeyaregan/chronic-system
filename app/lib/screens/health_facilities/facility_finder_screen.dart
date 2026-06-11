@@ -5,9 +5,9 @@ import '../../core/constants.dart';
 import '../../models/institution.dart';
 import '../../providers/co_pays_provider.dart';
 import '../../providers/institutions_provider.dart';
-import '../../services/api_service.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import 'institution_detail_screen.dart';
+import '../../core/app_colors.dart';
 
 class FacilityFinderScreen extends ConsumerStatefulWidget {
   const FacilityFinderScreen({super.key});
@@ -42,148 +42,6 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
     }
   }
 
-  void _showAddInstitutionDialog(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    final emailCtrl = TextEditingController();
-    final addressCtrl = TextEditingController();
-    final cityCtrl = TextEditingController();
-    String? selectedCategory;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Add Institution'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Institution Name *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedCategory,
-                  decoration: const InputDecoration(
-                    labelText: 'Category *',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'outpatient', child: Text('Outpatient')),
-                    DropdownMenuItem(value: 'inpatient', child: Text('Inpatient')),
-                    DropdownMenuItem(value: 'pharmacy', child: Text('Pharmacy')),
-                    DropdownMenuItem(value: 'dental', child: Text('Dental')),
-                    DropdownMenuItem(value: 'optical', child: Text('Optical')),
-                  ],
-                  onChanged: (val) => setState(() => selectedCategory = val),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: addressCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Address',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: cityCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'City',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: Navigator.of(ctx).pop,
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => _createInstitution(
-                context,
-                nameCtrl.text,
-                selectedCategory,
-                phoneCtrl.text,
-                emailCtrl.text,
-                addressCtrl.text,
-                cityCtrl.text,
-              ),
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _createInstitution(
-    BuildContext context,
-    String name,
-    String? category,
-    String phone,
-    String email,
-    String address,
-    String city,
-  ) async {
-    if (name.isEmpty || category == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill required fields')),
-      );
-      return;
-    }
-
-    try {
-      Navigator.of(context).pop();
-      await dio.post(
-        'institutions',
-        data: {
-          'name': name,
-          'category': category,
-          'phone': phone.isEmpty ? null : phone,
-          'email': email.isEmpty ? null : email,
-          'address': address.isEmpty ? null : address,
-          'city': city.isEmpty ? null : city,
-        },
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Institution added successfully')),
-        );
-        ref.read(institutionsProvider.notifier).fetch();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(institutionsProvider);
@@ -204,7 +62,7 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
     });
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -224,11 +82,6 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            tooltip: 'Add Institution',
-            onPressed: () => _showAddInstitutionDialog(context),
-            icon: const Icon(Icons.add_rounded, color: Colors.white),
-          ),
           IconButton(
             tooltip: 'Sync from Sanlam',
             onPressed: state.isSyncing ? null : () => notifier.syncFromSanlam(),
@@ -251,17 +104,17 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
               onChanged: notifier.setSearch,
               decoration: InputDecoration(
                 hintText: 'Search by name, city or address...',
-                hintStyle: const TextStyle(color: kSubtext, fontSize: 14),
-                prefixIcon: const Icon(Icons.search_rounded,
-                    color: kSubtext, size: 20),
+                hintStyle: TextStyle(color: context.c.subtext, fontSize: 14),
+                prefixIcon: Icon(Icons.search_rounded,
+                    color: context.c.subtext, size: 20),
                 suffixIcon: state.search.isNotEmpty
                     ? GestureDetector(
                         onTap: () {
                           _searchCtrl.clear();
                           notifier.setSearch('');
                         },
-                        child: const Icon(Icons.close_rounded,
-                            color: kSubtext, size: 18),
+                        child: Icon(Icons.close_rounded,
+                            color: context.c.subtext, size: 18),
                       )
                     : null,
                 filled: true,
@@ -270,11 +123,11 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
                     horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(kRadiusMd),
-                  borderSide: const BorderSide(color: kBorder),
+                  borderSide: BorderSide(color: context.c.border),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(kRadiusMd),
-                  borderSide: const BorderSide(color: kBorder),
+                  borderSide: BorderSide(color: context.c.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(kRadiusMd),
@@ -338,19 +191,19 @@ class _CategoryChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected ? kPrimary : Colors.white,
             borderRadius: BorderRadius.circular(kRadiusFull),
-            border: Border.all(color: selected ? kPrimary : kBorder),
+            border: Border.all(color: selected ? kPrimary : context.c.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon,
-                  size: 14, color: selected ? Colors.white : kSubtext),
+                  size: 14, color: selected ? Colors.white : context.c.subtext),
               const SizedBox(width: 6),
               Text(label,
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : kText)),
+                      color: selected ? Colors.white : context.c.text)),
             ],
           ),
         ),
@@ -375,7 +228,7 @@ class _List extends StatelessWidget {
       );
     }
     if (state.items.isEmpty) {
-      return _emptyState(
+      return _emptyState(context, 
         state.category == null
             ? 'No facilities found'
             : 'No ${InstitutionCategory.label(state.category!).toLowerCase()} facilities found',
@@ -435,14 +288,24 @@ class _InstitutionCard extends ConsumerWidget {
       data: (m) => institution.sanlamId != null ? m[institution.sanlamId!] : null,
       orElse: () => null,
     );
-    final hasCoPay = coPay != null && coPay.hasAnyCharge;
+    final instCoPaysAsync = ref.watch(instCoPaysByInstIdProvider);
+    final instCoPay = instCoPaysAsync.maybeWhen(
+      data: (m) => institution.sanlamId != null ? m[institution.sanlamId!] : null,
+      orElse: () => null,
+    );
+    final hasSchemeCoPay = coPay != null && coPay.hasAnyCharge;
+    final hasInstCoPay = instCoPay != null && instCoPay.hasAnyCharge;
+    final hasCoPay = hasSchemeCoPay || hasInstCoPay;
 
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => InstitutionDetailScreen(institution: institution),
-        ),
-      ),
+      onTap: institution.isSuspended
+          ? null
+          : () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      InstitutionDetailScreen(institution: institution),
+                ),
+              ),
       child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -471,14 +334,14 @@ class _InstitutionCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(institution.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: kText)),
+                            color: context.c.text)),
                     if (cityLine.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(cityLine,
-                          style: const TextStyle(fontSize: 12, color: kSubtext)),
+                          style: TextStyle(fontSize: 12, color: context.c.subtext)),
                     ],
                   ],
                 ),
@@ -487,6 +350,10 @@ class _InstitutionCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   _badge(InstitutionCategory.label(institution.category), color),
+                  if (institution.isSuspended) ...[
+                    const SizedBox(height: 4),
+                    _badge('Suspended', Colors.red.shade700),
+                  ],
                   if (hasCoPay) ...[
                     const SizedBox(height: 4),
                     _badge('Co-pay', Colors.amber.shade800),
@@ -495,15 +362,45 @@ class _InstitutionCard extends ConsumerWidget {
               ),
             ],
           ),
+          if (institution.isSuspended &&
+              institution.suspendedReason != null &&
+              institution.suspendedReason!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(kRadiusSm),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 14, color: Colors.red.shade700),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Suspended: ${institution.suspendedReason!}',
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          color: Colors.red.shade700,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (institution.contactName.isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.person_outline, size: 13, color: kSubtext),
+                Icon(Icons.person_outline, size: 13, color: context.c.subtext),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(institution.contactName,
-                      style: const TextStyle(fontSize: 12, color: kSubtext),
+                      style: TextStyle(fontSize: 12, color: context.c.subtext),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ),
@@ -514,12 +411,12 @@ class _InstitutionCard extends ConsumerWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(Icons.location_on_outlined,
-                    size: 13, color: kSubtext),
+                Icon(Icons.location_on_outlined,
+                    size: 13, color: context.c.subtext),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(institution.address!,
-                      style: const TextStyle(fontSize: 12, color: kSubtext),
+                      style: TextStyle(fontSize: 12, color: context.c.subtext),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis),
                 ),
@@ -604,16 +501,16 @@ class _InstitutionCard extends ConsumerWidget {
   }
 }
 
-Widget _emptyState(String message, IconData icon) {
+Widget _emptyState(BuildContext context, String message, IconData icon) {
   return Center(
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: 48, color: kTextLight),
+        Icon(icon, size: 48, color: context.c.textLight),
         const SizedBox(height: 12),
         Text(message,
-            style: const TextStyle(
-                fontSize: 14, color: kSubtext, fontWeight: FontWeight.w500)),
+            style: TextStyle(
+                fontSize: 14, color: context.c.subtext, fontWeight: FontWeight.w500)),
       ],
     ),
   );

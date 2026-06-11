@@ -7,6 +7,7 @@ import '../../core/constants.dart';
 import '../../providers/appointments_provider.dart';
 import '../../models/appointment.dart';
 import '../../widgets/common/loading_shimmer.dart';
+import '../../core/app_colors.dart';
 
 class AppointmentsScreen extends ConsumerStatefulWidget {
   const AppointmentsScreen({super.key});
@@ -36,9 +37,18 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(appointmentsProvider);
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/home/chronic');
+      },
+      child: Scaffold(
       appBar: AppBar(
-        title: const Text('Appointments'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home/chronic'),
+        ),
+        title: Text('Appointments'),
         bottom: TabBar(
           controller: _tabs,
           tabs: const [
@@ -51,7 +61,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen>
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(routeBookAppointment),
         icon: const Icon(Icons.add),
-        label: const Text('Book Appointment'),
+        label: Text('Book Appointment'),
       ),
       body: TabBarView(
         controller: _tabs,
@@ -74,6 +84,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen>
             ref: ref,
           ),
         ],
+      ),
       ),
     );
   }
@@ -113,14 +124,14 @@ class _AppointmentsList extends StatelessWidget {
               isPast
                   ? 'No past appointments'
                   : 'No upcoming appointments',
-              style: const TextStyle(
-                  color: kSubtext, fontSize: 15, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                  color: context.c.subtext, fontSize: 15, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),
             if (!isPast)
-              const Text(
+              Text(
                 'Book an appointment to see your care team.',
-                style: TextStyle(color: kSubtext, fontSize: 13),
+                style: TextStyle(color: context.c.subtext, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
           ],
@@ -221,9 +232,9 @@ class _CalendarViewState extends State<_CalendarView> {
         const Divider(height: 1),
         Expanded(
           child: selectedEvents.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text('No appointments on this day',
-                      style: TextStyle(color: kSubtext, fontSize: 13)),
+                      style: TextStyle(color: context.c.subtext, fontSize: 13)),
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(12),
@@ -305,21 +316,21 @@ class _AppointmentCard extends StatelessWidget {
                       children: [
                         Text(
                           a.hospitalName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
-                            color: kText,
+                            color: context.c.text,
                           ),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           '${a.condition} · ${a.preferredTime}',
-                          style: const TextStyle(fontSize: 12, color: kSubtext),
+                          style: TextStyle(fontSize: 12, color: context.c.subtext),
                         ),
                         if (a.hospitalCity != null)
                           Text(
                             a.hospitalCity!,
-                            style: const TextStyle(fontSize: 12, color: kSubtext),
+                            style: TextStyle(fontSize: 12, color: context.c.subtext),
                           ),
                         const SizedBox(height: 8),
                         _statusBadge(a.status),
@@ -328,12 +339,12 @@ class _AppointmentCard extends StatelessWidget {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.comment_outlined, size: 12, color: kSubtext),
+                              Icon(Icons.comment_outlined, size: 12, color: context.c.subtext),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
                                   a.missedReason!,
-                                  style: const TextStyle(fontSize: 11, color: kSubtext, fontStyle: FontStyle.italic),
+                                  style: TextStyle(fontSize: 11, color: context.c.subtext, fontStyle: FontStyle.italic),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -344,7 +355,7 @@ class _AppointmentCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: kSubtext, size: 20),
+                  Icon(Icons.chevron_right, color: context.c.subtext, size: 20),
                 ],
               ),
               // Confirmation buttons for past appointments
@@ -352,9 +363,9 @@ class _AppointmentCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 const Divider(height: 1),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Did you attend this appointment?',
-                  style: TextStyle(fontSize: 12, color: kSubtext, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 12, color: context.c.subtext, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -363,7 +374,7 @@ class _AppointmentCard extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: () => _confirmAttended(context, a.id),
                         icon: const Icon(Icons.check_circle_outline, size: 16),
-                        label: const Text('I Attended', style: TextStyle(fontSize: 12)),
+                        label: Text('I Attended', style: TextStyle(fontSize: 12)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: kSuccess,
                           side: const BorderSide(color: kSuccess),
@@ -376,7 +387,7 @@ class _AppointmentCard extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: () => _markMissed(context, a.id),
                         icon: const Icon(Icons.cancel_outlined, size: 16),
-                        label: const Text('I Missed It', style: TextStyle(fontSize: 12)),
+                        label: Text('I Missed It', style: TextStyle(fontSize: 12)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: kError,
                           side: const BorderSide(color: kError),
@@ -411,7 +422,7 @@ class _AppointmentCard extends StatelessWidget {
     final reason = await showDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Reason for Missing'),
+        title: Text('Reason for Missing'),
         content: TextField(
           controller: reasonController,
           maxLines: 3,
@@ -423,11 +434,11 @@ class _AppointmentCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, null),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, reasonController.text.trim()),
-            child: const Text('Submit'),
+            child: Text('Submit'),
           ),
         ],
       ),

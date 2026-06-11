@@ -23,13 +23,16 @@ const createAuthRequest = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO authorization_requests
          (member_id, request_type, provider_type, provider_id, provider_name,
-          scheduled_date, notes, member_medication_id, treatment_plan_id, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending') RETURNING *`,
+          scheduled_date, notes, member_medication_id, treatment_plan_id,
+          attachment_url, attachment_name, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending') RETURNING *`,
       [
         memberId, request_type, provider_type,
         provider_id || null, resolvedProviderName || null,
         scheduled_date || null, notes || null,
         member_medication_id || null, treatment_plan_id || null,
+        req.file ? `/uploads/authorizations/${req.file.filename}` : null,
+        req.file ? req.file.originalname : null,
       ]
     );
 

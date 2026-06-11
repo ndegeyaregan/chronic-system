@@ -25,3 +25,6 @@ export const adminUpdateTreatmentPlan = (id, data) =>
   api.put(`/treatment-plans/admin/${id}`, data, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }).then(r => r.data);
+
+export const adminDeleteAttachment = (id, kind) =>
+  api.delete(`/treatment-plans/admin/${id}/attachment/${kind}`).then(r => r.data);

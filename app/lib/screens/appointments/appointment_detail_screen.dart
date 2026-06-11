@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import '../../providers/appointments_provider.dart';
 import '../../models/appointment.dart';
+import '../../core/app_colors.dart';
 
 class AppointmentDetailScreen extends ConsumerWidget {
   final String id;
@@ -17,14 +18,14 @@ class AppointmentDetailScreen extends ConsumerWidget {
 
     if (appt == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Appointment')),
+        appBar: AppBar(title: Text('Appointment')),
         body: const Center(child: Text('Appointment not found')),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Appointment Details'),
+        title: Text('Appointment Details'),
         actions: [
           if (appt.status == AppointmentStatus.pending ||
               appt.status == AppointmentStatus.confirmed)
@@ -33,19 +34,19 @@ class AppointmentDetailScreen extends ConsumerWidget {
                 final confirmed = await showDialog<bool>(
                   context: context,
                   builder: (_) => AlertDialog(
-                    title: const Text('Cancel Appointment'),
-                    content: const Text(
+                    title: Text('Cancel Appointment'),
+                    content: Text(
                         'Are you sure you want to cancel this appointment?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context, false),
-                        child: const Text('No'),
+                        child: Text('No'),
                       ),
                       ElevatedButton(
                         onPressed: () => Navigator.pop(context, true),
                         style: ElevatedButton.styleFrom(
                             backgroundColor: kError),
-                        child: const Text('Cancel Appointment'),
+                        child: Text('Cancel Appointment'),
                       ),
                     ],
                   ),
@@ -57,7 +58,7 @@ class AppointmentDetailScreen extends ConsumerWidget {
                   if (context.mounted) Navigator.of(context).pop();
                 }
               },
-              child: const Text(
+              child: Text(
                 'Cancel',
                 style: TextStyle(color: Colors.white),
               ),
@@ -69,12 +70,12 @@ class AppointmentDetailScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _statusCard(appt),
+            _statusCard(context, appt),
             const SizedBox(height: 16),
-            _detailsCard(appt),
+            _detailsCard(context, appt),
             if (appt.notes != null && appt.notes!.isNotEmpty) ...[
               const SizedBox(height: 16),
-              _notesCard(appt.notes!),
+              _notesCard(context, appt.notes!),
             ],
           ],
         ),
@@ -82,7 +83,7 @@ class AppointmentDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _statusCard(Appointment a) {
+  Widget _statusCard(BuildContext context, Appointment a) {
     Color color;
     IconData icon;
     String title;
@@ -129,7 +130,7 @@ class AppointmentDetailScreen extends ConsumerWidget {
               ),
               Text(
                 DateFormat('EEEE, dd MMMM yyyy').format(a.appointmentDate),
-                style: const TextStyle(color: kSubtext, fontSize: 12),
+                style: TextStyle(color: context.c.subtext, fontSize: 12),
               ),
             ],
           ),
@@ -138,7 +139,7 @@ class AppointmentDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _detailsCard(Appointment a) {
+  Widget _detailsCard(BuildContext context, Appointment a) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -154,49 +155,49 @@ class AppointmentDetailScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Appointment Details',
             style: TextStyle(
-                fontSize: 15, fontWeight: FontWeight.bold, color: kText),
+                fontSize: 15, fontWeight: FontWeight.bold, color: context.c.text),
           ),
           const SizedBox(height: 16),
-          _row(Icons.local_hospital_outlined, 'Hospital', a.hospitalName),
+          _row(context, Icons.local_hospital_outlined, 'Hospital', a.hospitalName),
           if (a.hospitalCity != null)
-            _row(Icons.location_on_outlined, 'Location', a.hospitalCity!),
-          _row(Icons.medical_services_outlined, 'Condition', a.condition),
-          _row(Icons.calendar_today_outlined, 'Date',
+            _row(context, Icons.location_on_outlined, 'Location', a.hospitalCity!),
+          _row(context, Icons.medical_services_outlined, 'Condition', a.condition),
+          _row(context, Icons.calendar_today_outlined, 'Date',
               DateFormat('dd MMMM yyyy').format(a.appointmentDate)),
-          _row(Icons.schedule_outlined, 'Time', a.preferredTime),
-          _row(Icons.description_outlined, 'Reason', a.reason),
+          _row(context, Icons.schedule_outlined, 'Time', a.preferredTime),
+          _row(context, Icons.description_outlined, 'Reason', a.reason),
         ],
       ),
     );
   }
 
-  Widget _notesCard(String notes) {
+  Widget _notesCard(BuildContext context, String notes) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.c.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Notes',
             style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w600, color: kText),
+                fontSize: 14, fontWeight: FontWeight.w600, color: context.c.text),
           ),
           const SizedBox(height: 8),
-          Text(notes, style: const TextStyle(fontSize: 13, color: kText)),
+          Text(notes, style: TextStyle(fontSize: 13, color: context.c.text)),
         ],
       ),
     );
   }
 
-  Widget _row(IconData icon, String label, String value) {
+  Widget _row(BuildContext context, IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -209,12 +210,12 @@ class AppointmentDetailScreen extends ConsumerWidget {
             children: [
               Text(label,
                   style:
-                      const TextStyle(fontSize: 11, color: kSubtext)),
+                      TextStyle(fontSize: 11, color: context.c.subtext)),
               Text(value,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: kText)),
+                      color: context.c.text)),
             ],
           ),
         ],

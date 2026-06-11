@@ -8,6 +8,7 @@ import '../../models/hospital.dart';
 import '../../services/api_service.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
+import '../../core/app_colors.dart';
 
 class MyProviderScreen extends ConsumerStatefulWidget {
   const MyProviderScreen({super.key});
@@ -24,7 +25,7 @@ class _MyProviderScreenState extends ConsumerState<MyProviderScreen> {
     final state = ref.watch(memberProviderInfoProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Care Provider')),
+      appBar: AppBar(title: Text('My Care Provider')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -38,14 +39,14 @@ class _MyProviderScreenState extends ConsumerState<MyProviderScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: kPrimary.withValues(alpha: 0.15)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.info_outline, color: kPrimary, size: 18),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Your care provider will be notified about your health updates.',
-                      style: TextStyle(fontSize: 12, color: kText),
+                      style: TextStyle(fontSize: 12, color: context.c.text),
                     ),
                   ),
                 ],
@@ -70,20 +71,20 @@ class _MyProviderScreenState extends ConsumerState<MyProviderScreen> {
 
             // No provider yet — prompt to add
             if (!state.isLoading && state.provider == null && !_showForm) ...[
-              const Center(
+              Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: Column(
                     children: [
                       Icon(Icons.person_add_alt_1_outlined,
-                          size: 48, color: kSubtext),
+                          size: 48, color: context.c.subtext),
                       SizedBox(height: 12),
                       Text(
                         'No care provider added yet.',
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: kText),
+                            color: context.c.text),
                       ),
                     ],
                   ),
@@ -158,7 +159,7 @@ class _ProviderCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onEdit,
                   icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('Edit'),
+                  label: Text('Edit'),
                   style: TextButton.styleFrom(
                       foregroundColor: kPrimary),
                 ),
@@ -179,27 +180,27 @@ class _ProviderCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Doctor',
+                        Text('Doctor',
                             style:
-                                TextStyle(fontSize: 11, color: kSubtext)),
+                                TextStyle(fontSize: 11, color: context.c.subtext)),
                         Text(
                           provider.doctorName ?? '—',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: kText),
+                              color: context.c.text),
                         ),
                         if (provider.doctorContact != null)
                           Text(
                             provider.doctorContact!,
-                            style: const TextStyle(
-                                fontSize: 12, color: kSubtext),
+                            style: TextStyle(
+                                fontSize: 12, color: context.c.subtext),
                           ),
                         if (provider.doctorEmail != null)
                           Text(
                             provider.doctorEmail!,
-                            style: const TextStyle(
-                                fontSize: 12, color: kSubtext),
+                            style: TextStyle(
+                                fontSize: 12, color: context.c.subtext),
                           ),
                       ],
                     ),
@@ -228,21 +229,21 @@ class _ProviderCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Hospital',
+                        Text('Hospital',
                             style:
-                                TextStyle(fontSize: 11, color: kSubtext)),
+                                TextStyle(fontSize: 11, color: context.c.subtext)),
                         Text(
                           provider.hospitalName ?? '—',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: kText),
+                              color: context.c.text),
                         ),
                         if (provider.hospitalAddress != null)
                           Text(
                             provider.hospitalAddress!,
-                            style: const TextStyle(
-                                fontSize: 12, color: kSubtext),
+                            style: TextStyle(
+                                fontSize: 12, color: context.c.subtext),
                           ),
                       ],
                     ),
@@ -257,8 +258,8 @@ class _ProviderCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Text(
                 provider.notes!,
-                style: const TextStyle(
-                    fontSize: 12, color: kSubtext, height: 1.4),
+                style: TextStyle(
+                    fontSize: 12, color: context.c.subtext, height: 1.4),
               ),
             ),
           ] else
@@ -402,10 +403,10 @@ class _ProviderFormState extends ConsumerState<_ProviderForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'Provider Type',
             style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w500, color: kText),
+                fontSize: 13, fontWeight: FontWeight.w500, color: context.c.text),
           ),
           const SizedBox(height: 8),
           Row(
@@ -441,20 +442,20 @@ class _ProviderFormState extends ConsumerState<_ProviderForm> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     '👨‍⚕️ Doctor',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: kText),
+                        color: context.c.text),
                   ),
                   const SizedBox(height: 12),
                   AppInput(
                     label: 'Doctor Name',
                     hint: 'e.g. Dr. Sarah Nakamura',
                     controller: _doctorNameCtrl,
-                    prefixIcon: const Icon(Icons.person_outlined,
-                        color: kSubtext),
+                    prefixIcon: Icon(Icons.person_outlined,
+                        color: context.c.subtext),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 12),
@@ -464,7 +465,7 @@ class _ProviderFormState extends ConsumerState<_ProviderForm> {
                     controller: _doctorContactCtrl,
                     keyboardType: TextInputType.phone,
                     prefixIcon:
-                        const Icon(Icons.phone_outlined, color: kSubtext),
+                        Icon(Icons.phone_outlined, color: context.c.subtext),
                     textInputAction: TextInputAction.next,
                     validator: (v) {
                       if (_showDoctor &&
@@ -481,7 +482,7 @@ class _ProviderFormState extends ConsumerState<_ProviderForm> {
                     controller: _doctorEmailCtrl,
                     keyboardType: TextInputType.emailAddress,
                     prefixIcon:
-                        const Icon(Icons.email_outlined, color: kSubtext),
+                        Icon(Icons.email_outlined, color: context.c.subtext),
                     textInputAction: TextInputAction.next,
                     validator: (v) {
                       if (v != null && v.trim().isNotEmpty) {
@@ -509,17 +510,17 @@ class _ProviderFormState extends ConsumerState<_ProviderForm> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     '🏥 Hospital',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: kText),
+                        color: context.c.text),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Select a hospital added by your administrator',
-                    style: TextStyle(fontSize: 11, color: kSubtext),
+                    style: TextStyle(fontSize: 11, color: context.c.subtext),
                   ),
                   const SizedBox(height: 12),
                   _HospitalSearchField(
@@ -660,7 +661,7 @@ class _HospitalSearchFieldState extends State<_HospitalSearchField> {
   @override
   Widget build(BuildContext context) {
     if (_selected != null) {
-      return _buildSelectedCard();
+      return _buildSelectedCard(context);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -671,7 +672,7 @@ class _HospitalSearchFieldState extends State<_HospitalSearchField> {
           decoration: InputDecoration(
             labelText: 'Search Hospital',
             hintText: 'Type hospital name or city...',
-            prefixIcon: const Icon(Icons.search, color: kSubtext, size: 20),
+            prefixIcon: Icon(Icons.search, color: context.c.subtext, size: 20),
             suffixIcon: _loading
                 ? const Padding(
                     padding: EdgeInsets.all(12),
@@ -682,10 +683,10 @@ class _HospitalSearchFieldState extends State<_HospitalSearchField> {
                 : null,
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: kBorder)),
+                borderSide: BorderSide(color: context.c.border)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: kBorder)),
+                borderSide: BorderSide(color: context.c.border)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(color: kPrimary)),
@@ -705,14 +706,14 @@ class _HospitalSearchFieldState extends State<_HospitalSearchField> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: kBorder),
+              border: Border.all(color: context.c.border),
               boxShadow: kCardShadow,
             ),
             child: _filtered.isEmpty
-                ? const Padding(
+                ? Padding(
                     padding: EdgeInsets.all(14),
                     child: Text('No hospitals found',
-                        style: TextStyle(color: kSubtext, fontSize: 13)),
+                        style: TextStyle(color: context.c.subtext, fontSize: 13)),
                   )
                 : ListView.separated(
                     shrinkWrap: true,
@@ -733,14 +734,14 @@ class _HospitalSearchFieldState extends State<_HospitalSearchField> {
                         leading: const Icon(Icons.local_hospital_outlined,
                             color: kPrimary, size: 18),
                         title: Text(h.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
-                                color: kText)),
+                                color: context.c.text)),
                         subtitle: subtitle.isNotEmpty
                             ? Text(subtitle,
-                                style: const TextStyle(
-                                    fontSize: 11, color: kSubtext))
+                                style: TextStyle(
+                                    fontSize: 11, color: context.c.subtext))
                             : null,
                         onTap: () => _select(h),
                       );
@@ -752,7 +753,7 @@ class _HospitalSearchFieldState extends State<_HospitalSearchField> {
     );
   }
 
-  Widget _buildSelectedCard() {
+  Widget _buildSelectedCard(BuildContext context) {
     final info = [
       if (_selected!.city.isNotEmpty) _selected!.city,
       if (_selected!.province.isNotEmpty) _selected!.province,
@@ -776,13 +777,13 @@ class _HospitalSearchFieldState extends State<_HospitalSearchField> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_selected!.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: kText)),
+                        color: context.c.text)),
                 if (info.isNotEmpty)
                   Text(info,
-                      style: const TextStyle(fontSize: 11, color: kSubtext)),
+                      style: TextStyle(fontSize: 11, color: context.c.subtext)),
               ],
             ),
           ),
@@ -791,10 +792,10 @@ class _HospitalSearchFieldState extends State<_HospitalSearchField> {
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: kSubtext.withValues(alpha: 0.1),
+                color: context.c.subtext.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.close, size: 14, color: kSubtext),
+              child: Icon(Icons.close, size: 14, color: context.c.subtext),
             ),
           ),
         ],
@@ -826,7 +827,7 @@ class _TypeChip extends StatelessWidget {
           color: selected ? kPrimary : Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? kPrimary : kBorder,
+            color: selected ? kPrimary : context.c.border,
           ),
         ),
         child: Text(
@@ -834,7 +835,7 @@ class _TypeChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: selected ? Colors.white : kText,
+            color: selected ? Colors.white : context.c.text,
           ),
         ),
       ),

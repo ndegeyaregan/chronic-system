@@ -11,6 +11,7 @@ import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/claim_status_chip.dart';
 import '../benefits/benefits_screen.dart';
+import '../../core/app_colors.dart';
 
 class DependantDetailScreen extends ConsumerWidget {
   final String memberNo;
@@ -42,7 +43,7 @@ class DependantDetailScreen extends ConsumerWidget {
         .join();
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),
@@ -127,12 +128,12 @@ class DependantDetailScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Benefits section
-          const Text(
+          Text(
             'Benefits',
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: kText),
+                color: context.c.text),
           ),
           const SizedBox(height: 12),
           if (benefit != null)
@@ -154,20 +155,20 @@ class DependantDetailScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Recent claims section
-          const Text(
+          Text(
             'Recent Claims',
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: kText),
+                color: context.c.text),
           ),
           const SizedBox(height: 12),
           visitsAsync.when(
             loading: () => const LoadingListCard(count: 3),
             error: (e, _) => const EmptyState(
               icon: Icons.receipt_long_outlined,
-              title: 'No claims data',
-              subtitle: 'Could not load recent claims.',
+              title: 'No claims',
+              subtitle: 'No claims found for this dependant.',
             ),
             data: (visits) {
               if (visits.isEmpty) {
@@ -222,7 +223,7 @@ class _MiniClaimCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: kSurface,
+          color: context.c.surface,
           borderRadius: BorderRadius.circular(kRadiusMd),
           boxShadow: kShadowSm,
         ),
@@ -234,17 +235,17 @@ class _MiniClaimCard extends StatelessWidget {
                 children: [
                   Text(
                     visit.institution as String,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: kText,
+                      color: context.c.text,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     _formatDate(visit.treatmentDate as String),
-                    style: const TextStyle(
-                        fontSize: 11, color: kSubtext),
+                    style: TextStyle(
+                        fontSize: 11, color: context.c.subtext),
                   ),
                 ],
               ),

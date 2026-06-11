@@ -37,6 +37,7 @@ const upload = multer({
 }).fields([
   { name: 'invoice', maxCount: 1 },
   { name: 'report', maxCount: 1 },
+  { name: 'approvalEmail', maxCount: 1 },
 ]);
 
 const uploadMiddleware = (req, res, next) => {

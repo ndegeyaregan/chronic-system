@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/common/app_button.dart';
+import '../../core/app_colors.dart';
 
 class VerifyOtpScreen extends StatefulWidget {
   final String memberNumber;
@@ -77,12 +78,12 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: kText, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: context.c.text, size: 20),
           onPressed: () => context.pop(),
         ),
       ),
@@ -102,22 +103,22 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                 child: const Icon(Icons.sms_outlined, color: kPrimary, size: 36),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Enter OTP',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: kText),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: context.c.text),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'A 6-digit code was sent to the phone number or email linked to member ${widget.memberNumber}. The code expires in 10 minutes.',
-                style: const TextStyle(fontSize: 14, color: kSubtext, height: 1.5),
+                style: TextStyle(fontSize: 14, color: context.c.subtext, height: 1.5),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 36),
               // OTP digit boxes
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(6, (i) => _buildDigitBox(i)),
+                children: List.generate(6, (i) => _buildDigitBox(context, i)),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 16),
@@ -149,9 +150,9 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () => context.pop(),
-                child: const Text(
+                child: Text(
                   'Didn\'t receive it? Go back and try again',
-                  style: TextStyle(color: kSubtext, fontSize: 13),
+                  style: TextStyle(color: context.c.subtext, fontSize: 13),
                 ),
               ),
             ],
@@ -161,7 +162,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
     );
   }
 
-  Widget _buildDigitBox(int index) {
+  Widget _buildDigitBox(BuildContext context, int index) {
     final filled = _ctrls[index].text.isNotEmpty;
     return Container(
       width: 48, height: 56,
@@ -170,7 +171,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(kRadiusMd),
         border: Border.all(
-          color: filled ? kPrimary : kBorder,
+          color: filled ? kPrimary : context.c.border,
           width: filled ? 2 : 1,
         ),
         boxShadow: kShadowSm,
@@ -184,8 +185,8 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(1),
         ],
-        style: const TextStyle(
-          fontSize: 22, fontWeight: FontWeight.bold, color: kText),
+        style: TextStyle(
+          fontSize: 22, fontWeight: FontWeight.bold, color: context.c.text),
         decoration: const InputDecoration(
           border: InputBorder.none,
           contentPadding: EdgeInsets.zero,

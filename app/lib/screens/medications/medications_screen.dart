@@ -9,6 +9,7 @@ import '../../models/medication.dart';
 import '../../providers/medications_provider.dart';
 import '../../providers/member_type_provider.dart';
 import '../../widgets/common/loading_shimmer.dart';
+import '../../core/app_colors.dart';
 
 class MedicationsScreen extends ConsumerWidget {
   const MedicationsScreen({super.key});
@@ -17,11 +18,21 @@ class MedicationsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(medicationsProvider);
 
-    return DefaultTabController(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/home/chronic');
+      },
+      child: DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Medications'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () =>
+                context.canPop() ? context.pop() : context.go('/home/chronic'),
+          ),
+          title: Text('Medications'),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Current'),
@@ -32,7 +43,7 @@ class MedicationsScreen extends ConsumerWidget {
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => context.push(routeAddMedication),
           icon: const Icon(Icons.add),
-          label: const Text('Add Medication'),
+          label: Text('Add Medication'),
         ),
         body: TabBarView(
           children: [
@@ -40,6 +51,7 @@ class MedicationsScreen extends ConsumerWidget {
             _MedsHistoryTab(state: state),
           ],
         ),
+      ),
       ),
     );
   }
@@ -69,12 +81,12 @@ class _CurrentMedsTab extends StatelessWidget {
             const Icon(Icons.error_outline, color: kError, size: 48),
             const SizedBox(height: 12),
             Text(state.error!,
-                style: const TextStyle(color: kSubtext), textAlign: TextAlign.center),
+                style: TextStyle(color: context.c.subtext), textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () =>
                   ref.read(medicationsProvider.notifier).fetchMedications(),
-              child: const Text('Retry'),
+              child: Text('Retry'),
             ),
           ],
         ),
@@ -89,15 +101,15 @@ class _CurrentMedsTab extends StatelessWidget {
             const Icon(Icons.medication_outlined,
                 color: Color(0xFFCBD5E1), size: 64),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No medications added yet',
               style: TextStyle(
-                  color: kSubtext, fontSize: 16, fontWeight: FontWeight.w500),
+                  color: context.c.subtext, fontSize: 16, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Tap the button below to add your first medication.',
-              style: TextStyle(color: kSubtext, fontSize: 13),
+              style: TextStyle(color: context.c.subtext, fontSize: 13),
               textAlign: TextAlign.center,
             ),
           ],
@@ -167,11 +179,11 @@ class _AdherenceCard extends StatelessWidget {
             children: [
               const Icon(Icons.medication_rounded, color: kPrimary, size: 20),
               const SizedBox(width: 8),
-              const Text("💊 This Week's Adherence",
+              Text("💊 This Week's Adherence",
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: kText)),
+                      color: context.c.text)),
             ],
           ),
           const SizedBox(height: 16),
@@ -219,7 +231,7 @@ class _AdherenceCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        _statChip('$total doses', kSubtext),
+                        _statChip('$total doses', context.c.subtext),
                         const SizedBox(width: 6),
                         _statChip('$taken taken', kSuccess),
                         const SizedBox(width: 6),
@@ -227,27 +239,27 @@ class _AdherenceCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    const Divider(height: 1, color: kBorder),
+                    Divider(height: 1, color: context.c.border),
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        const Text('🔥', style: TextStyle(fontSize: 13)),
+                        Text('🔥', style: TextStyle(fontSize: 13)),
                         const SizedBox(width: 4),
                         Text('Current streak: $streak days',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: kText)),
+                                color: context.c.text)),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Text('⭐', style: TextStyle(fontSize: 13)),
+                        Text('⭐', style: TextStyle(fontSize: 13)),
                         const SizedBox(width: 4),
                         Text('Best streak: $bestStreak days',
-                            style: const TextStyle(
-                                fontSize: 12, color: kSubtext)),
+                            style: TextStyle(
+                                fontSize: 12, color: context.c.subtext)),
                       ],
                     ),
                   ],
@@ -342,7 +354,7 @@ class _MedicationCardState extends State<_MedicationCard> {
       useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Stop Taking Medication?'),
+        title: Text('Stop Taking Medication?'),
         content: Text(
           'Mark "${med.name.isNotEmpty ? med.name : 'this medication'}" as completed?\n\n'
           'It will move to your medication history.',
@@ -350,12 +362,12 @@ class _MedicationCardState extends State<_MedicationCard> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: kError),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Stop Taking'),
+            child: Text('Stop Taking'),
           ),
         ],
       ),
@@ -410,16 +422,16 @@ class _MedicationCardState extends State<_MedicationCard> {
                       children: [
                         Text(
                           med.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
-                            color: kText,
+                            color: context.c.text,
                           ),
                         ),
                         Text(
                           '${med.dosage} · ${med.frequency}',
-                          style: const TextStyle(
-                              fontSize: 12, color: kSubtext),
+                          style: TextStyle(
+                              fontSize: 12, color: context.c.subtext),
                         ),
                       ],
                     ),
@@ -452,19 +464,19 @@ class _MedicationCardState extends State<_MedicationCard> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: kSubtext.withValues(alpha: 0.1),
+                        color: context.c.subtext.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Skipped',
                         style: TextStyle(
-                            color: kSubtext,
+                            color: context.c.subtext,
                             fontSize: 11,
                             fontWeight: FontWeight.w600),
                       ),
                     ),
                   PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: kSubtext, size: 20),
+                    icon: Icon(Icons.more_vert, color: context.c.subtext, size: 20),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                     onSelected: (value) {
@@ -496,12 +508,12 @@ class _MedicationCardState extends State<_MedicationCard> {
               if (med.pharmacyName != null) ...[
                 Row(
                   children: [
-                    const Icon(Icons.local_pharmacy_outlined,
-                        size: 13, color: kSubtext),
+                    Icon(Icons.local_pharmacy_outlined,
+                        size: 13, color: context.c.subtext),
                     const SizedBox(width: 4),
                     Text(
                       med.pharmacyName!,
-                      style: const TextStyle(fontSize: 12, color: kSubtext),
+                      style: TextStyle(fontSize: 12, color: context.c.subtext),
                     ),
                   ],
                 ),
@@ -519,10 +531,10 @@ class _MedicationCardState extends State<_MedicationCard> {
                       children: [
                         Row(
                           children: [
-                            const Text(
+                            Text(
                               '7-day adherence',
                               style: TextStyle(
-                                  fontSize: 11, color: kSubtext),
+                                  fontSize: 11, color: context.c.subtext),
                             ),
                             const Spacer(),
                             Text(
@@ -544,7 +556,7 @@ class _MedicationCardState extends State<_MedicationCard> {
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
                             value: med.adherencePercent / 100,
-                            backgroundColor: kBorder,
+                            backgroundColor: context.c.border,
                             valueColor: AlwaysStoppedAnimation<Color>(
                               med.adherencePercent >= 80
                                   ? kSuccess
@@ -570,10 +582,10 @@ class _MedicationCardState extends State<_MedicationCard> {
                             .read(medicationsProvider.notifier)
                             .logDose(med.id, 'skipped'),
                         icon: const Icon(Icons.close, size: 16),
-                        label: const Text('Skip'),
+                        label: Text('Skip'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: kSubtext,
-                          side: const BorderSide(color: kBorder),
+                          foregroundColor: context.c.subtext,
+                          side: BorderSide(color: context.c.border),
                           padding:
                               const EdgeInsets.symmetric(vertical: 8),
                         ),
@@ -586,7 +598,7 @@ class _MedicationCardState extends State<_MedicationCard> {
                             .read(medicationsProvider.notifier)
                             .logDose(med.id, 'taken'),
                         icon: const Icon(Icons.check, size: 16),
-                        label: const Text('Mark Taken'),
+                        label: Text('Mark Taken'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: kSuccess,
                           padding:
@@ -597,11 +609,11 @@ class _MedicationCardState extends State<_MedicationCard> {
                   ],
                 ),
               ],
-              const Divider(height: 20, color: kBorder),
+              Divider(height: 20, color: context.c.border),
               TextButton.icon(
                 onPressed: _confirmStop,
                 icon: const Icon(Icons.stop_circle_outlined, size: 15, color: kError),
-                label: const Text(
+                label: Text(
                   'Stop Taking This Medication',
                   style: TextStyle(
                     color: kError,
@@ -619,7 +631,7 @@ class _MedicationCardState extends State<_MedicationCard> {
                   med.videoUrl != null ||
                   med.prescriptionUrl != null) ...[
                 const SizedBox(height: 12),
-                const Divider(height: 1, color: kBorder),
+                Divider(height: 1, color: context.c.border),
                 const SizedBox(height: 10),
                 _CardMediaStrip(med: med),
               ],
@@ -814,17 +826,17 @@ class _MedsHistoryTab extends StatelessWidget {
             children: [
               const Icon(Icons.history, color: Color(0xFFCBD5E1), size: 64),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'No completed medications',
                 style: TextStyle(
-                    color: kSubtext,
+                    color: context.c.subtext,
                     fontSize: 16,
                     fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Medications with a past end date will appear here.',
-                style: TextStyle(color: kSubtext, fontSize: 13),
+                style: TextStyle(color: context.c.subtext, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -888,10 +900,10 @@ class _HistoryMedCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: kSubtext.withValues(alpha: 0.08),
+                  color: context.c.subtext.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.medication, color: kSubtext, size: 22),
+                child: Icon(Icons.medication, color: context.c.subtext, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -900,10 +912,10 @@ class _HistoryMedCard extends StatelessWidget {
                   children: [
                     Text(
                       med.name.isNotEmpty ? med.name : 'Medication (see media)',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
-                        color: kText,
+                        color: context.c.text,
                       ),
                     ),
                     if (med.dosage.isNotEmpty || med.frequency.isNotEmpty)
@@ -913,14 +925,14 @@ class _HistoryMedCard extends StatelessWidget {
                           if (med.frequency.isNotEmpty) med.frequency,
                         ].join(' · '),
                         style:
-                            const TextStyle(fontSize: 12, color: kSubtext),
+                            TextStyle(fontSize: 12, color: context.c.subtext),
                       ),
                     if (rangeLabel != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         rangeLabel,
-                        style: const TextStyle(
-                            fontSize: 11, color: kSubtext),
+                        style: TextStyle(
+                            fontSize: 11, color: context.c.subtext),
                       ),
                     ],
                     const SizedBox(height: 4),
@@ -942,21 +954,21 @@ class _HistoryMedCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         med.condition!,
-                        style: const TextStyle(
-                            fontSize: 11, color: kSubtext),
+                        style: TextStyle(
+                            fontSize: 11, color: context.c.subtext),
                       ),
                     ],
                     if (med.pharmacyName != null) ...[
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.local_pharmacy_outlined,
-                              size: 11, color: kSubtext),
+                          Icon(Icons.local_pharmacy_outlined,
+                              size: 11, color: context.c.subtext),
                           const SizedBox(width: 3),
                           Text(
                             med.pharmacyName!,
-                            style: const TextStyle(
-                                fontSize: 11, color: kSubtext),
+                            style: TextStyle(
+                                fontSize: 11, color: context.c.subtext),
                           ),
                         ],
                       ),
@@ -972,13 +984,13 @@ class _HistoryMedCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: kSubtext.withValues(alpha: 0.08),
+                  color: context.c.subtext.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
+                child: Text(
                   'Completed',
                   style: TextStyle(
-                      color: kSubtext,
+                      color: context.c.subtext,
                       fontSize: 11,
                       fontWeight: FontWeight.w600),
                 ),

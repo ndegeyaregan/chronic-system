@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/institution.dart';
+import '../services/api_service.dart';
 import '../services/institution_sync_service.dart';
-import '../services/sanlam_api_service.dart';
 
 class InstitutionsState {
   final List<Institution> items;
@@ -71,30 +71,25 @@ class InstitutionsNotifier extends StateNotifier<InstitutionsState> {
   Future<void> fetch() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      // Pull the full live list from the Sanlam Member API so the facility
-      // finder always reflects the upstream catalogue (~690 facilities) and
-      // not whatever happens to be in the local DB.
-      final raw = await sanlamApi.searchInstitution();
-      var list = raw
+      // Pull from our own backend so the facility finder reflects whatever
+      // the admin portal has curated (added, suspended, deleted). The
+      // backend already filters out suspended & soft-deleted rows by
+      // default, so users only ever see active facilities.
+      final params = <String, dynamic>{'includeSuspended': 'true'};
+      final cat = state.category;
+      if (cat != null && cat.isNotEmpty) params['category'] = cat;
+      final q = state.search.trim();
+      if (q.isNotEmpty) params['search'] = q;
+
+      final resp = await dio.get('/institutions', queryParameters: params);
+      final data = resp.data;
+      final raw = data is List ? data : <dynamic>[];
+      final list = raw
           .whereType<Map>()
           .map((e) =>
-              Institution.fromSanlamJson(Map<String, dynamic>.from(e)))
+              Institution.fromBackendJson(Map<String, dynamic>.from(e)))
           .where((i) => i.name.isNotEmpty)
           .toList();
-
-      final cat = state.category;
-      if (cat != null && cat.isNotEmpty) {
-        list = list.where((i) => i.category == cat).toList();
-      }
-      final q = state.search.trim().toLowerCase();
-      if (q.isNotEmpty) {
-        list = list.where((i) {
-          final hay =
-              '${i.name} ${i.city ?? ''} ${i.address ?? ''} ${i.street ?? ''} ${i.shortId ?? ''}'
-                  .toLowerCase();
-          return hay.contains(q);
-        }).toList();
-      }
       list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       state = state.copyWith(items: list, isLoading: false);
     } on DioException catch (e) {

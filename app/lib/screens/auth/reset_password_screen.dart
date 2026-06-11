@@ -5,6 +5,7 @@ import '../../core/constants.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
+import '../../core/app_colors.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String memberNumber;
@@ -100,14 +101,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               child: const Icon(Icons.check, color: Colors.white, size: 36),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Password Reset!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kText),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.c.text),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Your password has been reset successfully. Please log in with your new password.',
-              style: TextStyle(fontSize: 14, color: kSubtext, height: 1.5),
+              style: TextStyle(fontSize: 14, color: context.c.subtext, height: 1.5),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -124,7 +125,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       borderRadius: BorderRadius.circular(kRadiusMd)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('Log In Now',
+                child: Text('Log In Now',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
               ),
             ),
@@ -137,13 +138,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text('Set New Password',
-            style: TextStyle(color: kText, fontWeight: FontWeight.w600, fontSize: 17)),
+        title: Text('Set New Password',
+            style: TextStyle(color: context.c.text, fontWeight: FontWeight.w600, fontSize: 17)),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -160,15 +161,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 child: const Icon(Icons.lock_open_outlined, color: kPrimary, size: 36),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Create New Password',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: kText),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: context.c.text),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Choose a strong password you have not used before.',
-                style: TextStyle(fontSize: 14, color: kSubtext),
+                style: TextStyle(fontSize: 14, color: context.c.subtext),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -190,7 +191,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         controller: _passwordCtrl,
                         obscureText: true,
                         showPasswordToggle: true,
-                        prefixIcon: const Icon(Icons.lock_outline, color: kSubtext),
+                        prefixIcon: Icon(Icons.lock_outline, color: context.c.subtext),
                         onChanged: _checkStrength,
                         textInputAction: TextInputAction.next,
                         validator: (v) {
@@ -208,7 +209,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
                                   value: _strength,
-                                  backgroundColor: kBorder,
+                                  backgroundColor: context.c.border,
                                   valueColor: AlwaysStoppedAnimation<Color>(_strengthColor),
                                   minHeight: 6,
                                 ),
@@ -231,7 +232,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         controller: _confirmCtrl,
                         obscureText: true,
                         showPasswordToggle: true,
-                        prefixIcon: const Icon(Icons.lock_outline, color: kSubtext),
+                        prefixIcon: Icon(Icons.lock_outline, color: context.c.subtext),
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _submit(),
                         validator: (v) {

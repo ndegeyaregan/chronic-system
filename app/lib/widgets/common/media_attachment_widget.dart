@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import '../../core/constants.dart';
+import '../../core/app_colors.dart';
 
 /// Holds the media selected/recorded by [MediaAttachmentWidget].
 /// Pass this to your form's submit logic to access the chosen files.
@@ -277,10 +278,10 @@ class _MediaAttachmentWidgetState extends State<MediaAttachmentWidget> {
             const SizedBox(width: 6),
             Text(
               widget.label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: kText,
+                color: context.c.text,
               ),
             ),
           ],
@@ -456,7 +457,7 @@ class _MediaPreviewTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.c.border),
       ),
       child: Row(
         children: [
@@ -465,7 +466,7 @@ class _MediaPreviewTile extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 12, color: kText),
+              style: TextStyle(fontSize: 12, color: context.c.text),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -475,7 +476,7 @@ class _MediaPreviewTile extends StatelessWidget {
           ],
           GestureDetector(
             onTap: onRemove,
-            child: const Icon(Icons.close, size: 16, color: kSubtext),
+            child: Icon(Icons.close, size: 16, color: context.c.subtext),
           ),
         ],
       ),

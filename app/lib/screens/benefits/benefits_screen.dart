@@ -1,11 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants.dart';
-import '../../core/money.dart';
 import '../../models/benefit.dart';
 import '../../models/visit.dart';
 import '../../providers/benefits_provider.dart';
@@ -15,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/benefit_forecast.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../core/app_colors.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -36,6 +34,17 @@ double _spendFor(List<Visit> visits, bool Function(String) match) {
   return s;
 }
 
+int _countFor(List<Visit> visits, bool Function(String) match) {
+  int n = 0;
+  for (final v in visits) {
+    if (match(v.treatmentType)) n++;
+  }
+  return n;
+}
+
+String _claimCountLabel(int n) =>
+    n == 0 ? 'No claim' : (n == 1 ? '1 claim' : '$n claims');
+
 String _shortAmount(double v) {
   if (v >= 1000000) {
     return '${(v / 1000000).toStringAsFixed(v >= 10000000 ? 0 : 1)}M';
@@ -43,12 +52,6 @@ String _shortAmount(double v) {
   if (v >= 1000) return '${(v / 1000).toStringAsFixed(v >= 10000 ? 0 : 1)}K';
   return v.toStringAsFixed(0);
 }
-
-const _monthAbbr = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-String _monthYearShort(DateTime d) => '${_monthAbbr[d.month - 1]} ${d.year}';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
@@ -82,12 +85,12 @@ class BenefitsScreen extends ConsumerWidget {
     final dependantCount = dependantsAsync.valueOrNull?.length ?? 0;
 
     return Scaffold(
-      backgroundColor: kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),
         ),
-        title: const Text('My Benefits',
+        title: Text('My Benefits',
             style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -116,13 +119,6 @@ class BenefitsScreen extends ConsumerWidget {
           final visits = visitsAsync.valueOrNull ?? const <Visit>[];
           final loadingVisits = visitsAsync.isLoading;
           final ytd = _ytdVisits(visits);
-          final ytdSpend = ytd.fold<double>(0, (a, v) => a + v.totalAmount);
-          final totalAllocation = benefit.totalAllocation == 0
-              ? (benefit.outPatient +
-                  benefit.inPatient +
-                  benefit.dental +
-                  benefit.optical)
-              : benefit.totalAllocation;
 
           final advice = loadingVisits
               ? null
@@ -142,22 +138,15 @@ class BenefitsScreen extends ConsumerWidget {
                   dependantCount: dependantCount,
                 ),
                 const SizedBox(height: 12),
-                _PoolHeroCard(
-                  totalAllocation: totalAllocation,
-                  ytdSpend: ytdSpend,
-                  visitsCount: ytd.length,
-                  loading: loadingVisits,
-                ),
-                const SizedBox(height: 14),
                 if (advice != null) ...[
                   _AdvisorCardPremium(advice: advice),
                   const SizedBox(height: 14),
                 ],
-                _CategoryGrid(benefit: benefit, visits: ytd),
-                const SizedBox(height: 14),
-                _SpendByCategoryCard(visits: ytd),
-                const SizedBox(height: 14),
-                _MonthlyTrendCard(visits: visits),
+                _CategoryGrid(
+                  benefit: benefit,
+                  visits: ytd,
+                  advice: advice,
+                ),
                 const SizedBox(height: 14),
                 _RecentClaimsLink(count: ytd.length),
                 if (benefit.coPayActive) ...[
@@ -209,224 +198,6 @@ class _ScopeChip extends StatelessWidget {
                   fontWeight: FontWeight.w700)),
         ],
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Hero pool card — radial ring + summary
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PoolHeroCard extends StatelessWidget {
-  final double totalAllocation;
-  final double ytdSpend;
-  final int visitsCount;
-  final bool loading;
-
-  const _PoolHeroCard({
-    required this.totalAllocation,
-    required this.ytdSpend,
-    required this.visitsCount,
-    required this.loading,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final remaining =
-        (totalAllocation - ytdSpend).clamp(0, double.infinity).toDouble();
-    final ratio =
-        totalAllocation <= 0 ? 0.0 : (ytdSpend / totalAllocation).clamp(0.0, 1.0);
-    final pct = (ratio * 100).round();
-    final avg = visitsCount == 0 ? 0.0 : ytdSpend / visitsCount;
-
-    final ringColor = ratio >= 0.85
-        ? kError
-        : ratio >= 0.6
-            ? kAccentAmber
-            : kAccentLight;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [kPrimaryDark, kPrimary, kPrimaryLight],
-        ),
-        borderRadius: BorderRadius.circular(kRadiusLg),
-        boxShadow: [
-          BoxShadow(
-              color: kPrimary.withValues(alpha: 0.25),
-              blurRadius: 18,
-              offset: const Offset(0, 8))
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 96,
-                height: 96,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 96,
-                      height: 96,
-                      child: CircularProgressIndicator(
-                        value: loading ? null : ratio,
-                        strokeWidth: 8,
-                        backgroundColor: Colors.white.withValues(alpha: 0.18),
-                        valueColor: AlwaysStoppedAnimation<Color>(ringColor),
-                      ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          loading ? '…' : '$pct%',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800),
-                        ),
-                        Text(
-                          'used',
-                          style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.8),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.6),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('YTD Spend',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.75),
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.6)),
-                    const SizedBox(height: 4),
-                    Money(
-                      amount: ytdSpend,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 4),
-                    Text('of ${formatMoney(totalAllocation, "UGX")} pool',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 12)),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(kRadiusFull),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.account_balance_wallet_outlined,
-                              color: Colors.white, size: 12),
-                          const SizedBox(width: 5),
-                          Text(
-                            '${formatMoney(remaining, "UGX")} left',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _HeroFooterStat(
-                  label: 'Claims YTD',
-                  value: visitsCount.toString(),
-                  icon: Icons.receipt_long_outlined,
-                ),
-              ),
-              Container(
-                  width: 1,
-                  height: 32,
-                  color: Colors.white.withValues(alpha: 0.18)),
-              Expanded(
-                child: _HeroFooterStat(
-                  label: 'Avg / visit',
-                  value: visitsCount == 0
-                      ? '—'
-                      : 'UGX ${_shortAmount(avg)}',
-                  icon: Icons.payments_outlined,
-                ),
-              ),
-              Container(
-                  width: 1,
-                  height: 32,
-                  color: Colors.white.withValues(alpha: 0.18)),
-              Expanded(
-                child: _HeroFooterStat(
-                  label: 'Pool left',
-                  value: 'UGX ${_shortAmount(remaining)}',
-                  icon: Icons.savings_outlined,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroFooterStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  const _HeroFooterStat(
-      {required this.label, required this.value, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white.withValues(alpha: 0.75), size: 14),
-        const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w800)),
-        const SizedBox(height: 2),
-        Text(label,
-            style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 10.5,
-                fontWeight: FontWeight.w500)),
-      ],
     );
   }
 }
@@ -484,9 +255,9 @@ class _AdvisorCardPremium extends StatelessWidget {
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.8)),
                       const SizedBox(height: 2),
-                      const Text('Smart Forecast',
+                      Text('Smart Forecast',
                           style: TextStyle(
-                              color: kText,
+                              color: context.c.text,
                               fontSize: 15,
                               fontWeight: FontWeight.w700)),
                     ],
@@ -502,8 +273,8 @@ class _AdvisorCardPremium extends StatelessWidget {
               children: [
                 Text(
                   advice.headline,
-                  style: const TextStyle(
-                      color: kText,
+                  style: TextStyle(
+                      color: context.c.text,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       height: 1.35),
@@ -511,32 +282,28 @@ class _AdvisorCardPremium extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   advice.recommendation,
-                  style: const TextStyle(
-                      color: kSubtext, fontSize: 12.5, height: 1.45),
+                  style: TextStyle(
+                      color: context.c.subtext, fontSize: 12.5, height: 1.45),
                 ),
-                if (atRisk.isNotEmpty) ...[
+                if (atRisk.isNotEmpty || advice.byCategory.isNotEmpty) ...[
                   const SizedBox(height: 14),
-                  Container(height: 1, color: kBorder),
+                  Container(height: 1, color: context.c.border),
                   const SizedBox(height: 10),
-                  const Text(
-                    'AT RISK',
+                  Text(
+                    'BY POOL',
                     style: TextStyle(
-                        color: kSubtext,
+                        color: context.c.subtext,
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.8),
                   ),
                   const SizedBox(height: 8),
-                  ...atRisk.map((c) => Padding(
+                  // Always show outpatient + inpatient (the two core pillars)
+                  // followed by any other at-risk pools (dental/optical).
+                  ..._coreAndAtRisk(advice).map((c) => Padding(
                         padding: const EdgeInsets.only(top: 6),
                         child: _ForecastRow(forecast: c),
                       )),
-                ] else if (advice.overall.depletionDate != null &&
-                    advice.overall.depletesThisYear) ...[
-                  const SizedBox(height: 14),
-                  Container(height: 1, color: kBorder),
-                  const SizedBox(height: 10),
-                  _ForecastRow(forecast: advice.overall),
                 ],
               ],
             ),
@@ -544,6 +311,28 @@ class _AdvisorCardPremium extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Returns the forecast rows the advisor card should always show:
+  /// outpatient + inpatient first, then any other at-risk pools.
+  List<CategoryForecast> _coreAndAtRisk(BenefitAdvice advice) {
+    final out = <CategoryForecast>[];
+    CategoryForecast? pick(String name) {
+      for (final f in advice.byCategory) {
+        if (f.category == name) return f;
+      }
+      return null;
+    }
+    final op = pick('Outpatient');
+    final ip = pick('Inpatient');
+    if (op != null) out.add(op);
+    if (ip != null) out.add(ip);
+    for (final c in advice.atRiskCategories) {
+      if (c.category != 'Outpatient' && c.category != 'Inpatient') {
+        out.add(c);
+      }
+    }
+    return out;
   }
 }
 
@@ -554,20 +343,14 @@ class _ForecastRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = _toneFor(forecast.severity);
-    final months = forecast.monthsRemaining;
-    final date = forecast.depletionDate;
 
-    String runway;
+    String pillText;
     if (forecast.remaining <= 0) {
-      runway = 'Fully utilised';
-    } else if (months == null) {
-      runway = '—';
-    } else if (months >= 12) {
-      runway = '> 12 mo left';
-    } else if (months >= 1) {
-      runway = '${months.toStringAsFixed(months >= 3 ? 0 : 1)} mo left';
+      pillText = 'Fully utilised';
+    } else if (forecast.severity == ForecastSeverity.noActivity) {
+      pillText = 'No claims yet';
     } else {
-      runway = '< 1 mo left';
+      pillText = 'On track';
     }
 
     return Row(
@@ -585,16 +368,14 @@ class _ForecastRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(forecast.category,
-                  style: const TextStyle(
-                      color: kText,
+                  style: TextStyle(
+                      color: context.c.text,
                       fontSize: 13,
                       fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(
-                date != null && forecast.depletesThisYear
-                    ? 'Runs out ~${_monthYearShort(date)} • UGX ${_shortAmount(forecast.monthlyBurn)}/mo'
-                    : 'Burn UGX ${_shortAmount(forecast.monthlyBurn)}/mo',
-                style: const TextStyle(color: kSubtext, fontSize: 11.5),
+                'Burn UGX ${_shortAmount(forecast.monthlyBurn)}/mo',
+                style: TextStyle(color: context.c.subtext, fontSize: 11.5),
               ),
             ],
           ),
@@ -606,7 +387,7 @@ class _ForecastRow extends StatelessWidget {
             color: tone.color.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(kRadiusFull),
           ),
-          child: Text(runway,
+          child: Text(pillText,
               style: TextStyle(
                   color: tone.color,
                   fontSize: 11,
@@ -624,7 +405,11 @@ class _ForecastRow extends StatelessWidget {
 class _CategoryGrid extends StatelessWidget {
   final Benefit benefit;
   final List<Visit> visits;
-  const _CategoryGrid({required this.benefit, required this.visits});
+  const _CategoryGrid({
+    required this.benefit,
+    required this.visits,
+    BenefitAdvice? advice,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -634,6 +419,7 @@ class _CategoryGrid extends StatelessWidget {
         label: 'Outpatient',
         allocation: benefit.outPatient,
         spent: _spendFor(visits, isOutPatient),
+        claimCount: _countFor(visits, isOutPatient),
         color: kPrimary,
       ),
       _AllocCard(
@@ -641,6 +427,7 @@ class _CategoryGrid extends StatelessWidget {
         label: 'Inpatient',
         allocation: benefit.inPatient,
         spent: _spendFor(visits, isInPatient),
+        claimCount: _countFor(visits, isInPatient),
         color: kPurple,
       ),
       _AllocCard(
@@ -648,6 +435,7 @@ class _CategoryGrid extends StatelessWidget {
         label: 'Dental',
         allocation: benefit.dental,
         spent: _spendFor(visits, isDental),
+        claimCount: _countFor(visits, isDental),
         color: kSuccess,
       ),
       _AllocCard(
@@ -655,6 +443,7 @@ class _CategoryGrid extends StatelessWidget {
         label: 'Optical',
         allocation: benefit.optical,
         spent: _spendFor(visits, isOptical),
+        claimCount: _countFor(visits, isOptical),
         color: kAccentAmber,
       ),
     ];
@@ -675,6 +464,7 @@ class _AllocCard extends StatelessWidget {
   final String label;
   final double allocation;
   final double spent;
+  final int claimCount;
   final Color color;
 
   const _AllocCard({
@@ -682,26 +472,26 @@ class _AllocCard extends StatelessWidget {
     required this.label,
     required this.allocation,
     required this.spent,
+    required this.claimCount,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    final ratio = allocation <= 0 ? 0.0 : (spent / allocation);
-    final clamped = ratio.clamp(0.0, 1.0);
-    final pct = (clamped * 100).round();
-    final remaining =
-        (allocation - spent).clamp(0, double.infinity).toDouble();
-    final danger = clamped >= 0.85;
-    final fill = danger ? kError : color;
+    // The Sanlam API returns the *current available balance* per
+    // category. Display it directly. Visit-based "spent" is shown only
+    // as informative context; we don't subtract it from balance.
+    final remaining = allocation;
+    final hasBalance = remaining > 0;
+    final spentDisplay = spent;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       decoration: BoxDecoration(
-        color: kSurface,
+        color: context.c.surface,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.c.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -718,344 +508,64 @@ class _AllocCard extends StatelessWidget {
                 child: Icon(icon, color: color, size: 16),
               ),
               const Spacer(),
-              if (allocation > 0)
-                Text('$pct%',
-                    style: TextStyle(
-                        color: fill,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800)),
+              if (hasBalance)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(kRadiusFull),
+                  ),
+                  child: Text('Available',
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.3)),
+                ),
             ],
           ),
           const SizedBox(height: 10),
           Text(label.toUpperCase(),
-              style: const TextStyle(
-                  color: kSubtext,
+              style: TextStyle(
+                  color: context.c.subtext,
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.6)),
           const SizedBox(height: 2),
           Text('UGX ${_shortAmount(remaining)}',
-              style: const TextStyle(
-                  color: kText, fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 1),
-          Text('left of UGX ${_shortAmount(allocation)}',
-              style: const TextStyle(color: kSubtext, fontSize: 10.5)),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(kRadiusFull),
-            child: LinearProgressIndicator(
-              value: clamped,
-              minHeight: 5,
-              backgroundColor: color.withValues(alpha: 0.12),
-              valueColor: AlwaysStoppedAnimation<Color>(fill),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Spend by category (donut + legend)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SpendByCategoryCard extends StatelessWidget {
-  final List<Visit> visits;
-  const _SpendByCategoryCard({required this.visits});
-
-  @override
-  Widget build(BuildContext context) {
-    final entries = <_CatEntry>[
-      _CatEntry('Outpatient', _spendFor(visits, isOutPatient), kPrimary),
-      _CatEntry('Inpatient', _spendFor(visits, isInPatient), kPurple),
-      _CatEntry('Dental', _spendFor(visits, isDental), kSuccess),
-      _CatEntry('Optical', _spendFor(visits, isOptical), kAccentAmber),
-    ];
-    final positives = entries.where((e) => e.amount > 0).toList();
-    final total = positives.fold<double>(0, (a, e) => a + e.amount);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLg),
-        boxShadow: kCardShadow,
-        border: Border.all(color: kBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Spend by Category',
               style: TextStyle(
-                  color: kText, fontSize: 14, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          const Text('Year-to-date breakdown',
-              style: TextStyle(color: kSubtext, fontSize: 11.5)),
-          const SizedBox(height: 14),
-          if (total <= 0)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 18),
-              child: Center(
-                child: Text('No spend recorded yet this year.',
-                    style: TextStyle(color: kSubtext, fontSize: 12.5)),
-              ),
-            )
-          else
-            Row(
+                  color: context.c.text, fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 1),
+          Text(
+              spentDisplay > 0
+                  ? 'YTD claimed: UGX ${_shortAmount(spentDisplay)}'
+                  : 'Balance available',
+              style: TextStyle(color: context.c.subtext, fontSize: 10.5)),
+          const SizedBox(height: 10),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(kRadiusFull),
+              border: Border.all(color: color.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  width: 96,
-                  height: 96,
-                  child: CustomPaint(
-                    painter: _DonutPainter(
-                      slices: positives
-                          .map((e) => _Slice(e.amount / total, e.color))
-                          .toList(),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(_shortAmount(total),
-                              style: const TextStyle(
-                                  color: kText,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800)),
-                          const Text('UGX',
-                              style: TextStyle(
-                                  color: kSubtext,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    children: positives
-                        .map((e) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: _LegendRow(
-                                label: e.label,
-                                amount: e.amount,
-                                pct: total <= 0 ? 0 : (e.amount / total),
-                                color: e.color,
-                              ),
-                            ))
-                        .toList(),
+                Icon(Icons.receipt_long_outlined, size: 11, color: color),
+                const SizedBox(width: 4),
+                Text(
+                  _claimCountLabel(claimCount),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CatEntry {
-  final String label;
-  final double amount;
-  final Color color;
-  _CatEntry(this.label, this.amount, this.color);
-}
-
-class _LegendRow extends StatelessWidget {
-  final String label;
-  final double amount;
-  final double pct;
-  final Color color;
-  const _LegendRow(
-      {required this.label,
-      required this.amount,
-      required this.pct,
-      required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(label,
-              style: const TextStyle(
-                  color: kText, fontSize: 12, fontWeight: FontWeight.w600)),
-        ),
-        Text('UGX ${_shortAmount(amount)}',
-            style: const TextStyle(
-                color: kText, fontSize: 12, fontWeight: FontWeight.w700)),
-        const SizedBox(width: 6),
-        Text('${(pct * 100).round()}%',
-            style: const TextStyle(
-                color: kSubtext, fontSize: 11, fontWeight: FontWeight.w600)),
-      ],
-    );
-  }
-}
-
-class _Slice {
-  final double ratio;
-  final Color color;
-  _Slice(this.ratio, this.color);
-}
-
-class _DonutPainter extends CustomPainter {
-  final List<_Slice> slices;
-  _DonutPainter({required this.slices});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final stroke = 14.0;
-    final inner = rect.deflate(stroke / 2);
-    double start = -math.pi / 2;
-    for (final s in slices) {
-      final sweep = s.ratio * math.pi * 2;
-      final paint = Paint()
-        ..color = s.color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.butt;
-      canvas.drawArc(inner, start, sweep, false, paint);
-      start += sweep;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DonutPainter old) => old.slices != slices;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Monthly trend bar chart
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MonthlyTrendCard extends StatelessWidget {
-  final List<Visit> visits;
-  const _MonthlyTrendCard({required this.visits});
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final months = List<DateTime>.generate(
-      6,
-      (i) => DateTime(now.year, now.month - (5 - i), 1),
-    );
-    final totals = List<double>.filled(6, 0);
-    for (final v in visits) {
-      final d = v.treatmentDateParsed;
-      if (d == null) continue;
-      for (var i = 0; i < months.length; i++) {
-        final m = months[i];
-        if (d.year == m.year && d.month == m.month) {
-          totals[i] += v.totalAmount;
-          break;
-        }
-      }
-    }
-    final maxVal = totals.fold<double>(0, (a, b) => b > a ? b : a);
-    final hasData = maxVal > 0;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLg),
-        boxShadow: kCardShadow,
-        border: Border.all(color: kBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Monthly Spend Trend',
-              style: TextStyle(
-                  color: kText, fontSize: 14, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          const Text('Last 6 months',
-              style: TextStyle(color: kSubtext, fontSize: 11.5)),
-          const SizedBox(height: 16),
-          if (!hasData)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 18),
-              child: Center(
-                child: Text('No claims in the last 6 months.',
-                    style: TextStyle(color: kSubtext, fontSize: 12.5)),
-              ),
-            )
-          else
-            SizedBox(
-              height: 130,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: List.generate(months.length, (i) {
-                  final value = totals[i];
-                  final ratio = maxVal <= 0 ? 0.0 : (value / maxVal);
-                  final h = value <= 0 ? 4.0 : (8 + ratio * 92);
-                  final isCurrent = i == months.length - 1;
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (value > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                _shortAmount(value),
-                                style: TextStyle(
-                                    color: isCurrent ? kPrimary : kSubtext,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                          Container(
-                            height: h,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                                colors: isCurrent
-                                    ? [kPrimary, kPrimaryLight]
-                                    : [
-                                        kPrimary.withValues(alpha: 0.35),
-                                        kPrimary.withValues(alpha: 0.18),
-                                      ],
-                              ),
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(6)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-          const SizedBox(height: 8),
-          Row(
-            children: List.generate(months.length, (i) {
-              final isCurrent = i == months.length - 1;
-              return Expanded(
-                child: Text(
-                  _monthAbbr[months[i].month - 1],
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: isCurrent ? kPrimary : kSubtext,
-                      fontSize: 11,
-                      fontWeight:
-                          isCurrent ? FontWeight.w800 : FontWeight.w500),
-                ),
-              );
-            }),
           ),
         ],
       ),
@@ -1063,7 +573,6 @@ class _MonthlyTrendCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Recent claims link — taps through to claims screen
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1082,7 +591,7 @@ class _RecentClaimsLink extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(kRadiusLg),
           boxShadow: kCardShadow,
-          border: Border.all(color: kBorder),
+          border: Border.all(color: context.c.border),
         ),
         child: Row(
           children: [
@@ -1100,9 +609,9 @@ class _RecentClaimsLink extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('View all claims',
+                  Text('View all claims',
                       style: TextStyle(
-                          color: kText,
+                          color: context.c.text,
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700)),
                   const SizedBox(height: 1),
@@ -1110,14 +619,14 @@ class _RecentClaimsLink extends StatelessWidget {
                     count == 0
                         ? 'No claims this year'
                         : '$count claim${count == 1 ? "" : "s"} this year',
-                    style: const TextStyle(
-                        color: kSubtext, fontSize: 11.5),
+                    style: TextStyle(
+                        color: context.c.subtext, fontSize: 11.5),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios,
-                size: 13, color: kSubtext),
+            Icon(Icons.arrow_forward_ios,
+                size: 13, color: context.c.subtext),
           ],
         ),
       ),

@@ -13,7 +13,6 @@ import '../../providers/member_provider.dart';
 import '../../providers/appointments_provider.dart';
 import '../../models/appointment.dart';
 import '../../widgets/common/loading_shimmer.dart';
-import '../notifications/notifications_screen.dart';
 
 class ChronicDashboardScreen extends ConsumerStatefulWidget {
   const ChronicDashboardScreen({super.key});
@@ -175,7 +174,12 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
     final memberState = ref.watch(memberProvider);
     final conditions = memberState.member?.conditions ?? member?.conditions ?? [];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go(routeDashboard);
+      },
+      child: Scaffold(
       backgroundColor: _bg,
       body: RefreshIndicator(
         color: _blue,
@@ -214,45 +218,11 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
                   letterSpacing: -0.3,
                 ),
               ),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => context.go(routeDashboard),
+              ),
               actions: [
-                // Notification bell with unread badge
-                GestureDetector(
-                  onTap: () => context.push(routeNotifications),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 38, height: 38,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.1),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                        ),
-                        child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 19),
-                      ),
-                      Builder(builder: (_) {
-                        final unread = ref.watch(notificationsProvider).where((n) => !n.isRead).length;
-                        if (unread == 0) return const SizedBox.shrink();
-                        return Positioned(
-                          right: -2, top: -2,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: _red,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                            child: Text(
-                              unread > 99 ? '99+' : '$unread',
-                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
                 const SizedBox(width: 8),
                 // Avatar with logout popup
                 PopupMenuButton<String>(
@@ -324,6 +294,7 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -334,10 +305,8 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
       _Action('Log Vitals',    Icons.monitor_heart_rounded,    _blue,                    routeLogVitals,      null),
       _Action('Medications',   Icons.medication_rounded,        _orange,                  routeMedications,    medsDue > 0 ? '$medsDue' : null),
       _Action('Appointments',  Icons.calendar_month_rounded,   _teal,                    routeAppointments,   null),
-      _Action('Lifestyle',     Icons.self_improvement_rounded,  _green,                   routeLifestyle,      null),
       _Action('Treatment',     Icons.medical_services_rounded,  const Color(0xFF0284C7),  routeTreatment,      null),
       _Action('Lab Results',   Icons.science_rounded,           _red,                     routeLabResults,     null),
-      _Action('Find Facility', Icons.local_hospital_rounded,    const Color(0xFF059669),  routeFacilityFinder, null),
       _Action('Request Preauth', Icons.verified_user_rounded,    const Color(0xFFB45309),  '/authorizations',   null),
       _Action('Learn',         Icons.menu_book_rounded,         const Color(0xFFD97706),  routeEducation,      null),
     ];

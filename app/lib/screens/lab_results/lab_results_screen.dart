@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +13,7 @@ import '../../models/lab_test.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
 import '../../widgets/common/loading_shimmer.dart';
+import '../../core/app_colors.dart';
 
 /// Resolves a relative result path like /uploads/lab-results/x.pdf
 /// to a fully-qualified URL using the API server's host.
@@ -55,8 +57,18 @@ class LabResultsScreen extends ConsumerWidget {
             ? 'Hypertension can damage kidneys over time. Regular KFT tests help detect this early.'
             : 'Regular lab tests help monitor your organ health. Complete your tests on time.';
 
-    return Scaffold(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/home/chronic');
+      },
+      child: Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/home/chronic'),
+        ),
         title: const Text('Lab Results'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(20),
@@ -90,8 +102,8 @@ class LabResultsScreen extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     bannerText,
-                    style: const TextStyle(
-                        fontSize: 12, color: kText, height: 1.5),
+                    style: TextStyle(
+                        fontSize: 12, color: context.c.text, height: 1.5),
                   ),
                 ),
               ],
@@ -122,6 +134,7 @@ class LabResultsScreen extends ConsumerWidget {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -140,26 +153,26 @@ class _EmptyLabState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
         padding: EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.science_outlined, size: 64, color: kSubtext),
+            Icon(Icons.science_outlined, size: 64, color: context.c.subtext),
             SizedBox(height: 16),
             Text(
               'No lab tests scheduled yet.',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: kText),
+                  color: context.c.text),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 8),
             Text(
               'Your care team will schedule tests for you.',
-              style: TextStyle(fontSize: 13, color: kSubtext),
+              style: TextStyle(fontSize: 13, color: context.c.subtext),
               textAlign: TextAlign.center,
             ),
           ],
@@ -268,14 +281,14 @@ class _LabTestCardState extends State<_LabTestCard> {
                   children: [
                     Text(
                       test.testTypeLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: kText),
+                          color: context.c.text),
                     ),
                     Text(
                       test.testTypeShort,
-                      style: const TextStyle(fontSize: 12, color: kSubtext),
+                      style: TextStyle(fontSize: 12, color: context.c.subtext),
                     ),
                   ],
                 ),
@@ -301,12 +314,12 @@ class _LabTestCardState extends State<_LabTestCard> {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.calendar_today_outlined,
-                  size: 13, color: kSubtext),
+              Icon(Icons.calendar_today_outlined,
+                  size: 13, color: context.c.subtext),
               const SizedBox(width: 4),
               Text(
                 'Due: ${test.formattedDueDate}',
-                style: const TextStyle(fontSize: 12, color: kSubtext),
+                style: TextStyle(fontSize: 12, color: context.c.subtext),
               ),
             ],
           ),
@@ -330,12 +343,12 @@ class _LabTestCardState extends State<_LabTestCard> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: kBg,
+                color: context.c.bg,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 test.resultNotes!,
-                style: const TextStyle(fontSize: 12, color: kSubtext),
+                style: TextStyle(fontSize: 12, color: context.c.subtext),
               ),
             ),
           ],
@@ -361,7 +374,7 @@ class _LabTestCardState extends State<_LabTestCard> {
               ),
             // ── Interpretation Guide ────────────────────────────────────────
             const SizedBox(height: 10),
-            _buildInterpretationGuide(),
+            _buildInterpretationGuide(context),
           ] else ...[
             SizedBox(
               width: double.infinity,
@@ -383,7 +396,7 @@ class _LabTestCardState extends State<_LabTestCard> {
     );
   }
 
-  Widget _buildInterpretationGuide() {
+  Widget _buildInterpretationGuide(BuildContext context) {
     final lines = _getInterpretationLines();
     if (lines.isEmpty) return const SizedBox();
 
@@ -436,9 +449,9 @@ class _LabTestCardState extends State<_LabTestCard> {
                   .map((line) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text(line,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12,
-                                color: kSubtext,
+                                color: context.c.subtext,
                                 height: 1.4)),
                       ))
                   .toList(),
@@ -582,15 +595,15 @@ class _MarkDoneSheetState extends ConsumerState<_MarkDoneSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: kBorder,
+                color: context.c.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           Text(
             'Mark as Done — ${widget.test.testTypeShort}',
-            style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold, color: kText),
+            style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.bold, color: context.c.text),
           ),
           const SizedBox(height: 20),
           AppInput(
@@ -618,7 +631,7 @@ class _MarkDoneSheetState extends ConsumerState<_MarkDoneSheet> {
                     child: Text(
                       _pickedFileName ?? 'Upload Result (photo/PDF)',
                       style: TextStyle(
-                        color: _pickedFileName != null ? kText : kSubtext,
+                        color: _pickedFileName != null ? context.c.text : context.c.subtext,
                         fontSize: 13,
                       ),
                     ),

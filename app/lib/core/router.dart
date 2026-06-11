@@ -50,6 +50,7 @@ import '../screens/dependants/dependant_detail_screen.dart';
 import '../screens/membership_card/membership_card_screen.dart';
 import '../screens/preauth/preauth_list_screen.dart';
 import '../screens/preauth/preauth_detail_screen.dart';
+import '../screens/news/news_screen.dart';
 import '../screens/network/network_providers_screen.dart';
 import '../screens/vitals/cycle_tracker_screen.dart';
 import '../screens/reimbursement/reimbursement_screen.dart';
@@ -163,18 +164,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: routeOnboarding,
         builder: (_, __) => const OnboardingScreen(),
       ),
+      // Chronic dashboard lives ABOVE the shell so it stays mounted across
+      // auth/listenable refreshes (previously, pushing it imperatively as a
+      // MaterialPageRoute caused the page to be discarded the next time
+      // GoRouter's refreshListenable fired — typically right after the
+      // Profile screen finished its background fetchProfile/refreshFromSanlam
+      // calls — leaving the user staring at a blank screen).
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/home/chronic',
+        builder: (_, __) => const ChronicOnly(
+          child: ChronicDashboardScreen(),
+        ),
+      ),
       ShellRoute(
         builder: (context, state, child) => HomeScreen(child: child),
         routes: [
           GoRoute(
             path: routeDashboard,
             builder: (_, __) => const MemberDashboardScreen(),
-          ),
-          GoRoute(
-            path: '/home/chronic',
-            builder: (_, __) => const ChronicOnly(
-              child: ChronicDashboardScreen(),
-            ),
           ),
           GoRoute(
             path: routeVitals,
@@ -215,6 +223,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: routeEducation,
             builder: (_, __) => const ConditionEducationScreen(),
+          ),
+          GoRoute(
+            path: routeNews,
+            builder: (_, __) => const NewsScreen(),
           ),
           GoRoute(
             path: routeBenefits,

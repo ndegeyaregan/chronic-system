@@ -1,0 +1,11 @@
+Service,Price,Category,Currency
+CT Scan - Head,450000,Radiology,UGX
+MRI - Brain,850000,Radiology,UGX
+X-Ray - Chest,80000,Radiology,UGX
+Full Blood Count (CBC),35000,Laboratory,UGX
+Liver Function Test,90000,Laboratory,UGX
+General Consultation,50000,Consultation,UGX
+Specialist Consultation,150000,Consultation,UGX
+Dental Cleaning,120000,Dental,UGX
+Eye Examination,60000,Optical,UGX
+Paracetamol 500mg (tablet),200,Pharmacy,UGX

@@ -45,11 +45,10 @@ export default function VitalsThresholdsPage() {
     queryFn: getThresholds,
     placeholderData: [],
   });
-  const { data: conditionsData } = useQuery({
+  const { data: conditions = [] } = useQuery({
     queryKey: ['conditions'],
-    queryFn: getConditions,
+    queryFn: () => getConditions().then((r) => (Array.isArray(r.data) ? r.data : [])),
   });
-  const conditions = conditionsData?.data || conditionsData || [];
   const conditionName = (id) => {
     if (!id) return 'All (Global)';
     const c = (Array.isArray(conditions) ? conditions : []).find((c) => c.id === id);

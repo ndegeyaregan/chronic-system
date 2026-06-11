@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
@@ -15,6 +16,7 @@ import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_input.dart';
 import '../../widgets/common/media_attachment_widget.dart';
 import '../../widgets/common/loading_shimmer.dart';
+import '../../core/app_colors.dart';
 
 class TreatmentScreen extends ConsumerWidget {
   const TreatmentScreen({super.key});
@@ -23,12 +25,26 @@ class TreatmentScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(treatmentPlanProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Treatment Plans')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddPlanSheet(context, ref),
-        backgroundColor: kPrimary,
-        child: const Icon(Icons.add, color: Colors.white),
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/home/chronic');
+      },
+      child: Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/home/chronic'),
+        ),
+        title: Text('Treatment Plans'),
+        actions: [
+          IconButton(
+            tooltip: 'Add Treatment Plan',
+            icon: const Icon(Icons.add),
+            onPressed: () => _showAddPlanSheet(context, ref),
+          ),
+        ],
       ),
       body: state.isLoading && state.plans.isEmpty
           ? const Padding(
@@ -47,6 +63,7 @@ class TreatmentScreen extends ConsumerWidget {
                         _PlanCard(plan: state.plans[i]),
                   ),
                 ),
+      ),
     );
   }
 
@@ -72,19 +89,19 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.medical_information_outlined,
-                size: 64, color: kSubtext),
+            Icon(Icons.medical_information_outlined,
+                size: 64, color: context.c.subtext),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No treatment plans yet.',
               style: TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w600, color: kText),
+                  fontSize: 16, fontWeight: FontWeight.w600, color: context.c.text),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Add your first treatment plan from your doctor.',
-              style: TextStyle(fontSize: 13, color: kSubtext),
+              style: TextStyle(fontSize: 13, color: context.c.subtext),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -206,10 +223,10 @@ class _PlanCardState extends State<_PlanCard> {
                     children: [
                       Text(
                         plan.title ?? 'Treatment Plan',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: kText,
+                          color: context.c.text,
                         ),
                       ),
                       if (plan.conditionName != null) ...[
@@ -242,11 +259,11 @@ class _PlanCardState extends State<_PlanCard> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  const Icon(Icons.medical_services_outlined,
-                      size: 14, color: kSubtext),
+                  Icon(Icons.medical_services_outlined,
+                      size: 14, color: context.c.subtext),
                   const SizedBox(width: 6),
                   Text(plan.providerName!,
-                      style: const TextStyle(fontSize: 12, color: kSubtext)),
+                      style: TextStyle(fontSize: 12, color: context.c.subtext)),
                 ],
               ),
             ),
@@ -257,12 +274,12 @@ class _PlanCardState extends State<_PlanCard> {
             child: Row(
               children: [
                 if (plan.planDate != null) ...[
-                  const Icon(Icons.calendar_today_outlined,
-                      size: 13, color: kSubtext),
+                  Icon(Icons.calendar_today_outlined,
+                      size: 13, color: context.c.subtext),
                   const SizedBox(width: 4),
                   Text(
                     DateFormat('dd MMM yyyy').format(plan.planDate!),
-                    style: const TextStyle(fontSize: 12, color: kSubtext),
+                    style: TextStyle(fontSize: 12, color: context.c.subtext),
                   ),
                   const SizedBox(width: 12),
                 ],
@@ -291,22 +308,22 @@ class _PlanCardState extends State<_PlanCard> {
                 plan.description!.length > 100
                     ? '${plan.description!.substring(0, 100)}…'
                     : plan.description!,
-                style: const TextStyle(
-                    fontSize: 13, color: kSubtext, height: 1.4),
+                style: TextStyle(
+                    fontSize: 13, color: context.c.subtext, height: 1.4),
               ),
             ),
           ],
           // ── Media attachments ─────────────────────────────────────
           if (plan.hasMedia) ...[
             const SizedBox(height: 12),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'ATTACHMENTS',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: kSubtext,
+                  color: context.c.subtext,
                   letterSpacing: 0.8,
                 ),
               ),
@@ -417,8 +434,8 @@ class _StatusBadge extends StatelessWidget {
     final (color, label) = switch (status) {
       'active' => (kSuccess, 'Active'),
       'completed' => (kInfo, 'Completed'),
-      'cancelled' => (kSubtext, 'Cancelled'),
-      _ => (kSubtext, status),
+      'cancelled' => (context.c.subtext, 'Cancelled'),
+      _ => (context.c.subtext, status),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -656,17 +673,17 @@ class _AddPlanSheetState extends ConsumerState<_AddPlanSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: kBorder,
+                    color: context.c.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-              const Text(
+              Text(
                 'Add Treatment Plan',
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: kText),
+                    color: context.c.text),
               ),
               const SizedBox(height: 20),
               AppInput(
@@ -690,18 +707,18 @@ class _AddPlanSheetState extends ConsumerState<_AddPlanSheet> {
                 label: 'Doctor / Provider Name (optional)',
                 hint: 'e.g. Dr. Nakamura',
                 controller: _providerCtrl,
-                prefixIcon: const Icon(Icons.medical_services_outlined,
-                    color: kSubtext),
+                prefixIcon: Icon(Icons.medical_services_outlined,
+                    color: context.c.subtext),
                 textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 14),
               // Plan date picker
-              const Text(
+              Text(
                 'Plan Date (optional)',
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: kText),
+                    color: context.c.text),
               ),
               const SizedBox(height: 6),
               GestureDetector(
@@ -712,12 +729,12 @@ class _AddPlanSheetState extends ConsumerState<_AddPlanSheet> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: kBorder),
+                    border: Border.all(color: context.c.border),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined,
-                          color: kSubtext, size: 18),
+                      Icon(Icons.calendar_today_outlined,
+                          color: context.c.subtext, size: 18),
                       const SizedBox(width: 10),
                       Text(
                         _planDate != null
@@ -726,7 +743,7 @@ class _AddPlanSheetState extends ConsumerState<_AddPlanSheet> {
                             : 'Select date',
                         style: TextStyle(
                           color:
-                              _planDate != null ? kText : kSubtext,
+                              _planDate != null ? context.c.text : context.c.subtext,
                           fontSize: 14,
                         ),
                       ),
@@ -764,12 +781,12 @@ class _AddPlanSheetState extends ConsumerState<_AddPlanSheet> {
               ),
               const SizedBox(height: 14),
               // Document upload
-              const Text(
+              Text(
                 'Prescription (Optional)',
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: kText),
+                    color: context.c.text),
               ),
               const SizedBox(height: 6),
               GestureDetector(
@@ -793,8 +810,8 @@ class _AddPlanSheetState extends ConsumerState<_AddPlanSheet> {
                               'Attach Treatment Document (optional)',
                           style: TextStyle(
                             color: _pickedFileName != null
-                                ? kText
-                                : kSubtext,
+                                ? context.c.text
+                                : context.c.subtext,
                             fontSize: 13,
                           ),
                         ),
@@ -806,8 +823,8 @@ class _AddPlanSheetState extends ConsumerState<_AddPlanSheet> {
                             _pickedFileName = null;
                             _pickedFileBytes = null;
                           }),
-                          child: const Icon(Icons.close,
-                              size: 16, color: kSubtext),
+                          child: Icon(Icons.close,
+                              size: 16, color: context.c.subtext),
                         ),
                     ],
                   ),

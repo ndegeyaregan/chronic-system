@@ -2,39 +2,86 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:health/health.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_provider.dart';
 import 'lifestyle_provider.dart';
 
-/// Tracks the device pedometer and **automatically** persists each day's
-/// total step count to the backend (`/lifestyle/fitness`) so that the
-/// member's history reflects passive activity without requiring a manual
-/// log entry.
+/// Automatic step / activity tracking.
 ///
-/// SharedPreferences keys:
-///   step_baseline_date   — ISO date for the current baseline (yyyy-MM-dd)
-///   step_baseline_value  — pedometer reading at the start of that day
-///   step_last_count_date — date of the last in-memory `dailySteps` snapshot
-///   step_last_count      — latest `dailySteps` snapshot (for crash recovery)
-///   step_synced_date     — date of the last successful backend push
+/// Primary data source: **Health Connect** (Android) or **HealthKit** (iOS).
+/// These OS-level stores are continuously updated by the phone — even when
+/// the app is closed, the screen is off, or the device just rebooted — so
+/// `dailySteps` always reflects the true count when the user opens the app.
+/// They also internally filter out passive motion in vehicles (the platform
+/// pedometer rejects motion that doesn't match a walking/running gait),
+/// which is why a bus ride doesn't inflate step totals.
+///
+/// Fallback data source: the live `pedometer` plugin — used only when the
+/// platform health store is unavailable (e.g. Health Connect not installed
+/// or permission denied), so we still get *something* while the app runs.
+///
+/// Distance and active energy come straight from the platform when
+/// available; we only fall back to a stride/calorie estimate from the raw
+/// step count when no health record is present.
 class StepTrackingState {
   final int dailySteps;
+  final int walkingSteps;
+  final int runningSteps;
+  final double walkingDistanceKm;
+  final double runningDistanceKm;
+  final double? activeCalories;
   final bool available;
+  final bool healthConnected;
 
-  const StepTrackingState({this.dailySteps = 0, this.available = false});
+  const StepTrackingState({
+    this.dailySteps = 0,
+    this.walkingSteps = 0,
+    this.runningSteps = 0,
+    this.walkingDistanceKm = 0,
+    this.runningDistanceKm = 0,
+    this.activeCalories,
+    this.available = false,
+    this.healthConnected = false,
+  });
 
-  /// Estimated distance in km (average stride ≈ 0.762 m).
-  double get distanceKm => dailySteps * 0.000762;
+  /// Total distance for the day, in km.
+  double get distanceKm {
+    final fromHealth = walkingDistanceKm + runningDistanceKm;
+    if (fromHealth > 0) return fromHealth;
+    // Fallback estimate when no distance record exists — average stride 0.762 m.
+    return dailySteps * 0.000762;
+  }
 
-  /// Estimated calories burned (rough average ≈ 0.04 kcal per step).
-  int get caloriesBurned => (dailySteps * 0.04).round();
+  /// Active calories burned for the day. Uses health-store value when
+  /// available, otherwise a rough estimate (~0.04 kcal / step).
+  int get caloriesBurned {
+    final fromHealth = activeCalories;
+    if (fromHealth != null && fromHealth > 0) return fromHealth.round();
+    return (dailySteps * 0.04).round();
+  }
 
-  StepTrackingState copyWith({int? dailySteps, bool? available}) =>
+  StepTrackingState copyWith({
+    int? dailySteps,
+    int? walkingSteps,
+    int? runningSteps,
+    double? walkingDistanceKm,
+    double? runningDistanceKm,
+    double? activeCalories,
+    bool? available,
+    bool? healthConnected,
+  }) =>
       StepTrackingState(
         dailySteps: dailySteps ?? this.dailySteps,
+        walkingSteps: walkingSteps ?? this.walkingSteps,
+        runningSteps: runningSteps ?? this.runningSteps,
+        walkingDistanceKm: walkingDistanceKm ?? this.walkingDistanceKm,
+        runningDistanceKm: runningDistanceKm ?? this.runningDistanceKm,
+        activeCalories: activeCalories ?? this.activeCalories,
         available: available ?? this.available,
+        healthConnected: healthConnected ?? this.healthConnected,
       );
 }
 
@@ -57,27 +104,82 @@ class StepTrackingNotifier extends StateNotifier<StepTrackingState>
   /// background sensor noise.
   static const _minStepsToSync = 100;
 
-  StreamSubscription<StepCount>? _sub;
+  /// While the app is foregrounded, re-poll the health store at this cadence
+  /// so the visible counter stays close to live.
+  static const _foregroundRefresh = Duration(minutes: 2);
+
+  StreamSubscription<StepCount>? _pedometerSub;
   Timer? _midnightTimer;
+  Timer? _refreshTimer;
+  Health? _health;
+  bool _healthAuthorized = false;
+
+  /// Health data types we read from the OS health store.
+  static const _healthTypes = <HealthDataType>[
+    HealthDataType.STEPS,
+    HealthDataType.DISTANCE_DELTA,
+    HealthDataType.ACTIVE_ENERGY_BURNED,
+    HealthDataType.WORKOUT,
+  ];
 
   Future<void> _init() async {
     if (kIsWeb) return;
+    WidgetsBinding.instance.addObserver(this);
     try {
-      WidgetsBinding.instance.addObserver(this);
-      // Catch up on any unsynced previous-day total before resuming today.
       await _flushUnsyncedFromPrefs();
-      _sub = Pedometer.stepCountStream.listen(
-        _onStep,
-        onError: (e) => debugPrint('StepTracking pedometer error: $e'),
-        cancelOnError: false,
-      );
-      _scheduleMidnightReset();
     } catch (e) {
-      debugPrint('StepTracking unavailable: $e');
+      debugPrint('StepTracking flush error: $e');
+    }
+    await _initHealth();
+    if (!_healthAuthorized) {
+      _startPedometerFallback();
+    } else {
+      await _refreshFromHealth();
+      _refreshTimer =
+          Timer.periodic(_foregroundRefresh, (_) => _refreshFromHealth());
+    }
+    _scheduleMidnightReset();
+  }
+
+  Future<void> _initHealth() async {
+    try {
+      _health = Health();
+      await _health!.configure();
+      // Some devices (older Androids without Health Connect) will throw here
+      // — treat as unavailable and fall back to the pedometer.
+      final hasPerm =
+          await _health!.hasPermissions(_healthTypes) ?? false;
+      if (hasPerm) {
+        _healthAuthorized = true;
+        return;
+      }
+      final granted = await _health!.requestAuthorization(
+        _healthTypes,
+        permissions: List<HealthDataAccess>.filled(
+          _healthTypes.length,
+          HealthDataAccess.READ,
+        ),
+      );
+      _healthAuthorized = granted;
+    } catch (e) {
+      debugPrint('Health store unavailable: $e');
+      _healthAuthorized = false;
     }
   }
 
-  Future<void> _onStep(StepCount event) async {
+  void _startPedometerFallback() {
+    try {
+      _pedometerSub = Pedometer.stepCountStream.listen(
+        _onPedometerEvent,
+        onError: (e) => debugPrint('StepTracking pedometer error: $e'),
+        cancelOnError: false,
+      );
+    } catch (e) {
+      debugPrint('StepTracking pedometer unavailable: $e');
+    }
+  }
+
+  Future<void> _onPedometerEvent(StepCount event) async {
     final totalSteps = event.steps;
     final prefs = await SharedPreferences.getInstance();
     final todayStr = _todayString();
@@ -97,17 +199,101 @@ class StepTrackingNotifier extends StateNotifier<StepTrackingState>
     if (mounted) {
       state = state.copyWith(dailySteps: daily, available: true);
     }
-    // Persist a snapshot so a previous day can still be synced after a
-    // restart that misses the midnight reset (e.g. phone was off overnight).
     await prefs.setString(_keyLastCountDate, todayStr);
     await prefs.setInt(_keyLastCount, daily);
+  }
+
+  Future<void> _refreshFromHealth() async {
+    if (_health == null || !_healthAuthorized) return;
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    try {
+      final steps = await _health!.getTotalStepsInInterval(start, now) ?? 0;
+
+      double activeCalories = 0;
+      double walkingDistance = 0;
+      double runningDistance = 0;
+      int runningSteps = 0;
+
+      final data = await _health!.getHealthDataFromTypes(
+        startTime: start,
+        endTime: now,
+        types: const [
+          HealthDataType.DISTANCE_DELTA,
+          HealthDataType.ACTIVE_ENERGY_BURNED,
+          HealthDataType.WORKOUT,
+        ],
+      );
+
+      for (final point in data) {
+        final v = point.value;
+        switch (point.type) {
+          case HealthDataType.ACTIVE_ENERGY_BURNED:
+            if (v is NumericHealthValue) {
+              activeCalories += v.numericValue.toDouble();
+            }
+            break;
+          case HealthDataType.DISTANCE_DELTA:
+            if (v is NumericHealthValue) {
+              walkingDistance += v.numericValue.toDouble();
+            }
+            break;
+          case HealthDataType.WORKOUT:
+            if (v is WorkoutHealthValue) {
+              final meters = (v.totalDistance ?? 0).toDouble();
+              final wkSteps = (v.totalSteps ?? 0);
+              final isRunning =
+                  v.workoutActivityType == HealthWorkoutActivityType.RUNNING ||
+                      v.workoutActivityType ==
+                          HealthWorkoutActivityType.RUNNING_TREADMILL;
+              if (isRunning) {
+                runningDistance += meters;
+                runningSteps += wkSteps;
+                // Avoid double-counting running distance inside total walking
+                walkingDistance =
+                    (walkingDistance - meters).clamp(0, double.infinity);
+              }
+            }
+            break;
+          default:
+            break;
+        }
+      }
+
+      final walkingSteps = (steps - runningSteps).clamp(0, steps);
+
+      if (mounted) {
+        state = state.copyWith(
+          dailySteps: steps,
+          walkingSteps: walkingSteps,
+          runningSteps: runningSteps,
+          walkingDistanceKm: walkingDistance / 1000.0,
+          runningDistanceKm: runningDistance / 1000.0,
+          activeCalories: activeCalories > 0 ? activeCalories : null,
+          available: true,
+          healthConnected: true,
+        );
+      }
+
+      // Persist for crash recovery / midnight sync.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyLastCountDate, _todayString());
+      await prefs.setInt(_keyLastCount, steps);
+
+      // Sync to backend opportunistically.
+      await _syncTodayIfPossible();
+    } catch (e) {
+      debugPrint('Health refresh failed: $e');
+    }
   }
 
   /// On app pause/detach, flush today's count to the backend so the user
   /// doesn't lose progress if they don't open the app again before midnight.
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
-    if (lifecycleState == AppLifecycleState.paused ||
+    if (lifecycleState == AppLifecycleState.resumed) {
+      if (_healthAuthorized) _refreshFromHealth();
+    } else if (lifecycleState == AppLifecycleState.paused ||
         lifecycleState == AppLifecycleState.detached) {
       _syncTodayIfPossible();
     }
@@ -145,11 +331,13 @@ class StepTrackingNotifier extends StateNotifier<StepTrackingState>
     final member = _ref.read(authProvider).member;
     if (member == null) return false;
     try {
+      final calories = state.activeCalories?.round() ??
+          (steps * 0.04).round();
       return await _ref.read(lifestyleProvider.notifier).logFitness({
         'activity_type': 'auto_steps',
         'duration_minutes': (steps / 100).round().clamp(1, 1440),
         'steps': steps,
-        'calories_burned': (steps * 0.04).round(),
+        'calories_burned': calories,
       });
     } catch (e) {
       debugPrint('Auto step sync failed: $e');
@@ -182,9 +370,17 @@ class StepTrackingNotifier extends StateNotifier<StepTrackingState>
       await prefs.remove(_keyLastCount);
       await prefs.remove(_keyLastCountDate);
       if (mounted) {
-        state = state.copyWith(dailySteps: 0);
+        state = state.copyWith(
+          dailySteps: 0,
+          walkingSteps: 0,
+          runningSteps: 0,
+          walkingDistanceKm: 0,
+          runningDistanceKm: 0,
+          activeCalories: null,
+        );
       }
       _scheduleMidnightReset();
+      if (_healthAuthorized) _refreshFromHealth();
     });
   }
 
@@ -196,8 +392,9 @@ class StepTrackingNotifier extends StateNotifier<StepTrackingState>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _sub?.cancel();
+    _pedometerSub?.cancel();
     _midnightTimer?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 }

@@ -14,6 +14,7 @@ const {
   exportMembers,
   registerMember,
   adminUpdateMember,
+  deleteMember,
 } = require('../controllers/membersController');
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -50,5 +51,6 @@ router.get('/:id', authenticate, requireAdmin, getMemberById);
 router.post('/upload', authenticate, requireAdmin, upload.single('file'), uploadMembers);
 router.patch('/:id/status', authenticate, requireAdmin, toggleMemberStatus);
 router.put('/:id', authenticate, requireAdmin, adminUpdateMember);
+router.delete('/:id', authenticate, requireAdmin, deleteMember);
 
 module.exports = router;

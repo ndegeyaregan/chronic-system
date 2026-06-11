@@ -1,11 +1,46 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const pool = require('../config/db');
 const { sendMail } = require('../utils/mailer');
 const { createAuthRequest, listMyAuthRequests, cancelAuthRequest, listAllAuthRequestsAdmin, reviewAuthRequest } = require('../controllers/authorizationController');
 
-router.post('/', authenticate, createAuthRequest);
+const authDir = path.join(__dirname, '../../uploads/authorizations');
+if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
+
+const authStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, authDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const safeBase = path.basename(file.originalname, ext)
+      .replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 40);
+    cb(null, `auth-${Date.now()}-${Math.random().toString(36).substr(2, 6)}-${safeBase}${ext}`);
+  },
+});
+const authUpload = multer({
+  storage: authStorage,
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = /pdf|jpe?g|png|webp|heic|heif|docx?/i;
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.test(ext)) cb(null, true);
+    else cb(new Error('Only PDF, image or document files are allowed'));
+  },
+}).single('attachment');
+const authUploadMw = (req, res, next) => {
+  // Make multer optional: if no multipart, just pass through
+  const ct = (req.headers['content-type'] || '').toLowerCase();
+  if (!ct.startsWith('multipart/form-data')) return next();
+  authUpload(req, res, (err) => {
+    if (err) return res.status(400).json({ message: err.message });
+    next();
+  });
+};
+
+router.post('/', authenticate, authUploadMw, createAuthRequest);
 router.get('/mine', authenticate, listMyAuthRequests);
 router.patch('/:id/cancel', authenticate, cancelAuthRequest);
 
@@ -95,7 +130,7 @@ router.post('/admin/:id/send-auth-email',authenticate, requireAdmin, async (req,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 680px; margin: 0 auto; color: #1e293b;">
           <div style="background: #1d4ed8; padding: 20px 28px;">
-            <h2 style="color: #fff; margin: 0; font-size: 18px;">Sanlam Chronic Care Programme</h2>
+            <h2 style="color: #fff; margin: 0; font-size: 18px;">SanCare+ Programme</h2>
             <p style="color: #bfdbfe; margin: 4px 0 0; font-size: 13px;">Authorization Letter</p>
           </div>
           <div style="padding: 28px; background: #fff; border: 1px solid #e2e8f0; border-top: none;">
@@ -103,7 +138,7 @@ router.post('/admin/:id/send-auth-email',authenticate, requireAdmin, async (req,
           </div>
           <div style="padding: 14px 28px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none;
             font-size: 12px; color: #94a3b8; text-align: center;">
-            This is an official communication from Sanlam Chronic Care. Ref: ${id.split('-')[0].toUpperCase()}
+            This is an official communication from SanCare+. Ref: ${id.split('-')[0].toUpperCase()}
           </div>
         </div>`,
     });
