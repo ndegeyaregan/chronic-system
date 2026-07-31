@@ -964,6 +964,58 @@ const deleteMember = async (req, res) => {
   }
 };
 
+// Member: delete the signed-in member's own account. Same cascade as the
+// admin hard-delete above, but scoped to req.user's own row so any member
+// can close their own account without admin involvement (required for
+// App Store Guideline 5.1.1(v) — account deletion must be initiatable
+// from within the app).
+const deleteOwnAccount = async (req, res) => {
+  try {
+    const memberId = req.user.id;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const existing = await client.query(
+        'SELECT id, member_number, first_name, last_name FROM members WHERE id = $1',
+        [memberId]
+      );
+      if (!existing.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ message: 'Member not found' });
+      }
+      const member = existing.rows[0];
+
+      await client.query('DELETE FROM members WHERE id = $1', [memberId]);
+
+      await client.query(
+        `INSERT INTO audit_logs (actor_id, actor_type, action, entity, entity_id, details, ip_address)
+         VALUES ($1, 'member', 'delete_own_account', 'member', $2, $3, $4)`,
+        [
+          memberId,
+          memberId,
+          JSON.stringify({
+            member_number: member.member_number,
+            name: `${member.first_name || ''} ${member.last_name || ''}`.trim(),
+          }),
+          req.ip,
+        ]
+      );
+
+      await client.query('COMMIT');
+      return res.json({ message: 'Account deleted' });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('deleteOwnAccount error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,

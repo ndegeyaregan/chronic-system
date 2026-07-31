@@ -15,6 +15,7 @@ const {
   registerMember,
   adminUpdateMember,
   deleteMember,
+  deleteOwnAccount,
 } = require('../controllers/membersController');
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -42,6 +43,7 @@ const updateProfileValidation = [
 router.get('/me', authenticate, getProfile);
 router.put('/me', authenticate, updateProfileValidation, validate, updateProfile);
 router.put('/me/conditions', authenticate, updateConditions);
+router.delete('/me', authenticate, deleteOwnAccount);
 
 // Admin routes
 router.get('/export', authenticate, requireAdmin, exportMembers);
