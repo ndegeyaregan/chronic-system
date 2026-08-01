@@ -66,7 +66,7 @@ ThemeData _buildTheme(Brightness brightness) {
       iconTheme: const IconThemeData(color: Colors.white),
     ),
 
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: cardBg,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -169,7 +169,7 @@ ThemeData _buildTheme(Brightness brightness) {
       space: 1,
     ),
 
-    dialogTheme: DialogTheme(
+    dialogTheme: DialogThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusXl)),
       elevation: 0,
       backgroundColor: isDark ? kDarkSurface : Colors.white,
@@ -196,7 +196,7 @@ ThemeData _buildTheme(Brightness brightness) {
       inactiveTrackColor: kPrimary.withValues(alpha: 0.2),
     ),
 
-    tabBarTheme: const TabBarTheme(
+    tabBarTheme: const TabBarThemeData(
       labelColor: Colors.white,
       unselectedLabelColor: Colors.white70,
       labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),

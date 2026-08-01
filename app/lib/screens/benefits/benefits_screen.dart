@@ -12,7 +12,17 @@ import '../../providers/auth_provider.dart';
 import '../../utils/benefit_forecast.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
+import '../../services/notification_service.dart';
 import '../../core/app_colors.dart';
+
+// ── Warning thresholds (UGX) ──────────────────────────────────────────────
+const double _kWarnOutpatient = 500000;
+const double _kWarnInpatient  = 500000;
+const double _kWarnDental     = 100000;
+const double _kWarnOptical    = 100000;
+
+// Guard so we fire at most one device notification per app session.
+final _notifiedLowBalanceKeys = <String>{};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -92,7 +102,7 @@ class BenefitsScreen extends ConsumerWidget {
         ),
         title: Text('My Benefits',
             style: TextStyle(
-                color: Colors.white,
+                color: context.c.cardBg,
                 fontWeight: FontWeight.w700,
                 fontSize: 18)),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -124,6 +134,36 @@ class BenefitsScreen extends ConsumerWidget {
               ? null
               : buildBenefitAdvice(benefit: benefit, visits: visits);
 
+          // Fire a single device notification per session for each low pool.
+          final lowPools = <({String key, String name, double balance, double threshold})>[
+            if (benefit.outPatient > 0 && benefit.outPatient < _kWarnOutpatient)
+              (key: 'outpatient', name: 'Outpatient', balance: benefit.outPatient, threshold: _kWarnOutpatient),
+            if (benefit.inPatient > 0 && benefit.inPatient < _kWarnInpatient)
+              (key: 'inpatient', name: 'Inpatient', balance: benefit.inPatient, threshold: _kWarnInpatient),
+            if (benefit.dental > 0 && benefit.dental < _kWarnDental)
+              (key: 'dental', name: 'Dental', balance: benefit.dental, threshold: _kWarnDental),
+            if (benefit.optical > 0 && benefit.optical < _kWarnOptical)
+              (key: 'optical', name: 'Optical', balance: benefit.optical, threshold: _kWarnOptical),
+          ];
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            for (final p in lowPools) {
+              if (_notifiedLowBalanceKeys.add(p.key)) {
+                final fmt = p.balance >= 1000000
+                    ? '${(p.balance / 1000000).toStringAsFixed(1)}M'
+                    : p.balance >= 1000
+                        ? '${(p.balance / 1000).toStringAsFixed(0)}K'
+                        : p.balance.toStringAsFixed(0);
+                NotificationService.show(
+                  id: 600 + lowPools.indexOf(p),
+                  title: '⚠️ ${p.name} pool running low',
+                  body:
+                      'Your ${p.name.toLowerCase()} balance is UGX $fmt — below the UGX ${(p.threshold ~/ 1000)}K minimum. Contact your HR officer.',
+                  payload: 'benefits',
+                );
+              }
+            }
+          });
+
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(benefitProvider(member.memberNumber));
@@ -138,6 +178,10 @@ class BenefitsScreen extends ConsumerWidget {
                   dependantCount: dependantCount,
                 ),
                 const SizedBox(height: 12),
+                if (lowPools.isNotEmpty) ...[
+                  _LowBalanceBanner(pools: lowPools.map((p) => p.name).toList()),
+                  const SizedBox(height: 12),
+                ],
                 if (advice != null) ...[
                   _AdvisorCardPremium(advice: advice),
                   const SizedBox(height: 14),
@@ -217,7 +261,7 @@ class _AdvisorCardPremium extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
         border: Border.all(color: tone.color.withValues(alpha: 0.22)),
@@ -421,6 +465,7 @@ class _CategoryGrid extends StatelessWidget {
         spent: _spendFor(visits, isOutPatient),
         claimCount: _countFor(visits, isOutPatient),
         color: kPrimary,
+        warnThreshold: _kWarnOutpatient,
       ),
       _AllocCard(
         icon: Icons.bed_outlined,
@@ -429,6 +474,7 @@ class _CategoryGrid extends StatelessWidget {
         spent: _spendFor(visits, isInPatient),
         claimCount: _countFor(visits, isInPatient),
         color: kPurple,
+        warnThreshold: _kWarnInpatient,
       ),
       _AllocCard(
         icon: Icons.medical_services_outlined,
@@ -437,6 +483,7 @@ class _CategoryGrid extends StatelessWidget {
         spent: _spendFor(visits, isDental),
         claimCount: _countFor(visits, isDental),
         color: kSuccess,
+        warnThreshold: _kWarnDental,
       ),
       _AllocCard(
         icon: Icons.visibility_outlined,
@@ -445,6 +492,7 @@ class _CategoryGrid extends StatelessWidget {
         spent: _spendFor(visits, isOptical),
         claimCount: _countFor(visits, isOptical),
         color: kAccentAmber,
+        warnThreshold: _kWarnOptical,
       ),
     ];
 
@@ -466,6 +514,7 @@ class _AllocCard extends StatelessWidget {
   final double spent;
   final int claimCount;
   final Color color;
+  final double warnThreshold;
 
   const _AllocCard({
     required this.icon,
@@ -474,6 +523,7 @@ class _AllocCard extends StatelessWidget {
     required this.spent,
     required this.claimCount,
     required this.color,
+    this.warnThreshold = 0,
   });
 
   @override
@@ -484,6 +534,7 @@ class _AllocCard extends StatelessWidget {
     final remaining = allocation;
     final hasBalance = remaining > 0;
     final spentDisplay = spent;
+    final isLow = warnThreshold > 0 && remaining > 0 && remaining < warnThreshold;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
@@ -491,7 +542,10 @@ class _AllocCard extends StatelessWidget {
         color: context.c.surface,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
-        border: Border.all(color: context.c.border),
+        border: Border.all(
+          color: isLow ? kAccentAmber.withValues(alpha: 0.8) : context.c.border,
+          width: isLow ? 1.5 : 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -567,6 +621,87 @@ class _AllocCard extends StatelessWidget {
               ],
             ),
           ),
+          if (isLow) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: kAccentAmber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(kRadiusMd),
+                border: Border.all(color: kAccentAmber.withValues(alpha: 0.45)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      size: 13, color: kAccentAmber),
+                  const SizedBox(width: 5),
+                  const Expanded(
+                    child: Text(
+                      'Low balance — contact HR',
+                      style: TextStyle(
+                          color: kAccentAmber,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Low-balance summary banner
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LowBalanceBanner extends StatelessWidget {
+  final List<String> pools;
+  const _LowBalanceBanner({required this.pools});
+
+  @override
+  Widget build(BuildContext context) {
+    final names = pools.join(' & ');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: kAccentAmber.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(kRadiusMd),
+        border: Border.all(color: kAccentAmber.withValues(alpha: 0.50)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 1),
+            child: Icon(Icons.warning_amber_rounded,
+                color: kAccentAmber, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Benefit Pool Warning',
+                  style: TextStyle(
+                      color: kAccentAmber,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Your $names ${pools.length == 1 ? "pool is" : "pools are"} running low. '
+                  'Please contact your HR officer or Sanlam Allianz Uganda to arrange a top-up.',
+                  style: TextStyle(
+                      color: context.c.text, fontSize: 12, height: 1.4),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -588,7 +723,7 @@ class _RecentClaimsLink extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(kRadiusLg),
           boxShadow: kCardShadow,
           border: Border.all(color: context.c.border),

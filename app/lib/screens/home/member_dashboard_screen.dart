@@ -60,9 +60,9 @@ class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
     final member = ref.watch(authProvider).member;
 
     if (member == null) {
-      return const Scaffold(
-        backgroundColor: _kBg,
-        body: EmptyState(
+      return Scaffold(
+        backgroundColor: context.c.bg,
+        body: const EmptyState(
           icon: Icons.person_off_outlined,
           title: 'Not signed in',
           subtitle: 'Please sign in to access your dashboard.',
@@ -71,7 +71,7 @@ class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
     }
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: context.c.bg,
       body: RefreshIndicator(
         color: kPrimary,
         onRefresh: () async {
@@ -86,31 +86,38 @@ class _MemberDashboardScreenState extends ConsumerState<MemberDashboardScreen> {
             SliverToBoxAdapter(child: _HeroCard(member: member)),
 
             // ── Body sections ──────────────────────────────────────────────
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _BenefitsSummaryCard(memberNo: member.memberNumber),
-                  const SizedBox(height: 24),
-                  _RecentClaimsSection(memberNo: member.memberNumber),
-                  const SizedBox(height: 24),
-                  const _QuickActionsGrid(),
-                  const SizedBox(height: 24),
-                  Consumer(
-                    builder: (ctx, ref, _) {
-                      if (!ref.watch(isChronicMemberProvider)) {
-                        return const SizedBox.shrink();
-                      }
-                      return Column(
-                        children: const [
-                          _ChronicCareTile(),
-                          SizedBox(height: 24),
-                        ],
-                      );
-                    },
+            SliverToBoxAdapter(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                    child: Column(
+                      children: [
+                        _BenefitsSummaryCard(memberNo: member.memberNumber),
+                        const SizedBox(height: 24),
+                        _RecentClaimsSection(memberNo: member.memberNumber),
+                        const SizedBox(height: 24),
+                        const _QuickActionsGrid(),
+                        const SizedBox(height: 24),
+                        Consumer(
+                          builder: (ctx, ref, _) {
+                            if (!ref.watch(isChronicMemberProvider)) {
+                              return const SizedBox.shrink();
+                            }
+                            return Column(
+                              children: const [
+                                _ChronicCareTile(),
+                                SizedBox(height: 24),
+                              ],
+                            );
+                          },
+                        ),
+                        const _WellnessTipCard(),
+                      ],
+                    ),
                   ),
-                  const _WellnessTipCard(),
-                ]),
+                ),
               ),
             ),
           ],
@@ -419,7 +426,7 @@ class _HeroCard extends ConsumerWidget {
                     _HeroStat(
                       label: 'Spent YTD',
                       valueWidget: visitsAsync.isLoading
-                          ? Text(
+                          ? const Text(
                               '…',
                               style: TextStyle(
                                 color: Colors.white,
@@ -428,7 +435,7 @@ class _HeroCard extends ConsumerWidget {
                               ),
                             )
                           : visitsAsync.hasError
-                              ? Text(
+                              ? const Text(
                                   '—',
                                   style: TextStyle(
                                     color: Colors.white,
@@ -626,7 +633,7 @@ class _BenefitsSummaryCard extends ConsumerWidget {
                 highlightColor: const Color(0xFFF8FAFC),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.c.cardBg,
                     borderRadius: BorderRadius.circular(kRadiusMd),
                   ),
                 ),
@@ -927,9 +934,11 @@ class _QuickActionsGrid extends ConsumerWidget {
     final canViewDependants = ref.watch(canViewDependantsProvider);
     final actions = <_QA>[
       const _QA('Membership\nCard', Icons.badge_rounded, kPrimary, routeMembershipCard),
+      const _QA('Appointments', Icons.calendar_month_rounded,
+          Color(0xFF0EA5E9), routeAppointments),
       const _QA('Pre-Auths', Icons.verified_user_rounded, kAccentAmber, routePreauths),
       const _QA('Request\nPre-Auth', Icons.assignment_add,
-          Color(0xFF0EA5E9), '/authorizations'),
+          Color(0xFF6366F1), '/authorizations'),
       const _QA('Prescriptions', Icons.medication_liquid_rounded,
           Color(0xFF0891B2), routePrescriptions),
       const _QA('Reimburse', Icons.receipt_long_rounded,
@@ -978,7 +987,7 @@ class _QATile extends ConsumerWidget {
       onTap: () => context.push(action.route),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(kRadiusMd),
           boxShadow: [
             BoxShadow(
@@ -1025,8 +1034,8 @@ class _QATile extends ConsumerWidget {
                       alignment: Alignment.center,
                       child: Text(
                         unread > 99 ? '99+' : '$unread',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.c.cardBg,
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
                           height: 1.0,
@@ -1101,11 +1110,11 @@ class _ChronicCareTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Open Chronic Care Centre',
                     style: TextStyle(
                       color: Colors.white,
@@ -1113,8 +1122,8 @@ class _ChronicCareTile extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
+                  const SizedBox(height: 4),
+                  const Text(
                     'Manage your conditions, treatment plans and lab results',
                     style: TextStyle(
                       color: Colors.white,

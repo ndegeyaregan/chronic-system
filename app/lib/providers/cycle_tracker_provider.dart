@@ -49,7 +49,7 @@ class CycleTrackerState {
 
 class CycleTrackerNotifier extends StateNotifier<CycleTrackerState> {
   CycleTrackerNotifier() : super(const CycleTrackerState()) {
-    _load();
+    Future.microtask(_load);
   }
 
   static const _keyEntries = 'cycle_entries_v1';

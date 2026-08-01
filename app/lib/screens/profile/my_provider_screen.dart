@@ -128,7 +128,7 @@ class _ProviderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(14),
         boxShadow: kCardShadow,
       ),
@@ -704,7 +704,7 @@ class _HospitalSearchFieldState extends State<_HospitalSearchField> {
           Container(
             constraints: const BoxConstraints(maxHeight: 220),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: context.c.border),
               boxShadow: kCardShadow,

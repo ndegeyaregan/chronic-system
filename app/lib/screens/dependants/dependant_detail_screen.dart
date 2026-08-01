@@ -11,6 +11,7 @@ import '../../widgets/common/loading_shimmer.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/claim_status_chip.dart';
 import '../benefits/benefits_screen.dart';
+import 'dependant_claims_screen.dart';
 import '../../core/app_colors.dart';
 
 class DependantDetailScreen extends ConsumerWidget {
@@ -49,8 +50,8 @@ class DependantDetailScreen extends ConsumerWidget {
           decoration: const BoxDecoration(gradient: kPrimaryGradient),
         ),
         title: Text(name,
-            style: const TextStyle(
-                color: Colors.white,
+            style: TextStyle(
+                color: context.c.cardBg,
                 fontWeight: FontWeight.w700,
                 fontSize: 18)),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -75,8 +76,8 @@ class DependantDetailScreen extends ConsumerWidget {
                   backgroundColor: Colors.white.withValues(alpha: 0.25),
                   child: Text(
                     initials,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.c.cardBg,
                       fontWeight: FontWeight.w700,
                       fontSize: 20,
                     ),
@@ -89,8 +90,8 @@ class DependantDetailScreen extends ConsumerWidget {
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.c.cardBg,
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                         ),
@@ -112,8 +113,8 @@ class DependantDetailScreen extends ConsumerWidget {
                         ),
                         child: Text(
                           relation,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.c.cardBg,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -155,12 +156,34 @@ class DependantDetailScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Recent claims section
-          Text(
-            'Recent Claims',
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: context.c.text),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Recent Claims',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: context.c.text),
+              ),
+              TextButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => DependantClaimsScreen(
+                      memberNo: memberNo,
+                      dependantName: name,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.receipt_long_outlined, size: 16),
+                label: const Text('View all'),
+                style: TextButton.styleFrom(
+                  foregroundColor: kPrimary,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           visitsAsync.when(
@@ -178,18 +201,47 @@ class DependantDetailScreen extends ConsumerWidget {
                   subtitle: 'No claims found for this dependant.',
                 );
               }
-              final recent = visits.take(5).toList();
+              final recent = visits.take(3).toList();
               return Column(
-                children: recent.map((v) => _MiniClaimCard(
-                      visit: v,
-                      onTap: () => context.push(
-                        '$routeClaims/${v.visitId}',
-                        extra: {
-                          'visit': v,
-                          'memberNo': memberNo,
-                        },
+                children: [
+                  ...recent.map((v) => _MiniClaimCard(
+                        visit: v,
+                        onTap: () => context.push(
+                          '$routeClaims/${v.visitId}',
+                          extra: {
+                            'visit': v,
+                            'memberNo': memberNo,
+                          },
+                        ),
+                      )),
+                  if (visits.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => DependantClaimsScreen(
+                                memberNo: memberNo,
+                                dependantName: name,
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.list_alt_rounded, size: 16),
+                          label: Text(
+                              'View all ${visits.length} claims'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: kPrimary,
+                            side: const BorderSide(color: kPrimary),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
                       ),
-                    )).toList(),
+                    ),
+                ],
               );
             },
           ),

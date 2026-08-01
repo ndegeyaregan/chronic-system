@@ -89,7 +89,7 @@ class TermsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   border: Border(
                     top: BorderSide(color: context.c.border, width: 1),
                   ),
@@ -123,7 +123,7 @@ class TermsScreen extends StatelessWidget {
                         label: Text(
                           'I Agree & Continue',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: context.c.cardBg,
                               fontWeight: FontWeight.w700),
                         ),
                         style: ElevatedButton.styleFrom(

@@ -11,7 +11,7 @@ import '../../widgets/common/dependant_tile.dart';
 import '../../core/app_colors.dart';
 
 const _kAddDependantsUrl =
-    'http://sanlamallianz4u.co.ug/medicalform/index.php';
+    'https://sanlamallianz4u.co.ug/medicalform/index.php';
 
 bool _isPrincipalOrSpouse(String relation) {
   final r = relation.trim().toLowerCase();
@@ -36,7 +36,7 @@ class DependantsListScreen extends ConsumerWidget {
         ),
         title: Text('Dependants',
             style: TextStyle(
-                color: Colors.white,
+                color: context.c.cardBg,
                 fontWeight: FontWeight.w700,
                 fontSize: 18)),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -157,7 +157,7 @@ class _NoDependantsView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(kRadiusMd),
               border: Border.all(color: kPrimary.withValues(alpha: 0.25)),
               boxShadow: kCardShadow,

@@ -206,10 +206,14 @@ class _RequestAuthorizationScreenState
                     const Icon(Icons.medication_outlined,
                         color: kSuccess, size: 20),
                     const SizedBox(width: 10),
-                    Text(
-                      widget.medicationName!,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600),
+                    Expanded(
+                      child: Text(
+                        widget.medicationName!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ],
                 ),
@@ -221,6 +225,7 @@ class _RequestAuthorizationScreenState
             _Label('Request Type'),
             const SizedBox(height: 8),
             DropdownButtonFormField<AuthRequestType>(
+              isExpanded: true,
               value: _type,
               decoration: _deco(Icons.assignment_outlined),
               items: const [
@@ -275,6 +280,7 @@ class _RequestAuthorizationScreenState
               _Label('Select Pharmacy'),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 value: _selectedPharmacy?.id.isEmpty == true
                     ? null
                     : _selectedPharmacy?.id,
@@ -315,7 +321,7 @@ class _RequestAuthorizationScreenState
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: context.c.border),
                 ),
@@ -351,7 +357,7 @@ class _RequestAuthorizationScreenState
                 hintText:
                     'e.g. Doctor recommended this refill, procedure details...',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: Theme.of(context).inputDecorationTheme.fillColor,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: context.c.border)),
@@ -378,7 +384,7 @@ class _RequestAuthorizationScreenState
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                       color: _attachment == null
@@ -447,7 +453,7 @@ class _RequestAuthorizationScreenState
   InputDecoration _deco(IconData icon) => InputDecoration(
         prefixIcon: Icon(icon, color: context.c.subtext, size: 20),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: context.c.border)),
@@ -485,7 +491,7 @@ class _TypeChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? kPrimary.withValues(alpha: 0.1) : Colors.white,
+            color: selected ? kPrimary.withValues(alpha: 0.1) : context.c.cardBg,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
                 color: selected ? kPrimary : context.c.border,

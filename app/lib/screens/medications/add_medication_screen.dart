@@ -308,7 +308,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                     Container(
                       margin: const EdgeInsets.only(top: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.c.cardBg,
                         border: Border.all(color: context.c.border),
                         borderRadius: BorderRadius.circular(kRadiusMd),
                         boxShadow: kShadowSm,
@@ -397,12 +397,13 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                   ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     value: _frequency,
                     decoration: InputDecoration(
                       prefixIcon: Icon(Icons.schedule_outlined,
                           color: context.c.subtext),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: Theme.of(context).inputDecorationTheme.fillColor,
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(color: context.c.border)),
@@ -439,7 +440,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.c.cardBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: context.c.border),
                       ),
@@ -487,7 +488,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.c.cardBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: context.c.border),
                       ),
@@ -546,7 +547,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.c.cardBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: context.c.border),
                       ),
@@ -646,6 +647,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                     ),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
+                      isExpanded: true,
                       value: _selectedCondition,
                       hint: Text('Select condition'),
                       decoration: InputDecoration(
@@ -653,7 +655,7 @@ class _AddMedicationScreenState extends ConsumerState<AddMedicationScreen> {
                             Icons.local_hospital_outlined,
                             color: context.c.subtext),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide:
@@ -755,12 +757,13 @@ class _PharmacyPicker extends ConsumerWidget {
           const Center(child: CircularProgressIndicator(strokeWidth: 2))
         else
           DropdownButtonFormField<String>(
+            isExpanded: true,
             value: selected?.id,
             hint: Text('Select pharmacy'),
             decoration: InputDecoration(
               prefixIcon: Icon(Icons.local_pharmacy_outlined, color: context.c.subtext),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Theme.of(context).inputDecorationTheme.fillColor,
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: context.c.border)),
@@ -833,12 +836,13 @@ class _RefillIntervalPicker extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<int?>(
+          isExpanded: true,
           value: value,
           hint: Text('Select refill cycle'),
           decoration: InputDecoration(
             prefixIcon: Icon(Icons.refresh_outlined, color: context.c.subtext),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).inputDecorationTheme.fillColor,
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: context.c.border)),

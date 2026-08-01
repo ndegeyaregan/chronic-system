@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -116,6 +117,10 @@ Future<void> maybeShowUpdateDialog(
   BuildContext context,
   WidgetRef ref,
 ) async {
+  // APK self-update only applies to Android sideload builds.
+  // On iOS updates come through the App Store — skip the dialog entirely.
+  if (defaultTargetPlatform == TargetPlatform.iOS) return;
+
   final info = await AppUpdateService.instance.check();
   if (info == null || !info.hasUpdate) return;
   if (!context.mounted) return;

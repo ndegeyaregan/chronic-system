@@ -455,7 +455,7 @@ class _MediaPreviewTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: context.c.border),
       ),

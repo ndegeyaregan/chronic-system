@@ -340,8 +340,8 @@ class _GymLogoTile extends StatelessWidget {
             child: Center(
               child: Text(
                 _initials,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: context.c.cardBg,
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.5,
@@ -465,7 +465,7 @@ class _PartnerList extends StatelessWidget {
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.c.cardBg,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(

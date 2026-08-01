@@ -21,6 +21,8 @@ const appointmentBody = [
   body('condition').optional().trim().isLength({ max: 255 }).withMessage('Condition name too long'),
   body('preferred_time').optional().trim().isLength({ max: 50 }).withMessage('Preferred time too long'),
   body('reason').optional().trim().isLength({ max: 1000 }).withMessage('Reason too long'),
+  body('outpatient_balance').optional().isFloat({ min: 0 }).withMessage('outpatient_balance must be >= 0'),
+  body('sanlam_verified').optional().isBoolean().withMessage('sanlam_verified must be boolean'),
 ];
 
 const idParam = [

@@ -195,6 +195,24 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
             ),
+            // Medical disclaimer — required by Google Play's Health Content
+            // and Services policy, shown on the very first screen.
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: 24,
+              child: SafeArea(
+                child: Text(
+                  kMedicalDisclaimerShort,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

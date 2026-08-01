@@ -250,9 +250,9 @@ class ConditionEducationScreen extends ConsumerWidget {
             ),
           ),
         ),
-        title: const Text('Health Education',
+        title: Text('Health Education',
             style: TextStyle(
-                color: Colors.white,
+                color: context.c.cardBg,
                 fontWeight: FontWeight.w700,
                 fontSize: 18)),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -375,7 +375,7 @@ class _ConditionCardState extends State<_ConditionCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
       ),
@@ -568,7 +568,7 @@ class _GeneralWellnessCardState extends State<_GeneralWellnessCard> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
       ),

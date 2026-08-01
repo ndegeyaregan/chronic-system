@@ -105,7 +105,7 @@ class _ReimbCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusMd),
         boxShadow: [
           BoxShadow(

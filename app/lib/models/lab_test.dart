@@ -1,7 +1,7 @@
 class LabTest {
   final String id;
   final String memberId;
-  final String testType; // liver_function | kidney_function
+  final String testType; // complete_blood_count | liver_function | kidney_function
   final DateTime? scheduledDate;
   final DateTime dueDate;
   final DateTime? completedAt;
@@ -43,6 +43,8 @@ class LabTest {
 
   String get testTypeLabel {
     switch (testType) {
+      case 'full_blood_count':
+        return 'Full Blood Count (FBC/CBC)';
       case 'liver_function':
         return 'Liver Function Test (LFT)';
       case 'kidney_function':
@@ -54,6 +56,8 @@ class LabTest {
 
   String get testTypeShort {
     switch (testType) {
+      case 'full_blood_count':
+        return 'FBC';
       case 'liver_function':
         return 'LFT';
       case 'kidney_function':

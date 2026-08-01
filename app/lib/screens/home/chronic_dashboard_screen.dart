@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -158,9 +159,9 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
 
   String _initials(String? firstName, String? fullName) {
     if (fullName != null && fullName.trim().isNotEmpty) {
-      final p = fullName.trim().split(' ');
+      final p = fullName.trim().split(' ').where((s) => s.isNotEmpty).toList();
       if (p.length >= 2) return '${p[0][0]}${p[1][0]}'.toUpperCase();
-      return fullName[0].toUpperCase();
+      if (p.isNotEmpty) return p[0][0].toUpperCase();
     }
     return firstName?.isNotEmpty == true ? firstName![0].toUpperCase() : 'M';
   }
@@ -209,10 +210,10 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
                   ),
                 ),
               ),
-              title: const Text(
+              title: Text(
                 'My Care',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.3,
@@ -334,7 +335,7 @@ class _DashboardScreenState extends ConsumerState<ChronicDashboardScreen> {
       onTap: () => context.push(a.route),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(color: a.color.withValues(alpha: 0.16), blurRadius: 8, offset: const Offset(0, 2)),
@@ -954,8 +955,8 @@ class _HealthScoreCardState extends State<_HealthScoreCard>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text('${(_anim.value * 100).toInt()}',
-                              style: const TextStyle(
-                                  color: Colors.white,
+                              style: TextStyle(
+                                  color: context.c.cardBg,
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
                                   height: 1)),
@@ -1019,8 +1020,8 @@ class _HealthScoreCardState extends State<_HealthScoreCard>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(message,
-                      style: const TextStyle(
-                          color: Colors.white,
+                      style: TextStyle(
+                          color: context.c.cardBg,
                           fontSize: 12,
                           height: 1.4)),
                 ),

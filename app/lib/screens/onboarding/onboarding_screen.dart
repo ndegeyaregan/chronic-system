@@ -38,8 +38,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Pre-select conditions from existing member profile
-      final member = ref.read(memberProvider).member ??
-          ref.read(authProvider).member;
+      final member =
+          ref.read(memberProvider).member ?? ref.read(authProvider).member;
       if (member != null && member.conditions.isNotEmpty) {
         setState(() {
           _selectedConditions = Set.from(member.conditions);
@@ -59,16 +59,27 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           .map<String>((c) => c['name'].toString())
           .toList()
         ..sort();
-      if (mounted) setState(() { _availableConditions = names; _loadingConditions = false; });
+      if (mounted)
+        setState(() {
+          _availableConditions = names;
+          _loadingConditions = false;
+        });
     } on DioException catch (_) {
       // Fallback to a minimal hardcoded list if API is unreachable
-      if (mounted) setState(() {
-        _availableConditions = [
-          'Hypertension', 'Diabetes Type 1', 'Diabetes Type 2', 'Asthma',
-          'COPD', 'HIV/AIDS', 'Arthritis', 'Heart Failure',
-        ];
-        _loadingConditions = false;
-      });
+      if (mounted)
+        setState(() {
+          _availableConditions = [
+            'Hypertension',
+            'Diabetes Type 1',
+            'Diabetes Type 2',
+            'Asthma',
+            'COPD',
+            'HIV/AIDS',
+            'Arthritis',
+            'Heart Failure',
+          ];
+          _loadingConditions = false;
+        });
     }
   }
 
@@ -186,7 +197,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: Row(
                 children: [
                   Row(
-                    children: List.generate(4, (i) => _Dot(active: i == _currentPage)),
+                    children: List.generate(
+                        4, (i) => _Dot(active: i == _currentPage)),
                   ),
                   const Spacer(),
                   if (_currentPage < 3)
@@ -233,9 +245,74 @@ class _Dot extends StatelessWidget {
 
 // ── Page 1: Welcome ────────────────────────────────────────────────────────
 
-class _WelcomePage extends StatelessWidget {
+// Every member-facing module in the app, shown on the welcome screen so
+// new members know the full scope before they start onboarding.
+const List<(IconData, String)> _kAppModules = [
+  (Icons.account_balance_wallet_rounded, 'Benefits'),
+  (Icons.receipt_long_rounded, 'Claims'),
+  (Icons.family_restroom_rounded, 'Dependants'),
+  (Icons.badge_rounded, 'Membership Card'),
+  (Icons.verified_rounded, 'Pre-Authorisations'),
+  (Icons.local_hospital_rounded, 'Network Providers'),
+  (Icons.map_rounded, 'Facility Finder'),
+  (Icons.payments_rounded, 'Reimbursement'),
+  (Icons.medication_liquid_rounded, 'Prescriptions'),
+  (Icons.calendar_month_rounded, 'Appointments'),
+  (Icons.medication_rounded, 'Medications'),
+  (Icons.monitor_heart_rounded, 'Vitals Tracking'),
+  (Icons.medical_services_rounded, 'Treatment Plans'),
+  (Icons.science_rounded, 'Lab Results'),
+  (Icons.restaurant_rounded, 'Lifestyle & Nutrition'),
+  (Icons.fitness_center_rounded, 'Gyms & Fitness Partners'),
+  (Icons.menu_book_rounded, 'Health Education'),
+  (Icons.sos_rounded, 'Emergency SOS'),
+  (Icons.newspaper_rounded, 'News'),
+  (Icons.notifications_rounded, 'Notifications'),
+];
+
+class _ModuleChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _ModuleChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(kRadiusFull),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: Colors.white70),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WelcomePage extends StatefulWidget {
   final VoidCallback onNext;
   const _WelcomePage({required this.onNext});
+
+  @override
+  State<_WelcomePage> createState() => _WelcomePageState();
+}
+
+class _WelcomePageState extends State<_WelcomePage> {
+  bool _disclaimerAcknowledged = false;
 
   @override
   Widget build(BuildContext context) {
@@ -248,67 +325,102 @@ class _WelcomePage extends StatelessWidget {
         ),
       ),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            children: [
-              const SizedBox(height: 80),
-              // Logo placeholder
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x40000000),
-                      blurRadius: 24,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text(
-                    'S',
-                    style: TextStyle(
-                      color: kPrimary,
-                      fontSize: 52,
-                      fontWeight: FontWeight.bold,
-                    ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 40),
+                      Text(
+                        'Welcome to\nSanCare+',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: context.c.cardBg,
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Everything you need to manage your health and your '
+                        'family\'s, in one place:',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 15,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _kAppModules
+                            .map((m) => _ModuleChip(icon: m.$1, label: m.$2))
+                            .toList(),
+                      ),
+                      const SizedBox(height: 32),
+                      // Medical disclaimer — required by Google Play's Health Content
+                      // and Services policy. Must be acknowledged before proceeding.
+                      GestureDetector(
+                        onTap: () => setState(() =>
+                            _disclaimerAcknowledged = !_disclaimerAcknowledged),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.25)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Checkbox(
+                                value: _disclaimerAcknowledged,
+                                onChanged: (v) => setState(
+                                    () => _disclaimerAcknowledged = v ?? false),
+                                checkColor: kPrimary,
+                                fillColor: WidgetStateProperty.resolveWith(
+                                    (_) => Colors.white),
+                                side: const BorderSide(color: Colors.white70),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Text(
+                                    'I understand that $kMedicalDisclaimerShort',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12.5,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _OnboardingButton(
+                        label: 'Get Started',
+                        onTap: _disclaimerAcknowledged ? widget.onNext : null,
+                        white: true,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
-              const Text(
-                'Welcome to\nSanCare',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Your personal health companion for managing chronic conditions with confidence.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                  height: 1.5,
-                ),
-              ),
-              const Spacer(),
-              _OnboardingButton(
-                label: 'Get Started',
-                onTap: onNext,
-                white: true,
-              ),
-              const SizedBox(height: 40),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -359,9 +471,8 @@ class _ConditionsPageState extends State<_ConditionsPage> {
   @override
   Widget build(BuildContext context) {
     // Custom conditions = selected items not in the DB list
-    final customSelected = widget.selected
-        .where((c) => !widget.conditions.contains(c))
-        .toList();
+    final customSelected =
+        widget.selected.where((c) => !widget.conditions.contains(c)).toList();
 
     return Container(
       decoration: const BoxDecoration(
@@ -377,10 +488,10 @@ class _ConditionsPageState extends State<_ConditionsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Your Conditions',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                 ),
@@ -388,19 +499,22 @@ class _ConditionsPageState extends State<_ConditionsPage> {
               const SizedBox(height: 8),
               const Text(
                 'Select the conditions you manage. This helps us personalise your care.',
-                style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.4),
+                style:
+                    TextStyle(color: Colors.white70, fontSize: 15, height: 1.4),
               ),
               const SizedBox(height: 24),
               Expanded(
                 child: widget.loading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white54))
+                    ? const Center(
+                        child: CircularProgressIndicator(color: Colors.white54))
                     : ListView(
                         children: [
                           // DB conditions grid
                           GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
@@ -423,19 +537,28 @@ class _ConditionsPageState extends State<_ConditionsPage> {
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
-                              children: customSelected.map((c) => Chip(
-                                label: Text(c, style: const TextStyle(fontSize: 13, color: kPrimary, fontWeight: FontWeight.w600)),
-                                backgroundColor: Colors.white,
-                                deleteIcon: const Icon(Icons.close, size: 16, color: kPrimary),
-                                onDeleted: () => widget.onToggle(c),
-                                side: const BorderSide(color: Colors.white),
-                              )).toList(),
+                              children: customSelected
+                                  .map((c) => Chip(
+                                        label: Text(c,
+                                            style: const TextStyle(
+                                                fontSize: 13,
+                                                color: kPrimary,
+                                                fontWeight: FontWeight.w600)),
+                                        backgroundColor: Colors.white,
+                                        deleteIcon: const Icon(Icons.close,
+                                            size: 16, color: kPrimary),
+                                        onDeleted: () => widget.onToggle(c),
+                                        side: const BorderSide(
+                                            color: Colors.white),
+                                      ))
+                                  .toList(),
                             ),
                             const SizedBox(height: 12),
                           ],
                           // "Other" tile
                           GestureDetector(
-                            onTap: () => setState(() => _showOtherField = !_showOtherField),
+                            onTap: () => setState(
+                                () => _showOtherField = !_showOtherField),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               height: 44,
@@ -454,15 +577,21 @@ class _ConditionsPageState extends State<_ConditionsPage> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
-                                    _showOtherField ? Icons.edit : Icons.add_circle_outline,
-                                    color: _showOtherField ? kPrimary : Colors.white70,
+                                    _showOtherField
+                                        ? Icons.edit
+                                        : Icons.add_circle_outline,
+                                    color: _showOtherField
+                                        ? kPrimary
+                                        : Colors.white70,
                                     size: 18,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Other condition',
                                     style: TextStyle(
-                                      color: _showOtherField ? kPrimary : Colors.white,
+                                      color: _showOtherField
+                                          ? kPrimary
+                                          : Colors.white,
                                       fontWeight: FontWeight.w500,
                                       fontSize: 13,
                                     ),
@@ -480,26 +609,38 @@ class _ConditionsPageState extends State<_ConditionsPage> {
                                   child: TextField(
                                     controller: _otherCtrl,
                                     autofocus: true,
-                                    textCapitalization: TextCapitalization.words,
+                                    textCapitalization:
+                                        TextCapitalization.words,
                                     onSubmitted: (_) => _addOther(),
-                                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 14),
                                     decoration: InputDecoration(
                                       hintText: 'Type condition name…',
-                                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                                      hintStyle: TextStyle(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.5)),
                                       filled: true,
-                                      fillColor: Colors.white.withValues(alpha: 0.12),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      fillColor:
+                                          Colors.white.withValues(alpha: 0.12),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 14, vertical: 12),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
-                                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                        borderSide: BorderSide(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.3)),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
-                                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                        borderSide: BorderSide(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.3)),
                                       ),
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
-                                        borderSide: const BorderSide(color: Colors.white),
+                                        borderSide: const BorderSide(
+                                            color: Colors.white),
                                       ),
                                     ),
                                   ),
@@ -510,10 +651,11 @@ class _ConditionsPageState extends State<_ConditionsPage> {
                                   child: Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: context.c.cardBg,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: const Icon(Icons.check, color: kPrimary, size: 20),
+                                    child: const Icon(Icons.check,
+                                        color: kPrimary, size: 20),
                                   ),
                                 ),
                               ],
@@ -542,7 +684,8 @@ class _ConditionTile extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
-  const _ConditionTile({required this.label, required this.isSelected, required this.onTap});
+  const _ConditionTile(
+      {required this.label, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -551,10 +694,12 @@ class _ConditionTile extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.12),
+          color:
+              isSelected ? Colors.white : Colors.white.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.3),
+            color:
+                isSelected ? Colors.white : Colors.white.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
@@ -619,10 +764,10 @@ class _BuddyPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Your Care Buddy',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                 ),
@@ -630,7 +775,8 @@ class _BuddyPage extends StatelessWidget {
               const SizedBox(height: 8),
               const Text(
                 'Add someone we can reach if you are unreachable — a family member, friend, or caregiver.',
-                style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.4),
+                style:
+                    TextStyle(color: Colors.white70, fontSize: 15, height: 1.4),
               ),
               const SizedBox(height: 32),
               _WhiteField(
@@ -738,7 +884,7 @@ class _SummaryPage extends StatelessWidget {
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(
@@ -751,11 +897,11 @@ class _SummaryPage extends StatelessWidget {
                 child: const Icon(Icons.check, color: kAccent, size: 50),
               ),
               const SizedBox(height: 40),
-              const Text(
+              Text(
                 "You're all set!",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
                 ),

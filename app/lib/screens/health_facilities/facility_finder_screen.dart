@@ -1,5 +1,7 @@
+import 'dart:math' show sin, cos, sqrt, atan2, pi;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../models/institution.dart';
@@ -8,6 +10,18 @@ import '../../providers/institutions_provider.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import 'institution_detail_screen.dart';
 import '../../core/app_colors.dart';
+
+double _haversineKm(double lat1, double lon1, double lat2, double lon2) {
+  const r = 6371.0;
+  final dLat = (lat2 - lat1) * pi / 180;
+  final dLon = (lon2 - lon1) * pi / 180;
+  final a = sin(dLat / 2) * sin(dLat / 2) +
+      cos(lat1 * pi / 180) *
+          cos(lat2 * pi / 180) *
+          sin(dLon / 2) *
+          sin(dLon / 2);
+  return r * 2 * atan2(sqrt(a), sqrt(1 - a));
+}
 
 class FacilityFinderScreen extends ConsumerStatefulWidget {
   const FacilityFinderScreen({super.key});
@@ -27,6 +41,24 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
     InstitutionCategory.dental:     Icons.medication_liquid_outlined,
     InstitutionCategory.optical:    Icons.remove_red_eye_outlined,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _tryGetLocation();
+  }
+
+  Future<void> _tryGetLocation() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+      ).timeout(const Duration(seconds: 8));
+      if (!mounted) return;
+      ref.read(institutionsProvider.notifier).setUserLocation(pos.latitude, pos.longitude);
+    } catch (_) {
+      // Location unavailable or denied — list stays sorted alphabetically.
+    }
+  }
 
   @override
   void dispose() {
@@ -73,9 +105,9 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
             ),
           ),
         ),
-        title: const Text('Find a Facility',
+        title: Text('Find a Facility',
             style: TextStyle(
-                color: Colors.white,
+                color: context.c.cardBg,
                 fontWeight: FontWeight.w700,
                 fontSize: 18)),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -118,7 +150,7 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
                       )
                     : null,
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: Theme.of(context).inputDecorationTheme.fillColor,
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
@@ -158,6 +190,20 @@ class _FacilityFinderScreenState extends ConsumerState<FacilityFinderScreen> {
               ],
             ),
           ),
+          if (state.userLat != null && state.userLng != null) ...[
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(Icons.near_me_rounded, size: 13, color: context.c.subtext),
+                  const SizedBox(width: 4),
+                  Text('Sorted by distance',
+                      style: TextStyle(fontSize: 12, color: context.c.subtext)),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 4),
           Expanded(child: _List(state: state, onCall: _call, onRefresh: notifier.fetch)),
         ],
@@ -297,6 +343,17 @@ class _InstitutionCard extends ConsumerWidget {
     final hasInstCoPay = instCoPay != null && instCoPay.hasAnyCharge;
     final hasCoPay = hasSchemeCoPay || hasInstCoPay;
 
+    final institutionsState = ref.watch(institutionsProvider);
+    final userLat = institutionsState.userLat;
+    final userLng = institutionsState.userLng;
+    final distanceKm = (userLat != null &&
+            userLng != null &&
+            institution.latitude != null &&
+            institution.longitude != null)
+        ? _haversineKm(
+            userLat, userLng, institution.latitude!, institution.longitude!)
+        : null;
+
     return GestureDetector(
       onTap: institution.isSuspended
           ? null
@@ -310,7 +367,7 @@ class _InstitutionCard extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
       ),
@@ -350,6 +407,10 @@ class _InstitutionCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   _badge(InstitutionCategory.label(institution.category), color),
+                  if (distanceKm != null) ...[
+                    const SizedBox(height: 4),
+                    _badge('${distanceKm.toStringAsFixed(1)} km', kInfo),
+                  ],
                   if (institution.isSuspended) ...[
                     const SizedBox(height: 4),
                     _badge('Suspended', Colors.red.shade700),

@@ -168,7 +168,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
       width: 48, height: 56,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusMd),
         border: Border.all(
           color: filled ? kPrimary : context.c.border,

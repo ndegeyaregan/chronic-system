@@ -153,11 +153,11 @@ class _ComplaintFormState extends State<_ComplaintForm> {
               children: [
                 const Icon(Icons.support_agent, color: Colors.white, size: 24),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Register a Complaint',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: context.c.cardBg,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),

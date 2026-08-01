@@ -46,7 +46,16 @@ class BiometricImpl {
             biometricHint: '',
             cancelButton: 'Cancel',
           ),
-          IOSAuthMessages(cancelButton: 'Cancel'),
+          IOSAuthMessages(
+            cancelButton: 'Cancel',
+            localizedFallbackTitle: 'Use Passcode',
+            goToSettingsButton: 'Settings',
+            goToSettingsDescription:
+                'Biometrics are not set up on your device. '
+                'Go to Settings to enroll Face ID or Touch ID.',
+            lockOut: 'Biometrics are temporarily locked. '
+                'Please unlock your device with your passcode first.',
+          ),
         ],
         options: const AuthenticationOptions(
           biometricOnly: false,

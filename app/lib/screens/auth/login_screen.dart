@@ -305,7 +305,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           children: [
             _SegmentedTabs(
               labels: const ['Member Number', 'Biometric'],
-              icons: const [Icons.badge_outlined, Icons.fingerprint],
+              icons: [
+                Icons.badge_outlined,
+                _biometricTypes.contains(BiometricType.face)
+                    ? Icons.face_unlock_outlined
+                    : Icons.fingerprint,
+              ],
               selected: _modeIndex,
               onChanged: _setMode,
             ),
@@ -772,7 +777,7 @@ class _SegmentedTabs extends StatelessWidget {
       height: 44,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F4FA),
+        color: context.c.surfaceAlt,
         borderRadius: BorderRadius.circular(14),
       ),
       child: LayoutBuilder(
@@ -789,7 +794,7 @@ class _SegmentedTabs extends StatelessWidget {
                 width: segW,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.c.cardBg,
                     borderRadius: BorderRadius.circular(11),
                     boxShadow: [
                       BoxShadow(
@@ -906,10 +911,10 @@ class _PremiumFieldState extends State<_PremiumField> {
         AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           decoration: BoxDecoration(
-            color: _focused ? Colors.white : const Color(0xFFF6F8FC),
+            color: _focused ? context.c.cardBg : context.c.surfaceAlt,
             borderRadius: BorderRadius.circular(13),
             border: Border.all(
-              color: _focused ? kPrimary : const Color(0xFFE2E8F0),
+              color: _focused ? kPrimary : context.c.border,
               width: _focused ? 1.4 : 1,
             ),
             boxShadow: _focused
@@ -1399,9 +1404,9 @@ class _ProductLinksSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        decoration: BoxDecoration(
+          color: context.c.cardBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         child: Column(
@@ -1414,23 +1419,23 @@ class _ProductLinksSheet extends StatelessWidget {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
+                  color: context.c.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const Text(
+            Text(
               'Sanlam Allianz Products',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF0B2447),
+                color: context.c.text,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Choose what you would like to explore.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 13, color: context.c.subtext),
             ),
             const SizedBox(height: 14),
             for (final l in ordered)
@@ -1463,7 +1468,7 @@ class _ProductLinkTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFF8FAFC),
+      color: context.c.surfaceAlt,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -1489,19 +1494,19 @@ class _ProductLinkTile extends StatelessWidget {
                   children: [
                     Text(
                       link.label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0B2447),
+                        color: context.c.text,
                       ),
                     ),
                     if (link.description.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
                         link.description,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF64748B),
+                          color: context.c.subtext,
                           height: 1.3,
                         ),
                       ),
@@ -1510,8 +1515,8 @@ class _ProductLinkTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded,
-                  color: Color(0xFF94A3B8)),
+              Icon(Icons.chevron_right_rounded,
+                  color: context.c.subtext),
             ],
           ),
         ),

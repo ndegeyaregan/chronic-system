@@ -212,7 +212,7 @@ class _NewsCard extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(kRadiusMd),
           boxShadow: [
             BoxShadow(

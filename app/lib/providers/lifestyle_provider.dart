@@ -165,7 +165,7 @@ class LifestyleState {
 
 class LifestyleNotifier extends StateNotifier<LifestyleState> {
   LifestyleNotifier() : super(const LifestyleState()) {
-    fetchAll();
+    Future.microtask(fetchAll);
   }
 
   Future<void> fetchAll() async {

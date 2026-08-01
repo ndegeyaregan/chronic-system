@@ -116,8 +116,8 @@ class _StatusBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.c.cardBg,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
@@ -132,8 +132,8 @@ class _StatusBanner extends StatelessWidget {
                 ),
                 child: Text(
                   p.statusLabel,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.c.cardBg,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),

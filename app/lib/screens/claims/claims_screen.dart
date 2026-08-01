@@ -12,7 +12,7 @@ import '../../core/app_colors.dart';
 
 enum ClaimCategory { all, outpatient, inpatient, dental, optical }
 
-extension on ClaimCategory {
+extension ClaimCategoryX on ClaimCategory {
   String get label {
     switch (this) {
       case ClaimCategory.all:

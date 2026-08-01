@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../core/app_colors.dart';
 import 'workout_video_player_screen.dart';
 
 // ── Workout data ───────────────────────────────────────────────────────────────
@@ -15,9 +17,6 @@ const _kWorkouts = [
   {'videoId':'RqcOCBb4arc','title':'Morning Yoga Flow','channel':'Yoga With Adriene','duration':'30 min','difficulty':'Beginner','category':'Yoga'},
 ];
 
-const _kBg   = Color(0xFFF2F2F2);
-const _kDark = Color(0xFF1C1C1E);
-const _kGrey = Color(0xFF8E8E93);
 const _kBlue = Color(0xFF003DA5);
 
 const _kFilters = ['All', 'Cardio', 'HIIT', 'Strength', 'Yoga', 'Stretching'];
@@ -56,7 +55,7 @@ class _WorkoutVideosSectionState extends State<WorkoutVideosSection> {
     final featured  = filtered.length > 3 ? filtered.skip(3).take(4).toList() : filtered.take(4).toList();
 
     return ColoredBox(
-      color: _kBg,
+      color: context.c.bg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -79,7 +78,7 @@ class _WorkoutVideosSectionState extends State<WorkoutVideosSection> {
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: active ? _kBlue : Colors.white,
+                      color: active ? _kBlue : context.c.cardBg,
                       borderRadius: BorderRadius.circular(50),
                       boxShadow: active
                           ? [const BoxShadow(color: Color(0x33003DA5), blurRadius: 6, offset: Offset(0, 2))]
@@ -89,7 +88,7 @@ class _WorkoutVideosSectionState extends State<WorkoutVideosSection> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: active ? Colors.white : _kGrey,
+                          color: active ? Colors.white : context.c.subtext,
                         )),
                   ),
                 );
@@ -103,7 +102,7 @@ class _WorkoutVideosSectionState extends State<WorkoutVideosSection> {
             _SectionHeader(title: "What's new", onMore: () {}),
             const SizedBox(height: 12),
             SizedBox(
-              height: 210,
+              height: 216,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -140,9 +139,9 @@ class _WorkoutVideosSectionState extends State<WorkoutVideosSection> {
             const SizedBox(height: 60),
             Center(
               child: Column(children: [
-                Icon(_filterIcon(_filter), color: _kGrey, size: 48),
+                Icon(_filterIcon(_filter), color: context.c.subtext, size: 48),
                 const SizedBox(height: 12),
-                Text('No $_filter workouts yet', style: const TextStyle(fontSize: 16, color: _kGrey)),
+                Text('No $_filter workouts yet', style: TextStyle(fontSize: 16, color: context.c.subtext)),
               ]),
             ),
             const SizedBox(height: 60),
@@ -180,11 +179,11 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Expanded(
             child: Text(title,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _kDark)),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.c.text)),
           ),
           GestureDetector(
             onTap: onMore,
-            child: const Icon(Icons.chevron_right_rounded, color: _kDark, size: 24),
+            child: Icon(Icons.chevron_right_rounded, color: context.c.text, size: 24),
           ),
         ],
       ),
@@ -207,7 +206,7 @@ class _SmallCard extends StatelessWidget {
         width: 160,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
         ),
@@ -229,13 +228,13 @@ class _SmallCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(workout['title']!,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kDark, height: 1.3),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.c.text, height: 1.3),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
                 Text(workout['duration']!,
-                    style: const TextStyle(fontSize: 12, color: _kGrey)),
+                    style: TextStyle(fontSize: 12, color: context.c.subtext)),
                 Text(workout['channel']!,
-                    style: const TextStyle(fontSize: 12, color: _kGrey),
+                    style: TextStyle(fontSize: 12, color: context.c.subtext),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
               ]),
             ),
@@ -261,7 +260,7 @@ class _LargeCard extends StatelessWidget {
         width: 280,
         margin: const EdgeInsets.only(right: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
         ),
@@ -283,11 +282,11 @@ class _LargeCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(workout['title']!,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _kDark, height: 1.3),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: context.c.text, height: 1.3),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
                 Text('${workout['duration']!}  \u2022  ${workout['channel']!}',
-                    style: const TextStyle(fontSize: 12, color: _kGrey),
+                    style: TextStyle(fontSize: 12, color: context.c.subtext),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
               ]),
             ),
@@ -324,17 +323,14 @@ class _Thumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.network(
-      'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
+    return CachedNetworkImage(
+      imageUrl: 'https://img.youtube.com/vi/$videoId/hqdefault.jpg',
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
+      errorWidget: (_, __, ___) => Container(
         color: const Color(0xFFE0E0E0),
         child: Center(child: Icon(_catIcon(), color: const Color(0xFFAAAAAA), size: 36)),
       ),
-      loadingBuilder: (_, child, progress) {
-        if (progress == null) return child;
-        return Container(color: const Color(0xFFE0E0E0));
-      },
+      placeholder: (_, __) => const ColoredBox(color: Color(0xFFE0E0E0)),
     );
   }
 

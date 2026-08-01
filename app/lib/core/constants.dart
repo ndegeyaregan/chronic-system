@@ -139,6 +139,23 @@ const String routeCardReprintHistory   = '/home/card/reprints';
 const String routePrescriptions        = '/home/prescriptions';
 const String routeNews                 = '/home/news';
 
+// ── Legal ──────────────────────────────────────────────────────────────────
+// Required by Google Play's Health Content and Services policy: apps that
+// surface health-adjacent functionality (chronic care tracking, vitals,
+// prescriptions, lab results, etc.) must carry a clear disclaimer that the
+// app is not a medical device.
+const String kMedicalDisclaimerShort =
+    'SanCare+ is not a medical device and does not diagnose, treat, cure, '
+    'or prevent any medical condition.';
+const String kMedicalDisclaimerFull =
+    'SanCare+ is not a medical device and is not intended to diagnose, treat, '
+    'cure, or prevent any disease or medical condition. The information, tools, '
+    'and features in this app are provided for informational and care-coordination '
+    'purposes only, and do not replace professional medical advice, diagnosis, or '
+    'treatment. Always seek the advice of your physician or another qualified health '
+    'provider with any questions you may have about a medical condition. If you think '
+    'you may have a medical emergency, call your local emergency services immediately.';
+
 // ── Wellness tips ─────────────────────────────────────────────────────────
 const List<String> kWellnessTips = [
   'Stay hydrated — aim for 8 glasses of water daily.',

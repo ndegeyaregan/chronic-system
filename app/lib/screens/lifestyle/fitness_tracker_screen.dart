@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../../core/app_colors.dart';
 import 'package:flutter/material.dart';
+import '../../core/app_colors.dart';
 import 'package:flutter/services.dart';
+import '../../core/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:pedometer/pedometer.dart';
@@ -451,7 +454,6 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
     final state = ref.watch(lifestyleProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFF003DA5),
         elevation: 0,
@@ -465,10 +467,10 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
             Navigator.of(context).pop();
           },
         ),
-        title: const Text(
+        title: Text(
           'Fitness',
           style: TextStyle(
-            color: Colors.white,
+            color: context.c.cardBg,
             fontWeight: FontWeight.w700,
             fontSize: 17,
           ),
@@ -603,10 +605,13 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
                                           Colors.white.withValues(alpha: 0.18),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Text(
-                                      'AUTO',
+                                    child: Text(
+                                      defaultTargetPlatform ==
+                                              TargetPlatform.iOS
+                                          ? 'APPLE HEALTH'
+                                          : 'HEALTH CONNECT',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: context.c.cardBg,
                                         fontSize: 9,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: 0.5,
@@ -618,13 +623,27 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
                             const SizedBox(height: 2),
                             Text(
                               '${stepState.dailySteps}',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: context.c.cardBg,
                                 fontSize: 28,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -1,
                               ),
                             ),
+                            if (stepState.healthConnected)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  defaultTargetPlatform == TargetPlatform.iOS
+                                      ? 'Synced automatically from Apple Health'
+                                      : 'Synced automatically from Health Connect',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -633,8 +652,8 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
                         children: [
                           Text(
                             '${stepState.distanceKm.toStringAsFixed(2)} km',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: context.c.cardBg,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -693,7 +712,7 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
 
           // ── 1. Activity type selector ──────────────────────────────────────
           Container(
-            color: Colors.white,
+            color: context.c.cardBg,
             padding: const EdgeInsets.fromLTRB(0, 12, 0, 16),
             child: SizedBox(
               height: 44,
@@ -756,7 +775,7 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(16),
               boxShadow: const [
                 BoxShadow(
@@ -817,7 +836,7 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(
@@ -1037,7 +1056,7 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
             margin: const EdgeInsets.symmetric(horizontal: 16),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(16),
               boxShadow: const [
                 BoxShadow(
@@ -1189,7 +1208,7 @@ class _FitnessTrackerScreenState extends ConsumerState<FitnessTrackerScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: const [
             BoxShadow(
@@ -1295,8 +1314,8 @@ class _FitnessNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: context.c.cardBg,
         boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 20, offset: Offset(0, -4))],
       ),
       child: SafeArea(
@@ -1376,8 +1395,8 @@ class _StepBreakdownTile extends StatelessWidget {
             const SizedBox(height: 1),
             Text(
               value,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.c.cardBg,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),

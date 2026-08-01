@@ -24,7 +24,7 @@ class ShimmerBox extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
       ),
@@ -52,7 +52,7 @@ class LoadingStatCardRow extends StatelessWidget {
               child: Container(
                 height: 90,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
@@ -72,11 +72,11 @@ class LoadingListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: List.generate(count, (index) => _buildItem(index)),
+      children: List.generate(count, (index) => _buildItem(context, index)),
     );
   }
 
-  Widget _buildItem(int index) {
+  Widget _buildItem(BuildContext context, int index) {
     return Shimmer.fromColors(
       baseColor: const Color(0xFFE2E8F0),
       highlightColor: const Color(0xFFF8FAFC),
@@ -84,7 +84,7 @@ class LoadingListCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -92,8 +92,8 @@ class LoadingListCard extends StatelessWidget {
             Container(
               width: 44,
               height: 44,
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: context.c.cardBg,
                 shape: BoxShape.circle,
               ),
             ),
@@ -105,13 +105,13 @@ class LoadingListCard extends StatelessWidget {
                   Container(
                     height: 14,
                     width: double.infinity,
-                    color: Colors.white,
+                    color: context.c.cardBg,
                   ),
                   const SizedBox(height: 8),
                   Container(
                     height: 12,
                     width: 120,
-                    color: Colors.white,
+                    color: context.c.cardBg,
                   ),
                 ],
               ),
@@ -135,7 +135,7 @@ class LoadingMedicationCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         height: 100,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(12),
         ),
       ),

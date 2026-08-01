@@ -61,7 +61,7 @@ class VitalsState {
 
 class VitalsNotifier extends StateNotifier<VitalsState> {
   VitalsNotifier() : super(const VitalsState()) {
-    fetchVitals();
+    Future.microtask(fetchVitals);
   }
 
   Future<void> fetchVitals() async {

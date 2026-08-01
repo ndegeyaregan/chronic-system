@@ -204,7 +204,7 @@ class _PlanCardState extends State<_PlanCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(14),
         boxShadow: kCardShadow,
       ),
@@ -655,8 +655,8 @@ class _AddPlanSheetState extends ConsumerState<_AddPlanSheet> {
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (_, scrollCtrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: context.c.cardBg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Form(
@@ -727,7 +727,7 @@ class _AddPlanSheetState extends ConsumerState<_AddPlanSheet> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.c.cardBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: context.c.border),
                   ),

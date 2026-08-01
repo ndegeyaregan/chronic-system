@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
 
@@ -49,8 +50,8 @@ class BottomNav extends StatelessWidget {
     ];
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: context.c.cardBg,
         boxShadow: [
           BoxShadow(
               color: Color(0x14000000),

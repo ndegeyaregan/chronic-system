@@ -23,6 +23,8 @@ const roleOptions = [
   { value: 'super_admin', label: 'Super admin' },
   { value: 'support_admin', label: 'Support admin' },
   { value: 'content_admin', label: 'Content admin' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'staff', label: 'Staff' },
 ];
 
 export default function AdminUsersPage() {

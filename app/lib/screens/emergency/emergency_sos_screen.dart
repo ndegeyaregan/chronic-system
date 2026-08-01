@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -356,7 +357,7 @@ class _EmergencySosScreenState extends ConsumerState<EmergencySosScreen>
                         ? const Center(
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 3))
-                        : const Column(
+                        : Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.emergency_rounded,
@@ -364,7 +365,7 @@ class _EmergencySosScreenState extends ConsumerState<EmergencySosScreen>
                               SizedBox(height: 4),
                               Text('SOS',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: context.c.cardBg,
                                     fontSize: 28,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 2,

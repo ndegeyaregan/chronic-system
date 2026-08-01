@@ -8,6 +8,7 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 const getMyLabTests = async (req, res) => {
   try {
     const memberId = req.user.id;
+    await ensureMandatoryLabTests(memberId);
     const result = await pool.query(
       `SELECT * FROM lab_tests WHERE member_id = $1 ORDER BY due_date DESC`,
       [memberId]
@@ -62,10 +63,10 @@ const completeLabTest = async (req, res) => {
       [result_file_url, result_notes || null, id]
     );
 
-    // Auto-schedule the next test 6 months from today
+    // Auto-schedule the next occurrence, using this test type's cadence.
     const completed = existing.rows[0];
     const next = new Date();
-    next.setMonth(next.getMonth() + 6);
+    next.setMonth(next.getMonth() + cadenceMonthsFor(completed.test_type));
     const nextDue = next.toISOString().split('T')[0];
     await pool.query(
       `INSERT INTO lab_tests (member_id, test_type, due_date)
@@ -182,10 +183,10 @@ const adminCompleteLabTest = async (req, res) => {
       [result_file_url, result_notes || null, id]
     );
 
-    // Auto-schedule the next test 6 months from today
+    // Auto-schedule the next occurrence, using this test type's cadence.
     const completed = existing.rows[0];
     const next = new Date();
-    next.setMonth(next.getMonth() + 6);
+    next.setMonth(next.getMonth() + cadenceMonthsFor(completed.test_type));
     const nextDue = next.toISOString().split('T')[0];
     await pool.query(
       `INSERT INTO lab_tests (member_id, test_type, due_date) VALUES ($1, $2, $3)`,
@@ -199,16 +200,60 @@ const adminCompleteLabTest = async (req, res) => {
   }
 };
 
-// Auto-schedule LFT + KFT every 6 months for a member
-const autoScheduleForMember = async (memberId) => {
-  const in6Months = new Date();
-  in6Months.setMonth(in6Months.getMonth() + 6);
-  const dueStr = in6Months.toISOString().split('T')[0];
-  for (const testType of ['liver_function', 'kidney_function']) {
+// Tests every chronic member is expected to keep current, with their
+// re-test cadence. Non-chronic members never get these auto-generated —
+// they only see tests an admin explicitly schedules via scheduleLabTest.
+// Note: 'full_blood_count' (FBC) is the same test as CBC — matches the
+// existing test type key used by the admin portal's scheduling form.
+const MANDATORY_TESTS = [
+  { testType: 'full_blood_count', cadenceMonths: 12 },
+  { testType: 'kidney_function',      cadenceMonths: 3 },
+  { testType: 'liver_function',       cadenceMonths: 3 },
+];
+
+const cadenceMonthsFor = (testType) => {
+  const mandatory = MANDATORY_TESTS.find((t) => t.testType === testType);
+  return mandatory ? mandatory.cadenceMonths : 6; // fallback for other test types
+};
+
+// Ensures a chronic member has an active (pending/overdue) lab_tests row
+// for each mandatory test type — due today if they've never had one, or
+// due `cadenceMonths` after their last completed test otherwise. Called
+// on every getMyLabTests fetch so it self-heals as members become chronic
+// or as tests are completed. No-op for non-chronic members.
+const ensureMandatoryLabTests = async (memberId) => {
+  const memberRes = await pool.query(
+    'SELECT is_chronic FROM members WHERE id = $1',
+    [memberId]
+  );
+  if (!memberRes.rows.length || !memberRes.rows[0].is_chronic) return;
+
+  for (const { testType, cadenceMonths } of MANDATORY_TESTS) {
+    const activeRes = await pool.query(
+      `SELECT id FROM lab_tests
+       WHERE member_id = $1 AND test_type = $2 AND status IN ('pending','overdue')
+       LIMIT 1`,
+      [memberId, testType]
+    );
+    if (activeRes.rows.length) continue; // already tracked
+
+    const lastCompletedRes = await pool.query(
+      `SELECT completed_at FROM lab_tests
+       WHERE member_id = $1 AND test_type = $2 AND status = 'completed'
+       ORDER BY completed_at DESC LIMIT 1`,
+      [memberId, testType]
+    );
+
+    let dueDate = new Date();
+    if (lastCompletedRes.rows.length) {
+      const nextDue = new Date(lastCompletedRes.rows[0].completed_at);
+      nextDue.setMonth(nextDue.getMonth() + cadenceMonths);
+      if (nextDue > dueDate) dueDate = nextDue;
+    }
+
     await pool.query(
-      `INSERT INTO lab_tests (member_id, test_type, due_date)
-       VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-      [memberId, testType, dueStr]
+      `INSERT INTO lab_tests (member_id, test_type, due_date) VALUES ($1, $2, $3)`,
+      [memberId, testType, dueDate.toISOString().split('T')[0]]
     );
   }
 };
@@ -221,5 +266,5 @@ module.exports = {
   getAllLabTests,
   getLabTestStats,
   adminCompleteLabTest,
-  autoScheduleForMember,
+  ensureMandatoryLabTests,
 };

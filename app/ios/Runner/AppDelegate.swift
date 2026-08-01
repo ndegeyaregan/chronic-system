@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import GoogleMaps
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -8,9 +9,10 @@ import GoogleMaps
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Replace REPLACE_WITH_GOOGLE_MAPS_API_KEY with your actual key from
-    // https://console.cloud.google.com/google/maps-apis
     GMSServices.provideAPIKey("AIzaSyBnSH1wsLwdcaXaSEuDrKodcGiiVAILAjE")
+    // Set notification delegate before plugin registration so Firebase
+    // Messaging can receive foreground notifications on iOS.
+    UNUserNotificationCenter.current().delegate = self
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants.dart';
 import '../../core/app_colors.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/notification_service.dart';
 
 final _settingsProvider =
@@ -100,6 +101,32 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _section(context, 'Appearance', [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.light_mode_outlined, color: kPrimary, size: 20),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Display Mode',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                                color: context.c.text)),
+                        Text('Light mode',
+                            style: TextStyle(fontSize: 11, color: context.c.subtext)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: 16),
           _section(context, 'Channels', [
             _toggle(context, 
               ref,
@@ -196,6 +223,80 @@ class SettingsScreen extends ConsumerWidget {
               },
             ),
           ]),
+          const SizedBox(height: 24),
+          _section(context, 'Legal', [
+            ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: const Icon(Icons.info_outline, color: kPrimary),
+              title: const Text('Medical Disclaimer',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('SanCare+ is not a medical device'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Medical Disclaimer'),
+                  content: const Text(
+                    kMedicalDisclaimerFull,
+                    style: TextStyle(fontSize: 14, height: 1.5),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: const Icon(Icons.person_remove_outlined, color: kError),
+              title: const Text('Delete My Account',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Permanently delete your account and data'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text('Delete My Account'),
+                    content: const Text(
+                      'This permanently deletes your account and all '
+                      'associated data. This cannot be undone.\n\n'
+                      'Are you sure you want to continue?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(dialogContext, true),
+                        style:
+                            ElevatedButton.styleFrom(backgroundColor: kError),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !context.mounted) return;
+                try {
+                  await ref.read(authProvider.notifier).deleteAccount();
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to delete account. Please try again.'),
+                      backgroundColor: kError,
+                    ),
+                  );
+                }
+              },
+            ),
+          ]),
         ],
       ),
     );
@@ -275,7 +376,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           Switch.adaptive(
             value: value,
-            activeColor: kPrimary,
+            activeThumbColor: kPrimary, activeTrackColor: kPrimary.withValues(alpha: 0.5),
             onChanged: (v) =>
                 ref.read(_settingsProvider.notifier).toggle(key, v),
           ),

@@ -191,7 +191,7 @@ class _ClaimSearchBar extends StatelessWidget {
                   onPressed: onClear,
                 ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Theme.of(context).inputDecorationTheme.fillColor,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           border: OutlineInputBorder(

@@ -38,7 +38,7 @@ const listHospitals = async (req, res) => {
     const result = await pool.query(
       `SELECT h.id, h.name, h.type, h.address, h.city, h.province,
               h.latitude, h.longitude, h.phone, h.email, h.working_hours,
-              h.direct_booking_capable, h.specialties,
+              h.direct_booking_capable, h.specialties, h.integration_type,
               COALESCE(json_agg(jsonb_build_object('id', c.id, 'name', c.name))
                 FILTER (WHERE c.id IS NOT NULL), '[]') AS conditions
        FROM hospitals h

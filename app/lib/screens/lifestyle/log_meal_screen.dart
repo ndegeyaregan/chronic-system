@@ -490,7 +490,7 @@ class _SnackCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: context.c.border),
         boxShadow: [

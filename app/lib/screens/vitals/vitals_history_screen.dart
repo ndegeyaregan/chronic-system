@@ -42,7 +42,7 @@ class VitalsHistoryScreen extends ConsumerWidget {
                       margin: const EdgeInsets.only(bottom: 10),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.c.cardBg,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(

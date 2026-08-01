@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -50,7 +51,12 @@ class _LifestyleScreenState extends ConsumerState<LifestyleScreen>
             child: Icon(icon, color: color, size: 14),
           ),
           const SizedBox(width: 6),
-          Text(label),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(label),
+            ),
+          ),
         ],
       ),
     );
@@ -309,7 +315,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(kRadiusLg),
               boxShadow: kCardShadow,
             ),
@@ -412,7 +418,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(kRadiusLg),
               boxShadow: kCardShadow,
             ),
@@ -648,8 +654,8 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
                                     : _breathPhase == 'exhale' ? 'Exhale'
                                     : 'Rest')
                                 : 'Start',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: context.c.cardBg,
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
                             ),
@@ -922,7 +928,7 @@ class _PsychosocialTabState extends ConsumerState<_PsychosocialTab> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
       ),
@@ -1140,7 +1146,7 @@ class _NutritionTab extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(kRadiusLg),
               boxShadow: kCardShadow,
             ),
@@ -1219,7 +1225,7 @@ class _NutritionTab extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(kRadiusLg),
               boxShadow: kCardShadow,
             ),
@@ -1443,7 +1449,7 @@ class _NutritionTab extends ConsumerWidget {
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.c.cardBg,
                 borderRadius: BorderRadius.circular(kRadiusMd),
                 border: Border(
                   left: BorderSide(
@@ -1633,9 +1639,16 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                 children: [
                   const Icon(Icons.sensors_rounded, color: Color(0xFF16A34A), size: 15),
                   const SizedBox(width: 8),
-                  Text('Live step tracking active',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF15803D), fontWeight: FontWeight.w600)),
-                  const Spacer(),
+                  Expanded(
+                    child: Text(
+                      stepState.healthConnected
+                          ? (defaultTargetPlatform == TargetPlatform.iOS
+                              ? 'Connected to Apple Health'
+                              : 'Connected to Health Connect')
+                          : 'Live step tracking active',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF15803D), fontWeight: FontWeight.w600),
+                    ),
+                  ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
@@ -1651,7 +1664,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(kRadiusLg),
               boxShadow: kCardShadow,
             ),
@@ -1792,7 +1805,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                         ),
                       ],
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.fitness_center_rounded,
@@ -1801,7 +1814,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                         Text(
                           'Track Activity',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: context.c.cardBg,
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
                           ),
@@ -1906,7 +1919,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.c.cardBg,
             borderRadius: BorderRadius.circular(kRadiusMd),
             boxShadow: kCardShadow,
           ),
@@ -1929,7 +1942,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
       return Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(kRadiusMd),
           border: const Border(
             left: BorderSide(color: kPrimary, width: 3),
@@ -2169,7 +2182,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
       ),
@@ -2201,9 +2214,9 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
                   ),
                   child: Text(
                     'You: #$myRank',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: Colors.white,
+                      color: context.c.cardBg,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -2441,7 +2454,7 @@ class _FitnessTabState extends ConsumerState<_FitnessTab> {
       height: 180,
       padding: const EdgeInsets.fromLTRB(4, 16, 16, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(

@@ -7,7 +7,7 @@
 	<key>NSFaceIDUsageDescription</key>
 	<string>SanCare+ uses Face ID / Touch ID for quick, secure sign-in.</string>
 	<key>CFBundleDisplayName</key>
-	<string>Sanlam Chronic</string>
+	<string>SanCare+</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -33,8 +33,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
@@ -47,6 +45,14 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Background modes needed for location updates and periodic fetches -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+
 	<!-- Location permission for GPS distance tracking -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SanCare+ uses your location to track distance covered during fitness activities.</string>
@@ -58,7 +64,7 @@
 	<!-- HealthKit permissions: read steps / distance / energy from Apple Health
 	     so the daily activity total stays accurate even if the app wasn't open. -->
 	<key>NSHealthShareUsageDescription</key>
-	<string>SanCare+ reads your step count, walking/running distance and active energy from Apple Health to show your daily activity.</string>
+	<string>SanCare+ reads your step count, distance, active energy, heart rate, blood oxygen, body weight and temperature from Apple Health to track your daily activity and auto-fill your vitals log.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>SanCare+ does not write to Apple Health.</string>
 	<key>NSCameraUsageDescription</key>
@@ -69,5 +75,9 @@
 	<string>SanCare+ uses the microphone for voice notes and media recording features.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>SanCare+ saves images to your photo library when you export or save documents.</string>
+	<!-- Required for App Store export compliance — app uses HTTPS/TLS and
+	     FlutterSecureStorage (AES-256). This is standard exempt encryption. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

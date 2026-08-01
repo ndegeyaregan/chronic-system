@@ -54,7 +54,7 @@ class AppointmentsState {
 
 class AppointmentsNotifier extends StateNotifier<AppointmentsState> {
   AppointmentsNotifier() : super(const AppointmentsState()) {
-    fetchAppointments();
+    Future.microtask(fetchAppointments);
   }
 
   Future<void> fetchAppointments() async {
@@ -99,10 +99,21 @@ class AppointmentsNotifier extends StateNotifier<AppointmentsState> {
 
   Future<void> fetchHospitals({String? search}) async {
     try {
-      final response = await dio.get('/hospitals',
-          queryParameters: {if (search != null) 'name': search});
-      final list = (response.data as List)
-          .map((e) => Hospital.fromJson(e as Map<String, dynamic>))
+      // Uses the same admin-curated facility list as Facility Finder,
+      // rather than the legacy /hospitals endpoint whose underlying table
+      // stopped being maintained once admin add/suspend/delete moved to
+      // the institutions workflow (see migration 033).
+      final response = await dio.get('/institutions',
+          queryParameters: {
+            if (search != null && search.isNotEmpty) 'search': search,
+          });
+      final raw = response.data;
+      final rawList = raw is List ? raw : const <dynamic>[];
+      final list = rawList
+          .whereType<Map>()
+          .map((e) =>
+              Hospital.fromInstitutionJson(Map<String, dynamic>.from(e)))
+          .where((h) => h.name.isNotEmpty && h.type != 'pharmacy')
           .toList();
       state = state.copyWith(hospitals: list);
     } on DioException catch (_) {}
@@ -150,30 +161,18 @@ class AppointmentsNotifier extends StateNotifier<AppointmentsState> {
   Future<bool> markMissed(String id, {String? reason}) async {
     try {
       await dio.patch('/appointments/$id/missed', data: {'reason': reason});
-      _updateLocalStatus(id, AppointmentStatus.missed);
+      _updateLocalStatus(id, AppointmentStatus.missed, missedReason: reason);
       return true;
     } on DioException catch (_) {
       return false;
     }
   }
 
-  void _updateLocalStatus(String id, AppointmentStatus newStatus) {
+  void _updateLocalStatus(String id, AppointmentStatus newStatus,
+      {String? missedReason}) {
     state = state.copyWith(
       appointments: state.appointments.map((a) {
-        if (a.id == id) {
-          return Appointment(
-            id: a.id,
-            hospitalId: a.hospitalId,
-            hospitalName: a.hospitalName,
-            hospitalCity: a.hospitalCity,
-            condition: a.condition,
-            appointmentDate: a.appointmentDate,
-            preferredTime: a.preferredTime,
-            reason: a.reason,
-            status: newStatus,
-            notes: a.notes,
-          );
-        }
+        if (a.id == id) return a.copyWith(status: newStatus, missedReason: missedReason);
         return a;
       }).toList(),
     );

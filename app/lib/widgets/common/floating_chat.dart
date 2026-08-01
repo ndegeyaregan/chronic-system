@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -133,9 +134,9 @@ class _FloatingChatState extends ConsumerState<FloatingChat>
                     ),
                   ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.chat_bubble_rounded,
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   size: 26,
                 ),
               ),
@@ -207,13 +208,13 @@ class _ChatPanel extends ConsumerWidget {
                         color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('SanCare Support',
                             style: TextStyle(
-                                color: Colors.white,
+                                color: context.c.cardBg,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14)),
                         Text('We typically reply within minutes',
@@ -268,7 +269,7 @@ class _ChatPanel extends ConsumerWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.c.cardBg,
                 border:
                     Border(top: BorderSide(color: Colors.grey.shade200)),
               ),

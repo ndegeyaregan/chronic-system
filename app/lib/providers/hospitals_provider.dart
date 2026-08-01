@@ -28,7 +28,7 @@ class HospitalsState {
 
 class HospitalsNotifier extends StateNotifier<HospitalsState> {
   HospitalsNotifier() : super(const HospitalsState()) {
-    fetchHospitals();
+    Future.microtask(fetchHospitals);
   }
 
   Future<void> fetchHospitals({String? search}) async {

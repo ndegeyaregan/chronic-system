@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -23,15 +24,11 @@ class _VitalsScreenState extends ConsumerState<VitalsScreen>
   late TabController _tabs;
   String _selectedMetric = 'Blood Sugar';
 
-  static const _bg     = Color(0xFFF2F4F8);
-  static const _text1  = Color(0xFF0D1117);
-  static const _text2  = Color(0xFF6B7280);
   static const _blue   = Color(0xFF007AFF);
   static const _green  = Color(0xFF34C759);
   static const _orange = Color(0xFFFF9500);
   static const _red    = Color(0xFFFF3B30);
   static const _teal   = Color(0xFF32ADE6);
-  static const _divider = Color(0xFFE5E7EB);
 
   static const Map<String, Color> _metricColors = {
     'Blood Sugar':     _blue,
@@ -60,7 +57,7 @@ class _VitalsScreenState extends ConsumerState<VitalsScreen>
     final state = ref.watch(vitalsProvider);
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -134,11 +131,7 @@ class _VitalsTab extends ConsumerWidget {
   final List<String> metrics;
   final Map<String, Color> metricColors;
 
-  static const _bg     = Color(0xFFF2F4F8);
-  static const _text1  = Color(0xFF0D1117);
-  static const _text2  = Color(0xFF6B7280);
   static const _blue   = Color(0xFF007AFF);
-  static const _divider = Color(0xFFE5E7EB);
 
   const _VitalsTab({
     required this.state,
@@ -179,17 +172,17 @@ class _VitalsTab extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.c.cardBg,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 3))],
               ),
               child: Row(
                 children: [
-                  _summaryChip(Icons.bar_chart_rounded, '$total', 'Total readings', _blue),
-                  _vDivider(),
-                  _summaryChip(Icons.calendar_today_rounded, '$lastN', 'This week', const Color(0xFF34C759)),
-                  _vDivider(),
-                  _summaryChip(Icons.access_time_rounded,
+                  _summaryChip(context, Icons.bar_chart_rounded, '$total', 'Total readings', _blue),
+                  _vDivider(context),
+                  _summaryChip(context, Icons.calendar_today_rounded, '$lastN', 'This week', const Color(0xFF34C759)),
+                  _vDivider(context),
+                  _summaryChip(context, Icons.access_time_rounded,
                     latest != null ? DateFormat('d MMM').format(latest.loggedAt) : '—',
                     'Last logged', const Color(0xFFFF9500)),
                 ],
@@ -201,10 +194,10 @@ class _VitalsTab extends ConsumerWidget {
             const _CycleTrackerEntryCard(),
 
             if (latest == null)
-              _emptyState()
+              _emptyState(context)
             else ...[
               // ── Latest readings ──────────────────────────────────────────
-              _sectionLabel('Latest Readings'),
+              _sectionLabel(context, 'Latest Readings'),
               const SizedBox(height: 10),
               GridView.count(
                 crossAxisCount: 2,
@@ -280,7 +273,7 @@ class _VitalsTab extends ConsumerWidget {
               const SizedBox(height: 24),
 
               // ── Trend chart ───────────────────────────────────────────────
-              _sectionLabel('14-Day Trend'),
+              _sectionLabel(context, '14-Day Trend'),
               const SizedBox(height: 10),
               // Metric chips
               SingleChildScrollView(
@@ -297,9 +290,9 @@ class _VitalsTab extends ConsumerWidget {
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
-                            color: sel ? col : Colors.white,
+                            color: sel ? col : context.c.cardBg,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: sel ? col : _divider),
+                            border: Border.all(color: sel ? col : context.c.border),
                             boxShadow: sel ? [BoxShadow(color: col.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 3))] : [],
                           ),
                           child: Row(
@@ -317,7 +310,7 @@ class _VitalsTab extends ConsumerWidget {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: sel ? Colors.white : _text1,
+                                  color: sel ? Colors.white : context.c.text,
                                 )),
                             ],
                           ),
@@ -328,9 +321,9 @@ class _VitalsTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              _buildChart(state, selectedMetric, metricColors[selectedMetric]!, conditions),
+              _buildChart(context, state, selectedMetric, metricColors[selectedMetric]!, conditions),
               const SizedBox(height: 16),
-              _buildTrendInsight(state, selectedMetric, conditions),
+              _buildTrendInsight(context, state, selectedMetric, conditions),
               const SizedBox(height: 12),
               isChronic
                   ? _ChronicVitalsRec()
@@ -350,7 +343,7 @@ class _VitalsTab extends ConsumerWidget {
     return ('Obese', Color(0xFFEF4444));
   }
 
-  Widget _summaryChip(IconData icon, String value, String label, Color color) {
+  Widget _summaryChip(BuildContext context, IconData icon, String value, String label, Color color) {
     return Expanded(
       child: Column(
         children: [
@@ -360,22 +353,22 @@ class _VitalsTab extends ConsumerWidget {
             child: Icon(icon, color: color, size: 17),
           ),
           const SizedBox(height: 5),
-          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _text1, height: 1)),
-          Text(label, style: const TextStyle(fontSize: 10, color: _text2)),
+          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: context.c.text, height: 1)),
+          Text(label, style: TextStyle(fontSize: 10, color: context.c.subtext)),
         ],
       ),
     );
   }
 
-  Widget _vDivider() => Container(width: 1, height: 44, color: const Color(0xFFE5E7EB));
+  Widget _vDivider(BuildContext context) => Container(width: 1, height: 44, color: context.c.border);
 
-  Widget _sectionLabel(String t) => Text(t,
-    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _text1, letterSpacing: -0.2));
+  Widget _sectionLabel(BuildContext context, String t) => Text(t,
+    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.c.text, letterSpacing: -0.2));
 
-  Widget _emptyState() => Container(
+  Widget _emptyState(BuildContext context) => Container(
     padding: const EdgeInsets.all(32),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: context.c.cardBg,
       borderRadius: BorderRadius.circular(16),
       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
     ),
@@ -387,19 +380,19 @@ class _VitalsTab extends ConsumerWidget {
           child: const Icon(Icons.monitor_heart_rounded, color: _blue, size: 36),
         ),
         const SizedBox(height: 16),
-        const Text('No vitals logged yet',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _text1)),
+        Text('No vitals logged yet',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: context.c.text)),
         const SizedBox(height: 6),
-        const Text('Tap "Log Vitals" below to record your first reading.',
-          style: TextStyle(fontSize: 13, color: _text2), textAlign: TextAlign.center),
+        Text('Tap "Log Vitals" below to record your first reading.',
+          style: TextStyle(fontSize: 13, color: context.c.subtext), textAlign: TextAlign.center),
       ],
     ),
   );
 
-  Widget _buildChart(VitalsState state, String metric, Color color, List<String> conditions) {
+  Widget _buildChart(BuildContext context, VitalsState state, String metric, Color color, List<String> conditions) {
     final data = state.getLastNDays(14).reversed.toList();
     if (data.isEmpty) {
-      return _chartEmpty('Not enough data for chart');
+      return _chartEmpty(context, 'Not enough data for chart');
     }
 
     final hasHypertension = conditions.any((c) =>
@@ -420,7 +413,7 @@ class _VitalsTab extends ConsumerWidget {
       if (val != null) spots.add(FlSpot(i.toDouble(), val));
     }
 
-    if (spots.isEmpty) return _chartEmpty('No $metric data available');
+    if (spots.isEmpty) return _chartEmpty(context, 'No $metric data available');
 
     // ── Target / reference lines ─────────────────────────────────────────
     final extraLines = <HorizontalLine>[];
@@ -483,7 +476,7 @@ class _VitalsTab extends ConsumerWidget {
       height: 210,
       padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 3))],
       ),
@@ -493,7 +486,7 @@ class _VitalsTab extends ConsumerWidget {
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            getDrawingHorizontalLine: (_) => FlLine(color: _divider, strokeWidth: 1),
+            getDrawingHorizontalLine: (_) => FlLine(color: context.c.border, strokeWidth: 1),
           ),
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
@@ -501,7 +494,7 @@ class _VitalsTab extends ConsumerWidget {
                 showTitles: true,
                 reservedSize: 40,
                 getTitlesWidget: (v, _) => Text(v.toInt().toString(),
-                  style: const TextStyle(fontSize: 10, color: _text2)),
+                  style: TextStyle(fontSize: 10, color: context.c.subtext)),
               ),
             ),
             bottomTitles: AxisTitles(
@@ -512,7 +505,7 @@ class _VitalsTab extends ConsumerWidget {
                   final idx = v.toInt();
                   if (idx < 0 || idx >= data.length) return const SizedBox();
                   return Text(DateFormat('d/M').format(data[idx].loggedAt),
-                    style: const TextStyle(fontSize: 10, color: _text2));
+                    style: TextStyle(fontSize: 10, color: context.c.subtext));
                 },
               ),
             ),
@@ -549,7 +542,7 @@ class _VitalsTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildTrendInsight(VitalsState state, String metric, List<String> conditions) {
+  Widget _buildTrendInsight(BuildContext context, VitalsState state, String metric, List<String> conditions) {
     final recent7 = state.getLastNDays(7);
     final prior14 = state.getLastNDays(14);
     final prior7 = prior14.where((v) {
@@ -732,17 +725,17 @@ class _VitalsTab extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           Text(specificMsg,
-              style: TextStyle(fontSize: 12, color: _text2, height: 1.4)),
+              style: TextStyle(fontSize: 12, color: context.c.subtext, height: 1.4)),
         ],
       ),
     );
   }
 
-  Widget _chartEmpty(String msg) => Container(
+  Widget _chartEmpty(BuildContext context, String msg) => Container(
     height: 150,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: context.c.cardBg,
       borderRadius: BorderRadius.circular(16),
       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
     ),
@@ -751,7 +744,7 @@ class _VitalsTab extends ConsumerWidget {
       children: [
         Icon(Icons.show_chart_rounded, color: _blue.withValues(alpha: 0.3), size: 36),
         const SizedBox(height: 8),
-        Text(msg, style: const TextStyle(color: _text2, fontSize: 13)),
+        Text(msg, style: TextStyle(color: context.c.subtext, fontSize: 13)),
       ],
     ),
   );
@@ -768,19 +761,19 @@ class _ChronicVitalsRec extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
+        color: kPrimary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
+        border: Border.all(color: kPrimary.withValues(alpha: 0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.health_and_safety_outlined, color: Color(0xFF3B82F6), size: 18),
+          const Icon(Icons.health_and_safety_outlined, color: kPrimary, size: 18),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Text(
               'Keep tracking your vitals daily — consistent monitoring helps your care team adjust your treatment plan and catch changes early.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF1E3A5F), height: 1.5),
+              style: TextStyle(fontSize: 12, color: context.c.text, height: 1.5),
             ),
           ),
         ],
@@ -797,19 +790,19 @@ class _WellnessVitalsRec extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
+        color: kAccent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF86EFAC)),
+        border: Border.all(color: kAccent.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.tips_and_updates_outlined, color: Color(0xFF16A34A), size: 18),
+          Icon(Icons.tips_and_updates_outlined, color: kAccent, size: 18),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Text(
               'Wellness tip: BP under 120/80 mmHg and fasting glucose under 5.6 mmol/L are healthy targets. A 30-min daily walk improves both cardiovascular and metabolic health.',
-              style: TextStyle(fontSize: 12, color: Color(0xFF14532D), height: 1.5),
+              style: TextStyle(fontSize: 12, color: context.c.text, height: 1.5),
             ),
           ),
         ],
@@ -821,9 +814,6 @@ class _WellnessVitalsRec extends StatelessWidget {
 class _DailyCheckInTab extends StatelessWidget {
   final VitalsState state;
 
-  static const _bg     = Color(0xFFF2F4F8);
-  static const _text1  = Color(0xFF0D1117);
-  static const _text2  = Color(0xFF6B7280);
   static const _blue   = Color(0xFF007AFF);
   static const _green  = Color(0xFF34C759);
   static const _orange = Color(0xFFFF9500);
@@ -853,7 +843,7 @@ class _DailyCheckInTab extends StatelessWidget {
       case 'okay':     return _orange;
       case 'bad':      return const Color(0xFFFF6B35);
       case 'terrible': return _red;
-      default:         return _text2;
+      default:         return const Color(0xFF94A3B8);
     }
   }
 
@@ -890,9 +880,9 @@ class _DailyCheckInTab extends StatelessWidget {
           if (latest == null || (latest.painLevel == null && latest.mood == null))
             _noCheckIn(context)
           else ...[
-            if (latest.painLevel != null) _painCard(latest.painLevel!),
+            if (latest.painLevel != null) _painCard(context, latest.painLevel!),
             if (latest.painLevel != null) const SizedBox(height: 16),
-            if (latest.mood != null) _moodCard(latest.mood!),
+            if (latest.mood != null) _moodCard(context, latest.mood!),
             const SizedBox(height: 20),
           ],
           _logButton(context),
@@ -901,12 +891,12 @@ class _DailyCheckInTab extends StatelessWidget {
     );
   }
 
-  Widget _painCard(int pain) {
+  Widget _painCard(BuildContext context, int pain) {
     final col = _painColor(pain);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4))],
       ),
@@ -921,11 +911,11 @@ class _DailyCheckInTab extends StatelessWidget {
                 child: Icon(Icons.whatshot_rounded, color: col, size: 20),
               ),
               const SizedBox(width: 12),
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Pain Level', style: TextStyle(fontSize: 13, color: _text2)),
-                  Text('How you feel today', style: TextStyle(fontSize: 11, color: _text2)),
+                  Text('Pain Level', style: TextStyle(fontSize: 13, color: context.c.subtext)),
+                  Text('How you feel today', style: TextStyle(fontSize: 11, color: context.c.subtext)),
                 ],
               ),
               const Spacer(),
@@ -944,7 +934,7 @@ class _DailyCheckInTab extends StatelessWidget {
               final active = i < pain;
               final dotCol = active
                 ? (i < 3 ? _green : i < 6 ? _orange : _red)
-                : const Color(0xFFE5E7EB);
+                : context.c.border;
               return Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -964,10 +954,10 @@ class _DailyCheckInTab extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('None', style: TextStyle(fontSize: 10, color: _text2)),
+              Text('None', style: TextStyle(fontSize: 10, color: context.c.subtext)),
               Text(_painLabel(pain),
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: col)),
-              const Text('Severe', style: TextStyle(fontSize: 10, color: _text2)),
+              Text('Severe', style: TextStyle(fontSize: 10, color: context.c.subtext)),
             ],
           ),
         ],
@@ -975,14 +965,14 @@ class _DailyCheckInTab extends StatelessWidget {
     );
   }
 
-  Widget _moodCard(String mood) {
+  Widget _moodCard(BuildContext context, String mood) {
     final col  = _moodColor(mood);
     final emoji = _moodEmoji(mood);
     final desc  = _moodDesc(mood);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4))],
       ),
@@ -998,12 +988,12 @@ class _DailyCheckInTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Mood Check-in', style: TextStyle(fontSize: 12, color: _text2)),
+                Text('Mood Check-in', style: TextStyle(fontSize: 12, color: context.c.subtext)),
                 const SizedBox(height: 3),
                 Text(mood.toUpperCase(),
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: col, letterSpacing: 0.5)),
                 const SizedBox(height: 4),
-                Text(desc, style: const TextStyle(fontSize: 13, color: _text2)),
+                Text(desc, style: TextStyle(fontSize: 13, color: context.c.subtext)),
               ],
             ),
           ),
@@ -1016,7 +1006,7 @@ class _DailyCheckInTab extends StatelessWidget {
     padding: const EdgeInsets.all(28),
     margin: const EdgeInsets.only(bottom: 20),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: context.c.cardBg,
       borderRadius: BorderRadius.circular(20),
       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
     ),
@@ -1028,11 +1018,11 @@ class _DailyCheckInTab extends StatelessWidget {
           child: const Icon(Icons.check_circle_rounded, color: _blue, size: 36),
         ),
         const SizedBox(height: 16),
-        const Text("No check-in today",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _text1)),
+        Text("No check-in today",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: context.c.text)),
         const SizedBox(height: 6),
-        const Text("Log your vitals to include today's pain and mood check-in.",
-          style: TextStyle(fontSize: 13, color: _text2), textAlign: TextAlign.center),
+        Text("Log your vitals to include today's pain and mood check-in.",
+          style: TextStyle(fontSize: 13, color: context.c.subtext), textAlign: TextAlign.center),
       ],
     ),
   );
@@ -1060,9 +1050,6 @@ class _DailyCheckInTab extends StatelessWidget {
 class _MoodHistoryTab extends StatelessWidget {
   final VitalsState state;
 
-  static const _bg    = Color(0xFFF2F4F8);
-  static const _text1 = Color(0xFF0D1117);
-  static const _text2 = Color(0xFF6B7280);
   static const _blue  = Color(0xFF007AFF);
 
   static const Map<String, Color> _moodColors = {
@@ -1098,11 +1085,11 @@ class _MoodHistoryTab extends StatelessWidget {
               child: const Icon(Icons.mood_rounded, color: _blue, size: 40),
             ),
             const SizedBox(height: 16),
-            const Text('No mood history yet',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: _text1)),
+            Text('No mood history yet',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: context.c.text)),
             const SizedBox(height: 6),
-            const Text('Log vitals with mood check-ins to see history here.',
-              style: TextStyle(fontSize: 13, color: _text2), textAlign: TextAlign.center),
+            Text('Log vitals with mood check-ins to see history here.',
+              style: TextStyle(fontSize: 13, color: context.c.subtext), textAlign: TextAlign.center),
           ],
         ),
       );
@@ -1115,12 +1102,12 @@ class _MoodHistoryTab extends StatelessWidget {
       itemBuilder: (context, i) {
         final v   = moodLogs[i];
         final key = v.mood!.toLowerCase();
-        final col = _moodColors[key] ?? _text2;
+        final col = _moodColors[key] ?? const Color(0xFF94A3B8);
         final em  = _moodEmoji[key] ?? '😐';
 
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.c.cardBg,
             borderRadius: BorderRadius.circular(16),
             border: Border(left: BorderSide(color: col, width: 4)),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
@@ -1143,7 +1130,7 @@ class _MoodHistoryTab extends StatelessWidget {
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: col, letterSpacing: 0.3)),
                       const SizedBox(height: 2),
                       Text(DateFormat('EEE, d MMM y · HH:mm').format(v.loggedAt),
-                        style: const TextStyle(fontSize: 12, color: _text2)),
+                        style: TextStyle(fontSize: 12, color: context.c.subtext)),
                     ],
                   ),
                 ),
@@ -1195,7 +1182,7 @@ class _CycleTrackerEntryCard extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 20),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push(routeCycleTracker),
+        onTap: () => _openCycleTrackerWithPrivacyNotice(context),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -1246,6 +1233,53 @@ class _CycleTrackerEntryCard extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _openCycleTrackerWithPrivacyNotice(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE91E63).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.lock_outline_rounded,
+                  color: Color(0xFFE91E63), size: 22),
+            ),
+            const SizedBox(width: 10),
+            const Text('Your Privacy', style: TextStyle(fontSize: 17)),
+          ],
+        ),
+        content: const Text(
+          'Your cycle data is completely private and stored only on your device.\n\n'
+          'This information is never shared with Sanlam, your employer, or any third party.',
+          style: TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFE91E63),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(dialogCtx);
+              context.push(routeCycleTracker);
+            },
+            child: const Text('Got it, continue'),
+          ),
+        ],
       ),
     );
   }

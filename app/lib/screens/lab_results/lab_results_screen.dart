@@ -52,10 +52,10 @@ class LabResultsScreen extends ConsumerWidget {
         c.toLowerCase().contains('hypertension') ||
         c.toLowerCase().contains('high blood pressure'));
     final bannerText = hasDiabetes
-        ? 'As a diabetic, annual kidney function and liver function tests are critical. Early detection prevents complications.'
+        ? 'As a diabetic, a complete blood count and regular kidney and liver function tests are critical. Early detection prevents complications.'
         : hasHypertension
             ? 'Hypertension can damage kidneys over time. Regular KFT tests help detect this early.'
-            : 'Regular lab tests help monitor your organ health. Complete your tests on time.';
+            : 'As a chronic care member, we keep a complete blood count (every 12 months) and kidney and liver function tests (every 3 months) on your schedule automatically. Complete your tests on time.';
 
     return PopScope(
       canPop: context.canPop(),
@@ -75,7 +75,7 @@ class LabResultsScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
-              'Liver & Kidney Function Tests',
+              'CBC, Kidney & Liver Function Tests',
               style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 12),
@@ -214,7 +214,15 @@ class _LabTestCardState extends State<_LabTestCard> {
 
     final lines = <String>[];
 
-    if (test.testType == 'liver_function') {
+    if (test.testType == 'full_blood_count') {
+      lines.add('📋 An FBC (CBC) measures red cells, white cells, and platelets — it screens for anaemia, infection, and clotting issues.');
+      if (hasDiabetes) {
+        lines.add('🩸 Chronic conditions like diabetes can mask or mimic anaemia symptoms — a low haemoglobin result is worth discussing with your doctor.');
+      }
+      if (hasCKD) {
+        lines.add('🫘 Reduced kidney function often lowers red cell production. Your care team may track haemoglobin alongside your KFT.');
+      }
+    } else if (test.testType == 'liver_function') {
       lines.add('📋 LFT measures ALT, AST, bilirubin, and albumin. Elevated ALT/AST indicates liver inflammation.');
       if (hasDiabetes) {
         lines.add('🩸 Diabetics are at higher risk of fatty liver disease (NAFLD). If your doctor finds elevated ALT/AST, discuss lifestyle changes to protect your liver.');
@@ -256,7 +264,7 @@ class _LabTestCardState extends State<_LabTestCard> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(14),
         boxShadow: kCardShadow,
       ),
@@ -579,8 +587,8 @@ class _MarkDoneSheetState extends ConsumerState<_MarkDoneSheet> {
     final state = ref.watch(labTestsProvider);
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: context.c.cardBg,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.fromLTRB(

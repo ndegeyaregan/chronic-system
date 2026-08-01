@@ -6,7 +6,7 @@ const { authenticate, requireAdmin, requireSuperAdmin } = require('../middleware
 const { listAdmins, createAdmin, updateAdmin, toggleAdminStatus, resetAdminPassword, getContentAdminPerformance } = require('../controllers/adminsController');
 
 const idParam = [param('id').isUUID().withMessage('Invalid ID format')];
-const adminRoles = ['super_admin', 'support_admin', 'content_admin'];
+const adminRoles = ['super_admin', 'support_admin', 'content_admin', 'admin', 'staff'];
 
 // Public endpoint for reports
 router.get('/performance/content-admins', getContentAdminPerformance);

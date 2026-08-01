@@ -1,3 +1,4 @@
+import 'dart:math' show sin, cos, sqrt, atan2, pi;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/institution.dart';
@@ -12,6 +13,8 @@ class InstitutionsState {
   final bool isSyncing;
   final String? error;
   final String? lastSyncMessage;
+  final double? userLat;
+  final double? userLng;
 
   const InstitutionsState({
     this.items = const [],
@@ -21,6 +24,8 @@ class InstitutionsState {
     this.isSyncing = false,
     this.error,
     this.lastSyncMessage,
+    this.userLat,
+    this.userLng,
   });
 
   InstitutionsState copyWith({
@@ -31,6 +36,8 @@ class InstitutionsState {
     bool? isSyncing,
     Object? error = _sentinel,
     Object? lastSyncMessage = _sentinel,
+    double? userLat,
+    double? userLng,
   }) =>
       InstitutionsState(
         items: items ?? this.items,
@@ -44,14 +51,28 @@ class InstitutionsState {
         lastSyncMessage: identical(lastSyncMessage, _sentinel)
             ? this.lastSyncMessage
             : lastSyncMessage as String?,
+        userLat: userLat ?? this.userLat,
+        userLng: userLng ?? this.userLng,
       );
+}
+
+double _haversineKm(double lat1, double lon1, double lat2, double lon2) {
+  const r = 6371.0;
+  final dLat = (lat2 - lat1) * pi / 180;
+  final dLon = (lon2 - lon1) * pi / 180;
+  final a = sin(dLat / 2) * sin(dLat / 2) +
+      cos(lat1 * pi / 180) *
+          cos(lat2 * pi / 180) *
+          sin(dLon / 2) *
+          sin(dLon / 2);
+  return r * 2 * atan2(sqrt(a), sqrt(1 - a));
 }
 
 const _sentinel = Object();
 
 class InstitutionsNotifier extends StateNotifier<InstitutionsState> {
   InstitutionsNotifier() : super(const InstitutionsState()) {
-    _bootstrap();
+    Future.microtask(_bootstrap);
   }
 
   Future<void> _bootstrap() async {
@@ -66,6 +87,31 @@ class InstitutionsNotifier extends StateNotifier<InstitutionsState> {
   Future<void> setSearch(String search) async {
     state = state.copyWith(search: search);
     await fetch();
+  }
+
+  /// Records the member's current position and re-sorts the already-loaded
+  /// facilities nearest-first, without a network round trip.
+  void setUserLocation(double lat, double lng) {
+    state = state.copyWith(userLat: lat, userLng: lng);
+    final list = List<Institution>.from(state.items);
+    _sortItems(list);
+    state = state.copyWith(items: list);
+  }
+
+  void _sortItems(List<Institution> list) {
+    final lat = state.userLat;
+    final lng = state.userLng;
+    if (lat != null && lng != null) {
+      // Facilities missing coordinates sort to the bottom rather than
+      // breaking the list.
+      list.sort((a, b) {
+        final da = _haversineKm(lat, lng, a.latitude ?? 9999, a.longitude ?? 9999);
+        final db = _haversineKm(lat, lng, b.latitude ?? 9999, b.longitude ?? 9999);
+        return da.compareTo(db);
+      });
+    } else {
+      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    }
   }
 
   Future<void> fetch() async {
@@ -90,7 +136,7 @@ class InstitutionsNotifier extends StateNotifier<InstitutionsState> {
               Institution.fromBackendJson(Map<String, dynamic>.from(e)))
           .where((i) => i.name.isNotEmpty)
           .toList();
-      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      _sortItems(list);
       state = state.copyWith(items: list, isLoading: false);
     } on DioException catch (e) {
       state = state.copyWith(

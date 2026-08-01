@@ -34,7 +34,7 @@ class AuthorizationsState {
 
 class AuthorizationsNotifier extends StateNotifier<AuthorizationsState> {
   AuthorizationsNotifier() : super(const AuthorizationsState()) {
-    fetchMyRequests();
+    Future.microtask(fetchMyRequests);
   }
 
   Future<void> fetchMyRequests() async {

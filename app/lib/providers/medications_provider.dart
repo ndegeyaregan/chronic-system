@@ -46,7 +46,7 @@ class MedicationsState {
 
 class MedicationsNotifier extends StateNotifier<MedicationsState> {
   MedicationsNotifier() : super(const MedicationsState()) {
-    fetchMedications();
+    Future.microtask(fetchMedications);
   }
 
   Future<void> fetchMedications() async {

@@ -1,5 +1,8 @@
 const pool = require('../config/db');
 const notificationService = require('../services/notificationService');
+const tmrService = require('../services/tmrService');
+const _axiosImport = require('axios');
+const axios = _axiosImport.default ?? _axiosImport;
 
 const logAppointmentNotification = async ({
   memberId,
@@ -19,7 +22,10 @@ const logAppointmentNotification = async ({
 const createAppointment = async (req, res) => {
   try {
     const memberId = req.user.id;
-    const { hospital_id, condition_id, condition, appointment_date, preferred_time, reason } = req.body;
+    const {
+      hospital_id, condition_id, condition, appointment_date,
+      preferred_time, reason, outpatient_balance, sanlam_verified,
+    } = req.body;
 
     if (!hospital_id || !appointment_date) {
       return res.status(400).json({ message: 'hospital_id and appointment_date are required' });
@@ -44,20 +50,102 @@ const createAppointment = async (req, res) => {
       if (condResult.rows.length) resolvedConditionId = condResult.rows[0].id;
     }
 
+    // ── Fetch member info once (used by both TMR and generic paths) ──────────
+    const memberInfo = await pool.query(
+      'SELECT first_name, last_name, member_number, phone, email FROM members WHERE id = $1',
+      [memberId]
+    );
+    const m = memberInfo.rows[0];
+
+    // ── Booking path selection ────────────────────────────────────────────────
+    let appointmentStatus = 'pending';
+    let isDirectBooked   = false;
+    let externalBookingId  = null;
+    let externalSystem     = null;
+
+    if (hospital.integration_type === 'tmr') {
+      // ── TMR Telehealth path ─────────────────────────────────────────────
+      // The Sanlam app already verified the member's outpatient balance
+      // (outpatient_balance > 0) before this request was submitted.
+      // We forward that verification to TMR so they skip their own check.
+      if (!sanlam_verified || !(outpatient_balance > 0)) {
+        return res.status(402).json({
+          message: 'Insufficient outpatient benefit balance. Please top up your plan before booking a telehealth appointment.',
+          code: 'INSUFFICIENT_OUTPATIENT_BALANCE',
+        });
+      }
+
+      try {
+        const tmrResult = await tmrService.bookTmrAppointment({
+          memberNumber:     m?.member_number ?? memberId,
+          memberName:       m ? `${m.first_name} ${m.last_name}` : memberId,
+          memberPhone:      m?.phone  ?? null,
+          memberEmail:      m?.email  ?? null,
+          appointmentDate:  appointment_date,
+          preferredTime:    preferred_time || null,
+          condition:        condition      || null,
+          outpatientBalance: outpatient_balance ?? 0,
+        });
+        appointmentStatus = 'confirmed';
+        isDirectBooked    = true;
+        externalBookingId = tmrResult.tmrBookingId;
+        externalSystem    = 'tmr';
+      } catch (err) {
+        console.error('TMR booking API call failed:', err.message);
+        // We still create the record as pending so admin can follow up with TMR manually.
+        // The member gets the same notification as a regular pending booking.
+      }
+
+    } else if (hospital.direct_booking_capable && hospital.booking_api_url) {
+      // ── Generic direct-booking path ─────────────────────────────────────
+      try {
+        await axios.post(
+          hospital.booking_api_url,
+          {
+            patient_id:     memberId,
+            patient_name:   m ? `${m.first_name} ${m.last_name}` : memberId,
+            patient_number: m?.member_number ?? null,
+            patient_phone:  m?.phone ?? null,
+            appointment_date,
+            preferred_time: preferred_time || null,
+            condition:      condition      || null,
+            reason:         reason         || null,
+          },
+          { timeout: 8000 }
+        );
+        appointmentStatus = 'confirmed';
+        isDirectBooked    = true;
+      } catch (err) {
+        console.warn(
+          `Direct booking to ${hospital.booking_api_url} failed — falling back to pending:`,
+          err.message
+        );
+      }
+    }
+
     const result = await pool.query(
       `INSERT INTO appointments
-         (member_id, hospital_id, condition_id, appointment_date, preferred_time, reason, status, created_by_admin)
-       VALUES ($1,$2,$3,$4,$5,$6,'pending', FALSE)
+         (member_id, hospital_id, condition_id, appointment_date, preferred_time, reason,
+          status, created_by_admin, is_direct_booked, external_booking_id, external_system)
+       VALUES ($1,$2,$3,$4,$5,$6,$7, FALSE, $8, $9, $10)
        RETURNING *`,
-      [memberId, hospital_id, resolvedConditionId, appointment_date, preferred_time || null, reason || null]
+      [
+        memberId, hospital_id, resolvedConditionId, appointment_date,
+        preferred_time || null, reason || null,
+        appointmentStatus, isDirectBooked, externalBookingId, externalSystem,
+      ]
     );
     const appointment = result.rows[0];
 
     // Notify member
     notificationService.sendToMember(memberId, {
-      type: 'appointment_created',
-      title: '📅 Appointment Request Received',
-      message: `Your appointment request at ${hospital.name} on ${appointment_date} is pending confirmation.`,
+      type: isDirectBooked ? 'appointment_confirmed' : 'appointment_created',
+      title: isDirectBooked
+        ? '✅ Appointment Confirmed'
+        : '📅 Appointment Request Received',
+      message: isDirectBooked
+        ? `Your appointment at ${hospital.name} on ${appointment_date} has been confirmed by the hospital.`
+        : `Your appointment request at ${hospital.name} on ${appointment_date} is pending confirmation.`,
       channel: ['push', 'sms', 'email'],
     }).catch((err) => console.error('Appointment member notification error:', err.message));
     logAppointmentNotification({
@@ -127,7 +215,8 @@ const listMyAppointments = async (req, res) => {
 
     const [dataResult, countResult] = await Promise.all([
       pool.query(
-        `SELECT a.*, h.name AS hospital_name, h.address AS hospital_address,
+        `SELECT a.*, h.name AS hospital_name, h.city AS hospital_city,
+                h.address AS hospital_address, h.phone AS hospital_phone,
                 c.name AS condition_name
          FROM appointments a
          JOIN hospitals h ON h.id = a.hospital_id

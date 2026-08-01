@@ -169,7 +169,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.c.cardBg,
             borderRadius: BorderRadius.circular(kRadiusLg),
             boxShadow: kShadowMd,
           ),
@@ -274,7 +274,7 @@ class _ChannelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: context.c.cardBg,
       borderRadius: BorderRadius.circular(kRadiusLg),
       elevation: 1,
       child: InkWell(

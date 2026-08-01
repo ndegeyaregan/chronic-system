@@ -124,7 +124,7 @@ class _RegisterSearchScreenState extends State<RegisterSearchScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.c.cardBg,
                   borderRadius: BorderRadius.circular(kRadiusLg),
                   boxShadow: kShadowMd,
                 ),

@@ -514,7 +514,7 @@ class _ReimbursementScreenState extends ConsumerState<ReimbursementScreen> {
         borderRadius: BorderRadius.circular(kRadiusMd),
       ),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: Theme.of(context).inputDecorationTheme.fillColor,
     );
   }
 }
@@ -665,7 +665,7 @@ class _AttachmentTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           border: Border.all(
             color: has ? kPrimary : Colors.grey.shade300,
             width: has ? 1.4 : 1,
@@ -947,7 +947,7 @@ class _InAppAuthPicker extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(kRadiusMd),
         ),
@@ -1029,7 +1029,7 @@ class _InAppAuthPicker extends StatelessWidget {
           borderRadius: BorderRadius.circular(kRadiusMd),
         ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
       ),
       items: approvedAuths.map((a) {
         final id = a['id'].toString();
@@ -1089,7 +1089,7 @@ class _EmailApprovalBlock extends StatelessWidget {
               borderRadius: BorderRadius.circular(kRadiusMd),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: Theme.of(context).inputDecorationTheme.fillColor,
           ),
           validator: (v) =>
               (v == null || v.trim().isEmpty) ? 'Required' : null,

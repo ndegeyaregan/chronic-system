@@ -123,7 +123,7 @@ class InstitutionDetailScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
       ),
@@ -301,7 +301,7 @@ class InstitutionDetailScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
         border: Border.all(color: Colors.amber.shade300, width: 1.5),
@@ -314,11 +314,13 @@ class InstitutionDetailScreen extends ConsumerWidget {
               Icon(Icons.account_balance_wallet_rounded,
                   color: Colors.amber.shade800, size: 20),
               const SizedBox(width: 8),
-              Text('Your Scheme Co-Pay at this Facility',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.amber.shade900)),
+              Expanded(
+                child: Text('Your Scheme Co-Pay at this Facility',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.amber.shade900)),
+              ),
             ],
           ),
           if ((cp.benefitSchemes ?? '').isNotEmpty) ...[
@@ -463,7 +465,7 @@ class InstitutionDetailScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kCardShadow,
       ),
@@ -475,19 +477,34 @@ class InstitutionDetailScreen extends ConsumerWidget {
   }
 
   Widget _actions(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _openMaps,
+            icon: const Icon(Icons.directions_rounded, size: 18),
+            label: const Text('Get Directions'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kPrimary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(kRadiusMd),
+              ),
+              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+        if (institution.phone != null && institution.phone!.isNotEmpty) ...[
+          const SizedBox(width: 8),
           Expanded(
-            child: ElevatedButton.icon(
-              onPressed: _openMaps,
-              icon: const Icon(Icons.directions_rounded, size: 18),
-              label: const Text('Get Directions'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimary,
-                foregroundColor: Colors.white,
+            child: OutlinedButton.icon(
+              onPressed: () => _call(institution.phone!),
+              icon: const Icon(Icons.phone_rounded, size: 18, color: kSuccess),
+              label: const Text('Call', style: TextStyle(color: kSuccess)),
+              style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
+                side: BorderSide(color: kSuccess.withValues(alpha: 0.4)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(kRadiusMd),
                 ),
@@ -495,76 +512,60 @@ class InstitutionDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
-          if (institution.phone != null && institution.phone!.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Expanded(
+        ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: PopupMenuButton<String>(
+              onSelected: (action) => _handleAction(context, action),
+              itemBuilder: (context) => [
+                if (!institution.isSuspended)
+                  const PopupMenuItem(
+                    value: 'suspend',
+                    child: Row(
+                      children: [
+                        Icon(Icons.block_rounded, color: Colors.red),
+                        SizedBox(width: 10),
+                        Text('Suspend'),
+                      ],
+                    ),
+                  )
+                else
+                  const PopupMenuItem(
+                    value: 'unsuspend',
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.green),
+                        SizedBox(width: 10),
+                        Text('Unsuspend'),
+                      ],
+                    ),
+                  ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_rounded, color: Colors.red),
+                      SizedBox(width: 10),
+                      Text('Remove from App'),
+                    ],
+                  ),
+                ),
+              ],
               child: OutlinedButton.icon(
-                onPressed: () => _call(institution.phone!),
-                icon: const Icon(Icons.phone_rounded, size: 18, color: kSuccess),
-                label: const Text('Call', style: TextStyle(color: kSuccess)),
+                onPressed: null,
+                icon: const Icon(Icons.more_vert_rounded, size: 18),
+                label: const Text('More'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  side: BorderSide(color: kSuccess.withValues(alpha: 0.4)),
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                  side: BorderSide(color: context.c.border),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(kRadiusMd),
                   ),
-                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(width: 8),
-          PopupMenuButton<String>(
-            onSelected: (action) => _handleAction(context, action),
-            itemBuilder: (context) => [
-              if (!institution.isSuspended)
-                const PopupMenuItem(
-                  value: 'suspend',
-                  child: Row(
-                    children: [
-                      Icon(Icons.block_rounded, color: Colors.red),
-                      SizedBox(width: 10),
-                      Text('Suspend'),
-                    ],
-                  ),
-                )
-              else
-                const PopupMenuItem(
-                  value: 'unsuspend',
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle_rounded, color: Colors.green),
-                      SizedBox(width: 10),
-                      Text('Unsuspend'),
-                    ],
-                  ),
-                ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_rounded, color: Colors.red),
-                    SizedBox(width: 10),
-                    Text('Remove from App'),
-                  ],
-                ),
-              ),
-            ],
-            child: OutlinedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.more_vert_rounded, size: 18),
-              label: const Text('More'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                side: BorderSide(color: context.c.border),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(kRadiusMd),
                 ),
               ),
             ),
           ),
         ],
-      ),
     );
   }
 

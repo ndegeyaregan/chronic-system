@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../core/constants.dart';
 import '../../providers/appointments_provider.dart';
+import '../../providers/member_type_provider.dart';
 import '../../models/appointment.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../core/app_colors.dart';
@@ -37,16 +38,19 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(appointmentsProvider);
 
+    final isChronic = ref.watch(isChronicMemberProvider);
+    final homeRoute = isChronic ? '/home/chronic' : routeDashboard;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) context.go('/home/chronic');
+        if (!didPop) context.go(homeRoute);
       },
       child: Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/home/chronic'),
+          onPressed: () => context.go(homeRoute),
         ),
         title: Text('Appointments'),
         bottom: TabBar(
@@ -59,7 +63,10 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push(routeBookAppointment),
+        onPressed: () => context.push(
+          routeBookAppointment,
+          extra: {'skipCondition': !isChronic},
+        ),
         icon: const Icon(Icons.add),
         label: Text('Book Appointment'),
       ),
@@ -260,7 +267,7 @@ class _AppointmentCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(

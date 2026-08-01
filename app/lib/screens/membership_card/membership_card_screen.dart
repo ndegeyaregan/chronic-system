@@ -29,27 +29,42 @@ class MembershipCardScreen extends ConsumerStatefulWidget {
 class _MembershipCardScreenState
     extends ConsumerState<MembershipCardScreen> {
   final _boundaryKey = GlobalKey();
+  final _shareButtonKey = GlobalKey();
   bool _sharing = false;
 
   Future<void> _shareCard() async {
     setState(() => _sharing = true);
+    // Let the rebuild triggered by setState finish painting before we capture.
+    await WidgetsBinding.instance.endOfFrame;
     try {
       final boundary = _boundaryKey.currentContext?.findRenderObject()
           as RenderRepaintBoundary?;
-      if (boundary == null) return;
+      if (boundary == null) {
+        debugPrint('Share: RepaintBoundary not found');
+        return;
+      }
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData =
           await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
+      if (byteData == null) {
+        debugPrint('Share: toByteData returned null');
+        return;
+      }
       final bytes = byteData.buffer.asUint8List();
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/membership_card.png');
       await file.writeAsBytes(bytes);
+      final box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      final origin = box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : const Rect.fromLTWH(0, 400, 300, 50);
       await Share.shareXFiles(
-        [XFile(file.path)],
+        [XFile(file.path, mimeType: 'image/png', name: 'membership_card.png')],
         text: 'My Sanlam Membership Card',
+        sharePositionOrigin: origin,
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Share error: $e\n$st');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -84,7 +99,7 @@ class _MembershipCardScreenState
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: kPrimaryGradient),
         ),
-        title: const Text('Membership Card',
+        title: Text('Membership Card',
             style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -111,7 +126,7 @@ class _MembershipCardScreenState
                 final cardW = constraints.maxWidth.clamp(0.0, 440.0);
                 // 1.55:1 — comfortably wider than tall, enough room for all
                 // member details without clipping.
-                final cardH = cardW / 1.55;
+                final cardH = cardW / 1.45;
                 return Center(
                   child: SizedBox(
                     width: cardW,
@@ -133,6 +148,7 @@ class _MembershipCardScreenState
                 child: Column(
                   children: [
                     SizedBox(
+                      key: _shareButtonKey,
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: _sharing ? null : _shareCard,
@@ -250,12 +266,6 @@ class _CardWidget extends StatelessWidget {
                 bottom: -h * 0.3,
                 child: _Circle(w * 0.45, 0.07),
               ),
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0.04,
-                  child: CustomPaint(painter: _StripePainter()),
-                ),
-              ),
 
               // ── Card content ────────────────────────────────────────────
               Padding(
@@ -267,17 +277,20 @@ class _CardWidget extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          'assets/images/login_logo.png',
-                          height: logoH,
-                          fit: BoxFit.contain,
+                        Flexible(
+                          child: Image.asset(
+                            'assets/images/login_logo.png',
+                            height: logoH,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.centerLeft,
+                          ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         _RelationPill(card.relation),
                       ],
                     ),
 
-                    SizedBox(height: h * 0.05),
+                    const SizedBox(height: 6),
 
                     // Row 2: EMV chip + scheme / corp name
                     Row(
@@ -344,7 +357,7 @@ class _CardWidget extends StatelessWidget {
                                   height: 1.1,
                                 ),
                               ),
-                              SizedBox(height: h * 0.04),
+                              const SizedBox(height: 4),
                               _FieldLabel('MEMBER NO', h),
                               const SizedBox(height: 2),
                               // FittedBox guarantees the number is never clipped
@@ -363,7 +376,7 @@ class _CardWidget extends StatelessWidget {
                                 ),
                               ),
                               if (card.planCode.isNotEmpty) ...[
-                                SizedBox(height: h * 0.035),
+                                const SizedBox(height: 3),
                                 _FieldLabel('PLAN', h),
                                 const SizedBox(height: 2),
                                 Text(
@@ -396,7 +409,7 @@ class _CardWidget extends StatelessWidget {
                             ],
                           ),
                           child: QrImageView(
-                            data: card.memberNo,
+                            data: 'https://sanlamallianz4u.co.ug/medicalform/index.php',
                             version: QrVersions.auto,
                             size: qrSize,
                             backgroundColor: Colors.white,
@@ -456,7 +469,7 @@ class _RelationPill extends StatelessWidget {
         ),
         child: Text(
           relation.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontSize: 9,
             fontWeight: FontWeight.w800,
@@ -513,27 +526,6 @@ class _FieldLabel extends StatelessWidget {
 }
 
 // ── Custom painters ─────────────────────────────────────────────────────────
-
-/// Draws subtle diagonal stripes for card texture.
-class _StripePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 1.5;
-    const spacing = 18.0;
-    for (double i = -size.height; i < size.width + size.height; i += spacing) {
-      canvas.drawLine(
-        Offset(i, 0),
-        Offset(i + size.height, size.height),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 
 /// Draws the contact lines on the EMV chip.
 class _ChipPainter extends CustomPainter {
@@ -699,12 +691,12 @@ class _AuthorizationDocumentsSectionState
                 const Icon(Icons.verified_user_outlined,
                     size: 18, color: kPrimary),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Authorization Documents',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: kText,
+                    color: context.c.text,
                   ),
                 ),
                 const Spacer(),
@@ -715,14 +707,14 @@ class _AuthorizationDocumentsSectionState
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: _refresh,
-                  icon: const Icon(Icons.refresh, color: kSubtext),
+                  icon: Icon(Icons.refresh, color: context.c.subtext),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Documents issued to you by the Sanlam team.',
-              style: TextStyle(fontSize: 12, color: kSubtext),
+              style: TextStyle(fontSize: 12, color: context.c.subtext),
             ),
             const SizedBox(height: 12),
             if (loading)
@@ -742,19 +734,19 @@ class _AuthorizationDocumentsSectionState
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: kSurfaceAlt,
+                  color: context.c.surfaceAlt,
                   borderRadius: BorderRadius.circular(kRadiusMd),
-                  border: Border.all(color: kBorder),
+                  border: Border.all(color: context.c.border),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.folder_off_outlined,
-                        size: 20, color: kSubtext),
-                    SizedBox(width: 10),
+                        size: 20, color: context.c.subtext),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'No authorization documents yet.',
-                        style: TextStyle(fontSize: 13, color: kSubtext),
+                        style: TextStyle(fontSize: 13, color: context.c.subtext),
                       ),
                     ),
                   ],
@@ -788,9 +780,9 @@ class _DocTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: kSurface,
+        color: context.c.surface,
         borderRadius: BorderRadius.circular(kRadiusMd),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.c.border),
         boxShadow: kShadowSm,
       ),
       child: Material(
@@ -818,10 +810,10 @@ class _DocTile extends StatelessWidget {
                     children: [
                       Text(
                         doc.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: kText,
+                          color: context.c.text,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -830,8 +822,8 @@ class _DocTile extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           doc.description!,
-                          style: const TextStyle(
-                              fontSize: 12, color: kSubtext),
+                          style: TextStyle(
+                              fontSize: 12, color: context.c.subtext),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -840,7 +832,7 @@ class _DocTile extends StatelessWidget {
                       Text(
                         'Issued ${DateFormat('dd MMM yyyy').format(doc.issuedAt)}',
                         style:
-                            const TextStyle(fontSize: 11, color: kTextLight),
+                            TextStyle(fontSize: 11, color: context.c.textLight),
                       ),
                     ],
                   ),
@@ -853,7 +845,7 @@ class _DocTile extends StatelessWidget {
                     color: kPrimary,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.visibility_outlined,

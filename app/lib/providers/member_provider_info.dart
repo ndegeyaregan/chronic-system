@@ -32,7 +32,7 @@ class MemberProviderInfoState {
 class MemberProviderInfoNotifier
     extends StateNotifier<MemberProviderInfoState> {
   MemberProviderInfoNotifier() : super(const MemberProviderInfoState()) {
-    fetchProvider();
+    Future.microtask(fetchProvider);
   }
 
   Future<void> fetchProvider() async {

@@ -135,7 +135,7 @@ class MetricCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusMd),
         border: Border(
           left: BorderSide(color: accent, width: 3),

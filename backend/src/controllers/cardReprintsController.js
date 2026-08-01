@@ -4,6 +4,7 @@ const {
   sendEmail,
   sendPush,
 } = require('../services/notificationService');
+const onafriq = require('../services/onafriqService');
 
 const REPRINT_FEE_UGX = 20000;
 const MEMBERSHIP_INBOX = 'membership@ug.sanlamallianz.com';
@@ -12,10 +13,8 @@ const ALLOWED_REASONS = new Set(['lost', 'damaged', 'stolen', 'other']);
 
 const sanitize = (v) => (typeof v === 'string' ? v.trim() : '');
 
-/**
- * Sends member SMS/email + team email + push for a reprint request.
- * Idempotent: marks notifications_sent_at and returns early on second call.
- */
+// Sends member SMS/email + team email + push for a reprint request.
+// Idempotent: marks notifications_sent_at and returns early on second call.
 const fulfilCardReprintPayment = async (requestId) => {
   const r = await pool.query(
     `SELECT cr.*, m.first_name, m.last_name, m.email, m.phone, m.fcm_token,
@@ -115,15 +114,15 @@ const fulfilCardReprintPayment = async (requestId) => {
   );
 };
 
-/**
- * POST /api/card-reprints
- * body: { targetMemberNo, targetMemberName, targetRelation,
- *         isForDependant, reason, reasonNotes }
- *
- * Creates a pending reprint record. Member pays manually via Mobile Money
- * USSD (Airtel *185# or MTN *165#) using their Member Number as the
- * reference. Admins verify the payment and mark the request as paid.
- */
+// POST /api/card-reprints
+// body: { targetMemberNo, targetMemberName, targetRelation,
+//         isForDependant, reason, reasonNotes, paymentPhone }
+//
+// Creates a pending reprint record and immediately fires an Onafriq
+// pay-in request against paymentPhone -- on supported networks this pops
+// a USSD PIN prompt on the member's phone with no manual dialing or
+// screenshot proof needed. The app polls GET /:id/payment-status until
+// the pay-in resolves.
 const create = async (req, res) => {
   try {
     const memberId = req.user.id;
@@ -137,13 +136,7 @@ const create = async (req, res) => {
       body.isForDependant === '1';
     const reason = sanitize(body.reason).toLowerCase();
     const reasonNotes = sanitize(body.reasonNotes) || null;
-    const paymentReference = sanitize(body.paymentReference) || null;
-    const paymentMethod = 'ussd_mobile_money';
-
-    const proofUrl = req.file
-      ? `/uploads/card-reprints/${req.file.filename}`
-      : null;
-    const proofName = req.file ? req.file.originalname : null;
+    const paymentPhone = sanitize(body.paymentPhone);
 
     if (!targetMemberNo || !targetMemberName) {
       return res.status(400).json({ message: 'targetMemberNo and targetMemberName are required' });
@@ -156,10 +149,8 @@ const create = async (req, res) => {
     if (reason === 'other' && !reasonNotes) {
       return res.status(400).json({ message: 'reasonNotes is required when reason is "other"' });
     }
-    if (!paymentReference && !proofUrl) {
-      return res.status(400).json({
-        message: 'Please attach a payment screenshot or enter the transaction ID before submitting.',
-      });
+    if (!paymentPhone || paymentPhone.replace(/\D/g, '').length < 9) {
+      return res.status(400).json({ message: 'A valid mobile money phone number is required' });
     }
 
     const memberRes = await pool.query(
@@ -175,38 +166,121 @@ const create = async (req, res) => {
       `INSERT INTO card_reprint_requests
          (member_id, target_member_no, target_member_name, target_relation,
           is_for_dependant, reason, reason_notes, payment_method,
-          payment_phone, amount, currency, status, payment_status,
-          payment_confirmation_code, payment_proof_url, payment_proof_name)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'UGX','pending_payment','pending',$11,$12,$13)
+          payment_phone, amount, currency, status, payment_status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'mobile_money_pin',$8,$9,'UGX','pending_payment','pending')
        RETURNING id, created_at`,
       [
         memberId, targetMemberNo, targetMemberName, targetRelation,
-        isForDependant, reason, reasonNotes, paymentMethod,
-        null, REPRINT_FEE_UGX,
-        paymentReference, proofUrl, proofName,
+        isForDependant, reason, reasonNotes,
+        paymentPhone, REPRINT_FEE_UGX,
       ]
     );
     const request = insertRes.rows[0];
 
-    return res.status(201).json({
-      id: request.id,
-      status: 'pending_payment',
-      paymentStatus: 'pending',
-      amount: REPRINT_FEE_UGX,
-      currency: 'UGX',
-      createdAt: request.created_at,
-      paymentReference,
-      paymentProofUrl: proofUrl,
-      message:
-        'Request submitted. Our team will verify your Mobile Money payment and process the reprint.',
-    });
+    try {
+      const collectionRequest = await onafriq.createCollectionRequest({
+        phonenumber: paymentPhone,
+        liveAmount: REPRINT_FEE_UGX,
+        reason: 'Card Reprint Fee',
+        partnerTransactionId: request.id,
+      });
+      await pool.query(
+        `UPDATE card_reprint_requests SET onafriq_request_id = $1 WHERE id = $2`,
+        [String(collectionRequest.id), request.id]
+      );
+      return res.status(201).json({
+        id: request.id,
+        status: 'pending_payment',
+        paymentStatus: 'pending',
+        amount: REPRINT_FEE_UGX,
+        currency: 'UGX',
+        createdAt: request.created_at,
+        sandbox: onafriq.isSandbox(),
+        message: onafriq.isSandbox()
+          ? 'Test payment request sent (sandbox mode).'
+          : 'Check your phone and enter your Mobile Money PIN to approve the payment.',
+      });
+    } catch (payErr) {
+      console.error(
+        'cardReprints onafriq createCollectionRequest error:',
+        payErr.response?.data || payErr.message
+      );
+      await pool.query(
+        `UPDATE card_reprint_requests SET payment_status = 'failed' WHERE id = $1`,
+        [request.id]
+      );
+      return res.status(502).json({
+        id: request.id,
+        message: 'Could not start the mobile money payment. Please try again.',
+      });
+    }
   } catch (err) {
     console.error('cardReprints.create error:', err);
     return res.status(500).json({ message: 'Failed to submit reprint request' });
   }
 };
 
-/** GET /api/card-reprints/mine — list this member's requests */
+// GET /api/card-reprints/:id/payment-status
+// Polled by the app after create() while waiting for the member to
+// approve the USSD PIN prompt. Checks Onafriq once per call and updates
+// our record; on success this also triggers the paid notifications.
+const getPaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const memberId = req.user.id;
+
+    const existing = await pool.query(
+      `SELECT * FROM card_reprint_requests WHERE id = $1 AND member_id = $2`,
+      [id, memberId]
+    );
+    if (!existing.rows.length) {
+      return res.status(404).json({ message: 'Reprint request not found' });
+    }
+    const request = existing.rows[0];
+
+    // Already resolved, or never got an Onafriq request id — nothing to poll.
+    const resolved = ['completed', 'failed', 'expired', 'reversed'];
+    if (resolved.includes(request.payment_status) || !request.onafriq_request_id) {
+      return res.json({
+        id: request.id,
+        status: request.status,
+        paymentStatus: request.payment_status,
+      });
+    }
+
+    const collectionRequest = await onafriq.getCollectionRequest(request.onafriq_request_id);
+    const onafriqStatus = collectionRequest.status;
+
+    if (onafriqStatus === 'successful') {
+      await pool.query(
+        `UPDATE card_reprint_requests
+            SET payment_status = 'completed', payment_completed_at = NOW(),
+                status = 'paid', paid_at = COALESCE(paid_at, NOW()),
+                payment_method_used = 'Onafriq Mobile Money'
+          WHERE id = $1`,
+        [id]
+      );
+      await fulfilCardReprintPayment(id);
+      return res.json({ id, status: 'paid', paymentStatus: 'completed' });
+    }
+
+    if (['failed', 'expired', 'reversed'].includes(onafriqStatus)) {
+      await pool.query(
+        `UPDATE card_reprint_requests SET payment_status = $1 WHERE id = $2`,
+        [onafriqStatus, id]
+      );
+      return res.json({ id, status: request.status, paymentStatus: onafriqStatus });
+    }
+
+    // new | pending | instructions_sent | processing_started
+    return res.json({ id, status: request.status, paymentStatus: 'pending' });
+  } catch (err) {
+    console.error('cardReprints.getPaymentStatus error:', err.response?.data || err.message);
+    return res.status(500).json({ message: 'Failed to check payment status' });
+  }
+};
+
+// GET /api/card-reprints/mine -- list this member's requests
 const listMine = async (req, res) => {
   try {
     const result = await pool.query(
@@ -229,7 +303,7 @@ const listMine = async (req, res) => {
   }
 };
 
-/** GET /api/card-reprints (admin) — list all reprint requests */
+// GET /api/card-reprints (admin) -- list all reprint requests
 const listAll = async (req, res) => {
   try {
     const status = (req.query.status || '').toString().trim();
@@ -266,7 +340,7 @@ const listAll = async (req, res) => {
   }
 };
 
-/** PATCH /api/card-reprints/:id/status (admin) — move along the fulfilment flow */
+// PATCH /api/card-reprints/:id/status (admin) -- move along the fulfilment flow
 const updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -376,6 +450,7 @@ module.exports = {
   listMine,
   listAll,
   updateStatus,
+  getPaymentStatus,
   fulfilCardReprintPayment,
   REPRINT_FEE_UGX,
 };

@@ -106,7 +106,7 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.c.cardBg,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
                   BoxShadow(
@@ -132,8 +132,8 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                         child: Center(
                           child: Text(
                             _initials,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: context.c.cardBg,
                               fontSize: 26,
                               fontWeight: FontWeight.w800,
                             ),
@@ -241,7 +241,7 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.c.cardBg,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
                   BoxShadow(
@@ -387,7 +387,7 @@ class _PartnerDetailScreenState extends ConsumerState<PartnerDetailScreen> {
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.c.cardBg,
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: const [
                             BoxShadow(

@@ -54,28 +54,50 @@ class CycleTrackerScreen extends ConsumerWidget {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFFE91E63),
-        foregroundColor: Colors.white,
-        onPressed: () => _openLogSheet(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('Log Period'),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 72),
+        child: FloatingActionButton.extended(
+          backgroundColor: const Color(0xFFE91E63),
+          foregroundColor: Colors.white,
+          onPressed: () => _openLogSheet(context, ref),
+          icon: const Icon(Icons.add),
+          label: const Text('Log Period'),
+        ),
       ),
     );
   }
 
   void _openLogSheet(BuildContext context, WidgetRef ref,
-      {CycleEntry? existing}) {
-    showModalBottomSheet(
+      {CycleEntry? existing}) async {
+    final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _LogPeriodSheet(existing: existing),
     );
+    if (saved == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(existing == null ? 'Period saved!' : 'Period updated!'),
+            ],
+          ),
+          backgroundColor: const Color(0xFFE91E63),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   void _showSettings(BuildContext context, WidgetRef ref) {
@@ -204,8 +226,8 @@ class _StatusBanner extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: const TextStyle(
-                        color: Colors.white,
+                    style: TextStyle(
+                        color: context.c.cardBg,
                         fontSize: 17,
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
@@ -230,12 +252,13 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _statTile('Avg Cycle', '${stats.avgCycleLength}', 'days', kPrimary),
+        _statTile(context, 'Avg Cycle', '${stats.avgCycleLength}', 'days', kPrimary),
         const SizedBox(width: 10),
-        _statTile('Avg Period', '${stats.avgPeriodLength}', 'days',
+        _statTile(context, 'Avg Period', '${stats.avgPeriodLength}', 'days',
             const Color(0xFFE53935)),
         const SizedBox(width: 10),
         _statTile(
+            context,
             'Cycle Day',
             stats.currentCycleDay?.toString() ?? '—',
             'today',
@@ -244,12 +267,12 @@ class _StatsRow extends StatelessWidget {
     );
   }
 
-  Widget _statTile(String label, String value, String unit, Color color) {
+  Widget _statTile(BuildContext context, String label, String value, String unit, Color color) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -310,7 +333,7 @@ class _CalendarSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -489,68 +512,243 @@ class _HistorySection extends ConsumerWidget {
       },
       onDismissed: (_) =>
           ref.read(cycleTrackerProvider.notifier).deleteEntry(e.id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2))
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFCE4EC),
-                borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showEntryDetail(context, ref, e),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: context.c.cardBg,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2))
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFCE4EC),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.water_drop_rounded,
+                    color: Color(0xFFE91E63), size: 22),
               ),
-              child: const Icon(Icons.water_drop_rounded,
-                  color: Color(0xFFE91E63), size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${df.format(e.startDate)} → $endStr',
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${e.flow.label} flow • $lenStr'
-                    '${e.symptoms.isNotEmpty ? ' • ${e.symptoms.length} symptom(s)' : ''}',
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
-                  if (e.notes != null && e.notes!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(e.notes!,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.black87,
-                            fontStyle: FontStyle.italic)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${df.format(e.startDate)} → $endStr',
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${e.flow.label} flow • $lenStr'
+                      '${e.symptoms.isNotEmpty ? ' • ${e.symptoms.length} symptom(s)' : ''}',
+                      style: const TextStyle(
+                          fontSize: 12, color: Colors.black54),
+                    ),
+                    if (e.notes != null && e.notes!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(e.notes!,
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black87,
+                              fontStyle: FontStyle.italic)),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            if (e.endDate == null)
-              TextButton(
-                onPressed: () => ref
-                    .read(cycleTrackerProvider.notifier)
-                    .endCurrentPeriod(),
-                child: const Text('End'),
-              ),
-          ],
+              if (e.endDate == null)
+                TextButton(
+                  onPressed: () async {
+                    await ref
+                        .read(cycleTrackerProvider.notifier)
+                        .updateEntry(e.copyWith(endDate: DateTime.now()));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Row(
+                            children: [
+                              Icon(Icons.check_circle_rounded,
+                                  color: Colors.white, size: 20),
+                              SizedBox(width: 8),
+                              Text('Period ended'),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFFE91E63),
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 2),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('End'),
+                )
+              else
+                const Icon(Icons.chevron_right_rounded,
+                    color: Colors.black26, size: 20),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  void _showEntryDetail(
+      BuildContext context, WidgetRef ref, CycleEntry e) {
+    final df = DateFormat('EEE, d MMM yyyy');
+    final endStr = e.endDate != null ? df.format(e.endDate!) : 'Ongoing';
+    final lenStr = e.periodLengthDays != null
+        ? '${e.periodLengthDays} days'
+        : '—';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: EdgeInsets.zero,
+        title: Container(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFE91E63), Color(0xFFF06292)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.water_drop_rounded,
+                  color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  df.format(e.startDate),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _detailRow(Icons.calendar_today_outlined, 'Start',
+                  df.format(e.startDate)),
+              _detailRow(Icons.event_available_outlined, 'End', endStr),
+              _detailRow(Icons.timelapse_rounded, 'Duration', lenStr),
+              _detailRow(Icons.water_drop_outlined, 'Flow', e.flow.label),
+              if (e.mood != null)
+                _detailRow(Icons.mood_rounded, 'Mood', e.mood!),
+              if (e.symptoms.isNotEmpty)
+                _detailRow(Icons.medical_information_outlined, 'Symptoms',
+                    e.symptoms.join(', ')),
+              if (e.notes != null && e.notes!.isNotEmpty)
+                _detailRow(Icons.notes_rounded, 'Notes', e.notes!),
+            ],
+          ),
+        ),
+        actionsPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFE91E63),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.edit_outlined, size: 16),
+            label: const Text('Edit'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _openEditSheet(context, ref, e);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openEditSheet(BuildContext context, WidgetRef ref, CycleEntry e) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _LogPeriodSheet(existing: e),
+    );
+    if (saved == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Period updated!'),
+            ],
+          ),
+          backgroundColor: const Color(0xFFE91E63),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 17, color: const Color(0xFFE91E63)),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 72,
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w600)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(fontSize: 13, color: Colors.black87)),
+          ),
+        ],
       ),
     );
   }
@@ -640,7 +838,7 @@ class _LogPeriodSheetState extends ConsumerState<_LogPeriodSheet> {
         clearNotes: _notesCtrl.text.trim().isEmpty,
       ));
     }
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context, true);
   }
 
   @override

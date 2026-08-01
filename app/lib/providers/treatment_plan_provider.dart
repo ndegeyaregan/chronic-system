@@ -32,7 +32,7 @@ class TreatmentPlanState {
 
 class TreatmentPlanNotifier extends StateNotifier<TreatmentPlanState> {
   TreatmentPlanNotifier() : super(const TreatmentPlanState()) {
-    fetchPlans();
+    Future.microtask(fetchPlans);
   }
 
   Future<void> fetchPlans() async {

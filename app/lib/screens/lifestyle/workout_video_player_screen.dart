@@ -5,11 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/lifestyle_provider.dart';
+import '../../core/app_colors.dart';
 
-const _kBg   = Color(0xFFF2F2F2);
-const _kCard = Colors.white;
-const _kDark = Color(0xFF1C1C1E);
-const _kGrey = Color(0xFF8E8E93);
 const _kBlue = Color(0xFF003DA5);
 
 const _kDescriptions = {
@@ -126,21 +123,21 @@ class _WorkoutVideoPlayerScreenState extends ConsumerState<WorkoutVideoPlayerScr
     final shortDesc = desc.length > 100 ? '${desc.substring(0, 100)}...' : desc;
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: context.c.bg,
       appBar: AppBar(
-        backgroundColor: _kBg,
+        backgroundColor: context.c.bg,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _kDark, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: context.c.text, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Program details',
-            style: TextStyle(color: _kDark, fontSize: 17, fontWeight: FontWeight.w700)),
+        title: Text('Program details',
+            style: TextStyle(color: context.c.text, fontSize: 17, fontWeight: FontWeight.w700)),
         centerTitle: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.favorite_border_rounded, color: _kDark, size: 22),
+            icon: Icon(Icons.favorite_border_rounded, color: context.c.text, size: 22),
             onPressed: () {},
           ),
         ],
@@ -155,7 +152,7 @@ class _WorkoutVideoPlayerScreenState extends ConsumerState<WorkoutVideoPlayerScr
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: _kCard,
+                color: context.c.cardBg,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
               ),
@@ -181,28 +178,28 @@ class _WorkoutVideoPlayerScreenState extends ConsumerState<WorkoutVideoPlayerScr
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(w['title']!,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _kDark, height: 1.3)),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: context.c.text, height: 1.3)),
                         const SizedBox(height: 10),
                         Text(_expanded ? desc : shortDesc,
-                            style: const TextStyle(fontSize: 14, color: _kGrey, height: 1.5)),
+                            style: TextStyle(fontSize: 14, color: context.c.subtext, height: 1.5)),
                         if (desc.length > 100) ...[
                           const SizedBox(height: 4),
                           GestureDetector(
                             onTap: () => setState(() => _expanded = !_expanded),
                             child: Text(_expanded ? 'View less' : 'View more',
-                                style: const TextStyle(fontSize: 14, color: _kDark,
+                                style: TextStyle(fontSize: 14, color: context.c.text,
                                     fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
                           ),
                         ],
                         const SizedBox(height: 14),
                         Row(children: [
-                          const Text('Powered by ', style: TextStyle(fontSize: 13, color: _kGrey)),
+                          Text('Powered by ', style: TextStyle(fontSize: 13, color: context.c.subtext)),
                           Text(w['channel']!,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kDark)),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.c.text)),
                           const Spacer(),
                           GestureDetector(
                             onTap: () => _openInYouTube(w['videoId']!),
-                            child: const Icon(Icons.chevron_right_rounded, color: _kGrey, size: 20),
+                            child: Icon(Icons.chevron_right_rounded, color: context.c.subtext, size: 20),
                           ),
                         ]),
                         if (!kIsWeb) ...[
@@ -229,7 +226,7 @@ class _WorkoutVideoPlayerScreenState extends ConsumerState<WorkoutVideoPlayerScr
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: _kCard,
+                color: context.c.cardBg,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2))],
               ),
@@ -237,35 +234,35 @@ class _WorkoutVideoPlayerScreenState extends ConsumerState<WorkoutVideoPlayerScr
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Program overview',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _kDark)),
+                  Text('Program overview',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: context.c.text)),
                   const SizedBox(height: 20),
                   Row(children: [
                     Expanded(child: Column(children: [
-                      Text(diff, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _kDark)),
+                      Text(diff, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: context.c.text)),
                       const SizedBox(height: 4),
-                      const Text('Difficulty', style: TextStyle(fontSize: 13, color: _kGrey)),
+                      Text('Difficulty', style: TextStyle(fontSize: 13, color: context.c.subtext)),
                     ])),
                     Container(width: 1, height: 48, color: const Color(0xFFE5E5E5)),
                     Expanded(child: Column(children: [
-                      Text(w['duration']!, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: _kDark)),
+                      Text(w['duration']!, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: context.c.text)),
                       const SizedBox(height: 4),
-                      const Text('Duration', style: TextStyle(fontSize: 13, color: _kGrey)),
+                      Text('Duration', style: TextStyle(fontSize: 13, color: context.c.subtext)),
                     ])),
                   ]),
                   const SizedBox(height: 20),
                   const Divider(color: Color(0xFFF0F0F0)),
                   const SizedBox(height: 12),
                   Row(children: [
-                    const Text('Equipment', style: TextStyle(fontSize: 14, color: _kGrey)),
+                    Text('Equipment', style: TextStyle(fontSize: 14, color: context.c.subtext)),
                     Expanded(child: _DottedLine()),
-                    const Text('Not required', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _kDark)),
+                    Text('Not required', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.c.text)),
                   ]),
                   const SizedBox(height: 14),
                   Row(children: [
-                    const Text('Program category', style: TextStyle(fontSize: 14, color: _kGrey)),
+                    Text('Program category', style: TextStyle(fontSize: 14, color: context.c.subtext)),
                     Expanded(child: _DottedLine()),
-                    Text(cat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _kDark)),
+                    Text(cat, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.c.text)),
                   ]),
                 ],
               ),
@@ -307,9 +304,9 @@ class _WorkoutVideoPlayerScreenState extends ConsumerState<WorkoutVideoPlayerScr
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Row(children: [
-                  const Expanded(child: Text('More Workouts',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _kDark))),
-                  const Icon(Icons.chevron_right_rounded, color: _kDark, size: 24),
+                  Expanded(child: Text('More Workouts',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: context.c.text))),
+                  Icon(Icons.chevron_right_rounded, color: context.c.text, size: 24),
                 ]),
               ),
               ...widget.related.map((rw) => _RelatedCard(workout: rw, onTap: () {
@@ -345,7 +342,7 @@ class _WorkoutVideoPlayerScreenState extends ConsumerState<WorkoutVideoPlayerScr
                     onPressed: _startWorkout,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE5E5EA),
-                      foregroundColor: _kDark,
+                      foregroundColor: context.c.text,
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
                     ),
@@ -435,7 +432,7 @@ class _RelatedCard extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: _kCard,
+          color: context.c.cardBg,
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
         ),
@@ -459,14 +456,14 @@ class _RelatedCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(workout['title']!,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _kDark, height: 1.3),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: context.c.text, height: 1.3),
                 maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
             Text('${workout['duration']!}  \u2022  ${workout['channel']!}',
-                style: const TextStyle(fontSize: 12, color: _kGrey),
+                style: TextStyle(fontSize: 12, color: context.c.subtext),
                 maxLines: 1, overflow: TextOverflow.ellipsis),
           ])),
-          const Icon(Icons.chevron_right_rounded, color: _kGrey, size: 20),
+          Icon(Icons.chevron_right_rounded, color: context.c.subtext, size: 20),
         ]),
       ),
     );

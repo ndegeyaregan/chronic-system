@@ -240,6 +240,18 @@ class AuthService {
     await sanlamApi.regMember(memberNo: memberNumber, password: password);
   }
 
+  /// Permanently deletes the signed-in member's account and all local
+  /// session state. Required so account deletion can be initiated from
+  /// within the app (App Store Guideline 5.1.1(v)) instead of a website.
+  Future<void> deleteAccount() async {
+    await dio.delete('/members/me');
+    await deleteToken();
+    await deleteSanlamToken();
+    currentSanlamToken = null;
+    await deleteMember();
+    await _saveSanlamPhoto(null);
+  }
+
   Future<void> logout() async {
     try {
       await dio.post('/auth/logout');
@@ -248,6 +260,13 @@ class AuthService {
     await deleteSanlamToken();
     currentSanlamToken = null;
     await deleteMember();
+    await _saveSanlamPhoto(null);
+  }
+
+  /// Verify credentials without any side effects (no token saving, no state
+  /// updates). Used by biometric enrollment to confirm the password is correct.
+  Future<void> verifyCredentials(String memberNumber, String password) async {
+    await sanlamApi.login(memberNumber, password);
   }
 
   Future<Map<String, dynamic>> exchangeSanlamForLocal(

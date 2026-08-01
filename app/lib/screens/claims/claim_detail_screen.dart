@@ -186,7 +186,7 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
         ),
         title: Text('Claim Detail',
             style: TextStyle(
-                color: Colors.white,
+                color: context.c.cardBg,
                 fontWeight: FontWeight.w700,
                 fontSize: 18)),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -216,8 +216,8 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
                 children: [
                   Text(
                     visit.institution,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.c.cardBg,
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
@@ -243,8 +243,8 @@ class _ClaimDetailScreenState extends ConsumerState<ClaimDetailScreen> {
                       ClaimStatusChip(status: visit.claimStatus),
                       Money(
                         amount: visit.totalAmount,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.c.cardBg,
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                         ),
@@ -472,7 +472,7 @@ class _ConfirmationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(kRadiusLg),
         boxShadow: kShadowSm,
         border: Border.all(
@@ -533,12 +533,12 @@ class _ConfirmationCard extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: loading || agreed ? null : onAgree,
                     icon: loading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: context.c.cardBg,
                             ),
                           )
                         : const Icon(Icons.thumb_up_alt_outlined, size: 18),

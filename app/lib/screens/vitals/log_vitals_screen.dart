@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:health/health.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
 import '../../providers/vitals_provider.dart';
@@ -37,6 +39,8 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
   final _o2Ctrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final _painDescCtrl = TextEditingController();
+
+  bool _isImportingFromWatch = false;
 
   double _painLevel = 0;
   String _mood = 'okay';
@@ -350,6 +354,130 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
     return warnings;
   }
 
+  Future<void> _importFromWatch() async {
+    setState(() => _isImportingFromWatch = true);
+    try {
+      final health = Health();
+      await health.configure();
+
+      const types = [
+        HealthDataType.HEART_RATE,
+        HealthDataType.BLOOD_OXYGEN,
+        HealthDataType.WEIGHT,
+        HealthDataType.BODY_TEMPERATURE,
+      ];
+
+      bool granted = await health.hasPermissions(types) ?? false;
+      if (!granted) {
+        granted = await health.requestAuthorization(
+          types,
+          permissions: List.filled(types.length, HealthDataAccess.READ),
+        );
+      }
+
+      if (!granted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Apple Health access not granted. Go to Settings → Privacy → Health → SanCare+ and allow access.'),
+              backgroundColor: kWarning,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+
+      final now = DateTime.now();
+      final start = now.subtract(const Duration(hours: 24));
+
+      final data = await health.getHealthDataFromTypes(
+        startTime: start,
+        endTime: now,
+        types: types,
+      );
+
+      DateTime? hrTime, o2Time, massTime, tempTime;
+      double? heartRate, bloodOxygen, bodyMass, bodyTemp;
+
+      for (final point in data) {
+        if (point.value is! NumericHealthValue) continue;
+        final value =
+            (point.value as NumericHealthValue).numericValue.toDouble();
+        switch (point.type) {
+          case HealthDataType.HEART_RATE:
+            if (hrTime == null || point.dateFrom.isAfter(hrTime)) {
+              hrTime = point.dateFrom;
+              heartRate = value;
+            }
+            break;
+          case HealthDataType.BLOOD_OXYGEN:
+            if (o2Time == null || point.dateFrom.isAfter(o2Time)) {
+              o2Time = point.dateFrom;
+              // HealthKit returns SpO2 as a decimal (0.0–1.0); convert to %
+              bloodOxygen = value > 1 ? value : value * 100;
+            }
+            break;
+          case HealthDataType.WEIGHT:
+            if (massTime == null || point.dateFrom.isAfter(massTime)) {
+              massTime = point.dateFrom;
+              bodyMass = value; // kg
+            }
+            break;
+          case HealthDataType.BODY_TEMPERATURE:
+            if (tempTime == null || point.dateFrom.isAfter(tempTime)) {
+              tempTime = point.dateFrom;
+              bodyTemp = value; // °C
+            }
+            break;
+          default:
+            break;
+        }
+      }
+
+      int imported = 0;
+      if (mounted) {
+        setState(() {
+          if (heartRate != null) {
+            _heartRateCtrl.text = heartRate!.round().toString();
+            imported++;
+          }
+          if (bloodOxygen != null) {
+            _o2Ctrl.text = bloodOxygen!.round().toString();
+            imported++;
+          }
+          if (bodyMass != null) {
+            _weightCtrl.text = bodyMass!.toStringAsFixed(1);
+            imported++;
+          }
+        });
+
+        final tempNote =
+            bodyTemp != null ? ' · Temp: ${bodyTemp!.toStringAsFixed(1)} °C' : '';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(imported > 0
+                ? 'Imported $imported reading${imported == 1 ? '' : 's'} from Apple Health$tempNote'
+                : 'No recent readings found in Apple Health (last 24 h)'),
+            backgroundColor: imported > 0 ? kSuccess : kWarning,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not read from Apple Health. Please try again.'),
+            backgroundColor: kError,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isImportingFromWatch = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (!_hasAnyValue) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -545,6 +673,10 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (!kIsWeb) ...[
+              _watchImportBanner(),
+              const SizedBox(height: 16),
+            ],
             _sectionCard('Blood Glucose', [
               AppInput(
                 label: 'Blood Sugar (mmol/L)',
@@ -659,8 +791,8 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
                         ),
                         child: Text(
                           label,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.c.cardBg,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -792,7 +924,7 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
                                 hintText: 'Please describe how you are feeling…',
                                 hintStyle: TextStyle(color: context.c.subtext, fontSize: 13),
                                 filled: true,
-                                fillColor: Colors.white,
+                                fillColor: Theme.of(context).inputDecorationTheme.fillColor,
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -1000,6 +1132,90 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
     );
   }
 
+  Widget _watchImportBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF001A5C), Color(0xFF003DA5)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF001A5C).withValues(alpha: 0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.watch_rounded, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Import from Health App',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Auto-fill from Apple Health or Health Connect',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 130,
+            child: _isImportingFromWatch
+                ? const Center(
+                    child: SizedBox(
+                      width: 26,
+                      height: 26,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2.5),
+                    ),
+                  )
+                : ElevatedButton(
+                    onPressed: _importFromWatch,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: kPrimary,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Import from Watch',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 13)),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _emergencyCallButton(String number, String label) {
     return GestureDetector(
       onTap: () async {
@@ -1032,8 +1248,8 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
                 const SizedBox(height: 2),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.c.cardBg,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
@@ -1137,7 +1353,7 @@ class _LogVitalsScreenState extends ConsumerState<LogVitalsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(

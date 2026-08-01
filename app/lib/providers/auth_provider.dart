@@ -464,6 +464,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
+  /// Permanently deletes the signed-in member's account, then signs out
+  /// locally. Throws on failure so the UI can show an error instead of
+  /// silently landing on the login screen with a half-deleted account.
+  Future<void> deleteAccount() async {
+    await _service.deleteAccount();
+    try {
+      await PrescriptionReminderService.clear();
+    } catch (_) {}
+    state = const AuthState(status: AuthStatus.unauthenticated);
+  }
+
   void updateMember(Member member) {
     // Defensive: never downgrade isChronic from true → false within a session.
     // Some endpoints (e.g. partial profile updates) can return responses where

@@ -124,14 +124,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           return routeDashboard;
         }
         // Block non-chronic members from chronic-only routes.
-        // Vitals, lifestyle, and education are universal; medications stays chronic-only.
+        // Vitals, lifestyle, education, and appointments are universal;
+        // medications, treatment, and lab results stay chronic-only.
+        // Pre-authorizations (surgery, procedures, follow-ups, refills)
+        // apply to any member, so that route is intentionally not listed.
         if (!notifier.isChronicMember) {
           const chronicRoutes = [
-            routeAppointments,
             routeTreatment,
             routeLabResults,
             routeMedications,
-            '/authorizations',
             '/home/chronic',
           ];
           for (final route in chronicRoutes) {
@@ -299,7 +300,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '$routeAppointments/book',
-        builder: (_, __) => const BookAppointmentScreen(),
+        builder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return BookAppointmentScreen(
+            skipCondition: extra?['skipCondition'] as bool? ?? false,
+          );
+        },
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

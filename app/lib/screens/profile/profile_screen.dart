@@ -13,6 +13,7 @@ import '../../providers/vitals_provider.dart';
 import '../../providers/medications_provider.dart';
 import '../../providers/lab_tests_provider.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/pdf_service.dart';
 import '../../widgets/common/app_input.dart';
 import '../../widgets/common/loading_shimmer.dart';
@@ -29,11 +30,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _exportingPdf = false;
   bool _biometricAvailable = false;
   bool _biometricEnabled = false;
+  List<BiometricType> _biometricTypes = [];
 
   Future<void> _checkBiometrics() async {
     final available = await biometricService.isAvailable();
     final enabled = await biometricService.isEnabled();
-    if (mounted) setState(() { _biometricAvailable = available; _biometricEnabled = enabled; });
+    final types = await biometricService.availableTypes();
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = available;
+        _biometricEnabled = enabled;
+        _biometricTypes = types;
+      });
+    }
   }
 
   Future<void> _toggleBiometric(bool value) async {
@@ -41,27 +50,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       // Check if the device has biometrics enrolled first
       if (!_biometricAvailable) {
         if (!mounted) return;
+        final isFaceId = _biometricTypes.contains(BiometricType.face);
+        final biometricLabel =
+            isFaceId ? 'Face ID' : 'Fingerprint / Touch ID';
+        final settingsPath = isFaceId
+            ? 'Settings → Face ID & Passcode'
+            : Theme.of(context).platform == TargetPlatform.iOS
+                ? 'Settings → Touch ID & Passcode'
+                : 'Settings → Security → Fingerprint';
         await showDialog(
           context: context,
           builder: (dialogContext) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Row(children: [
-              Icon(Icons.fingerprint, color: kPrimary, size: 26),
-              SizedBox(width: 10),
-              Text('No Fingerprint Enrolled'),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            title: Row(children: [
+              Icon(isFaceId ? Icons.face_unlock_outlined : Icons.fingerprint,
+                  color: kPrimary, size: 26),
+              const SizedBox(width: 10),
+              Text('No $biometricLabel Enrolled'),
             ]),
             content: Text(
-              'Your phone has no fingerprint enrolled.\n\n'
+              'Your device has no $biometricLabel enrolled.\n\n'
               'To use biometric login, please go to:\n'
-              'Settings → Security → Fingerprint\n\n'
-              'Enroll your fingerprint there, then come back here to enable it.',
-              style: TextStyle(fontSize: 14, height: 1.5),
+              '$settingsPath\n\n'
+              'Enroll there, then come back to enable it.',
+              style: const TextStyle(fontSize: 14, height: 1.5),
             ),
             actions: [
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: kPrimary),
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: kPrimary),
                 onPressed: () => Navigator.pop(dialogContext),
-                child: Text('OK', style: TextStyle(color: Colors.white)),
+                child: const Text('OK',
+                    style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -91,16 +112,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _showBiometricEnrollDialog(String memberNumber) async {
     final passwordCtrl = TextEditingController();
     bool obscure = true;
+    final isFaceId = _biometricTypes.contains(BiometricType.face);
 
     final confirmed = await showDialog<String>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(children: [
-            Icon(Icons.fingerprint, color: kPrimary, size: 26),
-            SizedBox(width: 10),
-            Text('Enable Biometric Login'),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          title: Row(children: [
+            Icon(
+              isFaceId ? Icons.face_unlock_outlined : Icons.fingerprint,
+              color: kPrimary,
+              size: 26,
+            ),
+            const SizedBox(width: 10),
+            Text(
+                'Enable ${isFaceId ? 'Face ID' : 'Biometric'} Login'),
           ]),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -136,10 +164,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     passwordCtrl.dispose();
     if (confirmed == null || confirmed.isEmpty || !mounted) return;
 
-    // Verify password and save credentials
+    // Verify password directly (no state change) then save credentials
     try {
-      await ref.read(authProvider.notifier).loginWithMemberNumber(memberNumber, confirmed);
-      // If login succeeded (no exception), biometric enrollment is valid
+      await authService.verifyCredentials(memberNumber, confirmed);
+      // If the call succeeded, password is correct — now enroll biometrics
       final authed = await biometricService.authenticate();
       if (!authed || !mounted) return;
       await biometricService.saveCredentials(memberNumber, confirmed);
@@ -238,7 +266,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           width: 80,
                           height: 80,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: context.c.cardBg,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
@@ -275,9 +303,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               color: kAccent,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.camera_alt_rounded,
-                              color: Colors.white,
+                              color: context.c.cardBg,
                               size: 14,
                             ),
                           ),
@@ -288,8 +316,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 12),
                   Text(
                     member?.fullName ?? '—',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.c.cardBg,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -321,8 +349,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         (member?.schemeName?.trim().isNotEmpty ?? false)
                             ? member!.schemeName!.trim()
                             : member!.planCode!.trim(),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.c.cardBg,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -451,7 +479,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _infoCard(BuildContext context, Member? member) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.c.cardBg,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -553,7 +581,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _sectionLabel(context, 'Care Management'),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.c.cardBg,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -597,7 +625,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _sectionLabel(context, 'Account'),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.c.cardBg,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -628,7 +656,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _sectionLabel(context, 'Legal & Info'),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.c.cardBg,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -654,6 +682,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   applicationLegalese: '© 2026 Sanlam Allianz Life Insurance',
                 ),
               ),
+              const Divider(height: 1),
+              _menuItem(
+                context,
+                Icons.person_remove_outlined,
+                'Delete My Account',
+                subtitle: 'Permanently delete your account and data',
+                color: kError,
+                onTap: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Delete My Account'),
+                      content: const Text(
+                        'This permanently deletes your account and all '
+                        'associated data. This cannot be undone.\n\n'
+                        'Are you sure you want to continue?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: kError),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true || !context.mounted) return;
+                  try {
+                    await ref.read(authProvider.notifier).deleteAccount();
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                            Text('Failed to delete account. Please try again.'),
+                        backgroundColor: kError,
+                      ),
+                    );
+                  }
+                },
+              ),
             ],
           ),
         ),
@@ -661,7 +736,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         // ── Sign Out ───────────────────────────────────────────────
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.c.cardBg,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -707,12 +782,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _biometricToggleItem(BuildContext context) {
     final unavailable = !_biometricAvailable;
+    final isFaceId = _biometricTypes.contains(BiometricType.face);
+    final biometricLabel =
+        isFaceId ? 'Face ID' : 'Fingerprint / Touch ID';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          Icon(Icons.fingerprint,
-              color: unavailable ? Colors.grey : kPrimary, size: 20),
+          Icon(
+            isFaceId ? Icons.face_unlock_outlined : Icons.fingerprint,
+            color: unavailable ? Colors.grey : kPrimary,
+            size: 20,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -722,23 +803,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: unavailable ? Colors.grey : context.c.text)),
+                        color:
+                            unavailable ? Colors.grey : context.c.text)),
                 Text(
                   unavailable
-                      ? 'No fingerprint enrolled on this device'
+                      ? 'No $biometricLabel enrolled on this device'
                       : _biometricEnabled
                           ? 'Enabled — tap to disable'
-                          : 'Enable fingerprint / Face ID login',
+                          : 'Enable $biometricLabel login',
                   style: TextStyle(
                       fontSize: 11,
-                      color: unavailable ? Colors.grey : context.c.subtext),
+                      color: unavailable
+                          ? Colors.grey
+                          : context.c.subtext),
                 ),
               ],
             ),
           ),
           Switch.adaptive(
             value: _biometricEnabled,
-            activeColor: kPrimary,
+            activeThumbColor: kPrimary, activeTrackColor: kPrimary.withValues(alpha: 0.5),
             onChanged: _toggleBiometric,
           ),
         ],
@@ -1136,8 +1220,8 @@ class _EditConditionsSheetState extends State<_EditConditionsSheet> {
       maxChildSize: 0.95,
       expand: false,
       builder: (_, scrollCtrl) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: context.c.cardBg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(

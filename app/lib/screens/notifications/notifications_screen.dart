@@ -122,8 +122,8 @@ class NotificationsScreen extends ConsumerWidget {
                 ),
                 child: Text(
                   unreadCount > 99 ? '99+' : '$unreadCount',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.c.cardBg,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                   ),
